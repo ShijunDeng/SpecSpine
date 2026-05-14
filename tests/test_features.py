@@ -1497,6 +1497,314 @@ class FeatureBundleTests(TestCase):
                 text_output_file.read_text(encoding="utf-8"),
             )
 
+    def test_feature_sync_plan_output_dir_writes_reviewable_artifacts(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            add_feature_metadata(root)
+            output_dir = root / "sync-artifacts"
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "feature",
+                        "sync-plan",
+                        "add-dark-mode",
+                        str(root),
+                        "--output-dir",
+                        str(output_dir),
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            self.assertIn("Wrote feature sync plan artifacts", stdout.getvalue())
+            expected_files = {
+                "manifest.json",
+                "feature-issue.md",
+                "task-issues/T001.md",
+                "task-issues/T002.md",
+                "pull-request.md",
+                "commands.sh",
+            }
+            self.assertEqual(
+                {
+                    str(path.relative_to(output_dir))
+                    for path in output_dir.rglob("*")
+                    if path.is_file()
+                },
+                expected_files,
+            )
+
+            manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["feature_id"], "add-dark-mode")
+            self.assertEqual(manifest["artifact_version"], 1)
+            self.assertEqual(manifest["artifact_root"], ".")
+            self.assertEqual(manifest["artifacts"]["manifest"], "manifest.json")
+            self.assertEqual(manifest["artifacts"]["feature_issue"], "feature-issue.md")
+            self.assertEqual(manifest["artifacts"]["pull_request"], "pull-request.md")
+            self.assertEqual(
+                manifest["artifacts"]["task_issues"],
+                [
+                    {
+                        "command_id": "github.task_issue.T001",
+                        "path": "task-issues/T001.md",
+                        "task_id": "T001",
+                    },
+                    {
+                        "command_id": "github.task_issue.T002",
+                        "path": "task-issues/T002.md",
+                        "task_id": "T002",
+                    },
+                ],
+            )
+
+            commands_by_id = {
+                command["id"]: command
+                for command in manifest["commands"]
+            }
+            self.assertEqual(
+                commands_by_id["github.issue.feature"]["body_file"],
+                "feature-issue.md",
+            )
+            self.assertEqual(
+                commands_by_id["github.task_issue.T001"]["artifact_path"],
+                "task-issues/T001.md",
+            )
+            self.assertEqual(
+                commands_by_id["github.pull_request"]["body_file"],
+                "pull-request.md",
+            )
+            self.assertIn(
+                "## Acceptance Criteria",
+                (output_dir / "feature-issue.md").read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                "Implement theme storage.",
+                (output_dir / "task-issues" / "T001.md").read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                "## Summary",
+                (output_dir / "pull-request.md").read_text(encoding="utf-8"),
+            )
+
+            commands_sh = (output_dir / "commands.sh").read_text(encoding="utf-8")
+            self.assertIn("review-only / do not run blindly", commands_sh)
+            self.assertIn("gh issue create --title 'Add dark mode' --body-file feature-issue.md", commands_sh)
+            self.assertIn("gh issue create --title '[add-dark-mode] T001:", commands_sh)
+            self.assertIn("--body-file task-issues/T001.md", commands_sh)
+            self.assertIn("gh pr create --title 'Implement Add dark mode'", commands_sh)
+            self.assertIn("--body-file pull-request.md", commands_sh)
+            self.assertIn("--draft", commands_sh)
+            self.assertNotIn("--dry-run", commands_sh)
+            self.assertNotIn("--dry-run", json.dumps(manifest))
+            self.assertNotIn("--assignee", commands_sh)
+            for command in manifest["commands"]:
+                self.assertTrue(command["creates_remote"])
+                self.assertTrue(command["requires_token"])
+                self.assertTrue(command["requires_network"])
+                self.assertFalse(command["safe_to_auto_run"])
+
+    def test_feature_sync_plan_json_stdout_and_output_dir_both_work(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            output_dir = root / "sync-artifacts"
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "feature",
+                        "sync-plan",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--output-dir",
+                        str(output_dir),
+                    ]
+                )
+
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertNotIn("artifact_version", payload)
+            expected_command_keys = {
+                "argv",
+                "body",
+                "body_source",
+                "creates_remote",
+                "description",
+                "id",
+                "kind",
+                "requires_network",
+                "requires_token",
+                "safe_to_auto_run",
+            }
+            for command in payload["commands"]:
+                self.assertEqual(set(command), expected_command_keys)
+                self.assertNotIn("artifact_path", command)
+                self.assertNotIn("body_file", command)
+            self.assertTrue((output_dir / "manifest.json").exists())
+            self.assertTrue((output_dir / "commands.sh").exists())
+
+    def test_feature_sync_plan_output_dir_overwrite_requires_force(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            output_dir = root / "sync-artifacts"
+            output_dir.mkdir()
+            unknown_file = output_dir / "keep-local-note.txt"
+            unknown_file.write_text("keep me\n", encoding="utf-8")
+            manifest = output_dir / "manifest.json"
+            manifest.write_text("existing\n", encoding="utf-8")
+            feature_issue = output_dir / "feature-issue.md"
+            feature_issue.write_text("stale feature issue\n", encoding="utf-8")
+            commands_sh = output_dir / "commands.sh"
+            commands_sh.write_text("stale command script\n", encoding="utf-8")
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(
+                    [
+                        "feature",
+                        "sync-plan",
+                        "add-dark-mode",
+                        str(root),
+                        "--output-dir",
+                        str(output_dir),
+                    ]
+                )
+
+            self.assertEqual(returncode, 1)
+            self.assertIn("Sync plan artifact files already exist", stderr.getvalue())
+            self.assertEqual(manifest.read_text(encoding="utf-8"), "existing\n")
+            self.assertEqual(feature_issue.read_text(encoding="utf-8"), "stale feature issue\n")
+            self.assertEqual(commands_sh.read_text(encoding="utf-8"), "stale command script\n")
+            self.assertEqual(unknown_file.read_text(encoding="utf-8"), "keep me\n")
+
+            with redirect_stdout(StringIO()):
+                returncode = main(
+                    [
+                        "feature",
+                        "sync-plan",
+                        "add-dark-mode",
+                        str(root),
+                        "--output-dir",
+                        str(output_dir),
+                        "--force",
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            payload = json.loads(manifest.read_text(encoding="utf-8"))
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertIn(
+                "## Acceptance Criteria",
+                feature_issue.read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                "review-only / do not run blindly",
+                commands_sh.read_text(encoding="utf-8"),
+            )
+            self.assertEqual(unknown_file.read_text(encoding="utf-8"), "keep me\n")
+
+    def test_feature_sync_plan_output_dir_does_not_read_tokens_call_network_or_subprocess(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            output_dir = root / "sync-artifacts"
+            output = StringIO()
+            token_names = {
+                "GH_TOKEN",
+                "GITHUB_API_TOKEN",
+                "GITHUB_PAT",
+                "GITHUB_TOKEN",
+            }
+            environ_type = os.environ.__class__
+            original_get = environ_type.get
+            original_getitem = environ_type.__getitem__
+            original_contains = environ_type.__contains__
+
+            def guarded_get(environ, key, default=None):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_get(environ, key, default)
+
+            def guarded_getitem(environ, key):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_getitem(environ, key)
+
+            def guarded_contains(environ, key):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_contains(environ, key)
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "GH_TOKEN": "secret-gh-token",
+                    "GITHUB_API_TOKEN": "secret-github-api-token",
+                    "GITHUB_PAT": "secret-github-pat",
+                    "GITHUB_TOKEN": "secret-github-token",
+                    "PATH": "",
+                },
+            ):
+                with (
+                    patch.object(environ_type, "get", guarded_get),
+                    patch.object(environ_type, "__getitem__", guarded_getitem),
+                    patch.object(environ_type, "__contains__", guarded_contains),
+                    patch(
+                        "subprocess.run",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_run,
+                    patch(
+                        "subprocess.Popen",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_popen,
+                    patch(
+                        "urllib.request.urlopen",
+                        side_effect=AssertionError("network called"),
+                    ) as urlopen,
+                    patch(
+                        "socket.create_connection",
+                        side_effect=AssertionError("network called"),
+                    ) as create_connection,
+                    patch(
+                        "socket.socket.connect",
+                        side_effect=AssertionError("network called"),
+                    ) as socket_connect,
+                    redirect_stdout(output),
+                ):
+                    returncode = main(
+                        [
+                            "feature",
+                            "sync-plan",
+                            "add-dark-mode",
+                            str(root),
+                            "--json",
+                            "--output-dir",
+                            str(output_dir),
+                        ]
+                    )
+
+            self.assertEqual(returncode, 0)
+            subprocess_run.assert_not_called()
+            subprocess_popen.assert_not_called()
+            urlopen.assert_not_called()
+            create_connection.assert_not_called()
+            socket_connect.assert_not_called()
+            combined = output.getvalue() + (output_dir / "commands.sh").read_text(encoding="utf-8")
+            self.assertNotIn("secret-gh-token", combined)
+            self.assertNotIn("secret-github-api-token", combined)
+            self.assertNotIn("secret-github-pat", combined)
+            self.assertNotIn("secret-github-token", combined)
+
     def test_feature_sync_plan_partial_bundle_returns_zero_with_missing_info(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -3851,6 +4159,28 @@ class FeatureBundleTests(TestCase):
         self.assertTrue(any("dry-run may still push" in note for note in plan.notes))
         self.assertIn(
             "specspine feature sync-plan github-sync-plan . --json",
+            plan.recommended_commands,
+        )
+
+    def test_dogfood_sync_plan_artifacts_is_validated_and_ready(self) -> None:
+        ready = build_feature_ready_report(REPO_ROOT, "sync-plan-artifacts")
+        plan = build_feature_sync_plan(REPO_ROOT, "sync-plan-artifacts")
+        validation = build_validation_report(REPO_ROOT, include_features=True)
+
+        self.assertTrue(ready.ready)
+        self.assertTrue(validation["ok"])
+        self.assertEqual(validation_exit_code(validation), 0)
+        self.assertEqual(plan.status, "validated")
+        self.assertTrue(plan.ready)
+        self.assertEqual(plan.metadata.priority, "high")
+        self.assertEqual(plan.metadata.owner, "SpecSpine maintainers")
+        self.assertEqual(plan.missing_files, ())
+        self.assertEqual(plan.gaps, ())
+        self.assertEqual(plan.blocking_checks, ())
+        self.assertGreater(plan.summary["task_issue_commands"], 0)
+        self.assertTrue(all(not command.safe_to_auto_run for command in plan.commands))
+        self.assertIn(
+            "specspine feature sync-plan sync-plan-artifacts . --json",
             plan.recommended_commands,
         )
 

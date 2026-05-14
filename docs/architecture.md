@@ -29,7 +29,7 @@ The CLI is intentionally thin:
 - `specspine feature tests` exports an acceptance-test packet for QA and testing agents.
 - `specspine feature issue` exports a local GitHub issue draft from a native feature bundle.
 - `specspine feature pr` exports a local GitHub Pull Request draft from a native feature bundle.
-- `specspine feature sync-plan` exports a local GitHub CLI synchronization plan without executing it.
+- `specspine feature sync-plan` exports a local GitHub CLI synchronization plan and optional review artifacts without executing it.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
 - `specspine status` emits a compact status packet for humans, agents, and scripts.
@@ -161,9 +161,11 @@ JSON output includes `title`, `body`, `feature_id`, `status`, `ready`, `source_f
 
 The command is intentionally offline. It does not call GitHub APIs, does not require `gh`, does not read tokens, does not use network access, and does not vendor upstream project code.
 
-`specspine feature sync-plan <slug> [path] [--json] [--output FILE] [--force]` is the local review bridge before any GitHub CLI execution. It composes existing feature issue, task issue, Pull Request, metadata, status, readiness, gap, and blocker evidence into a plan of argv arrays. The command never executes `gh`, calls GitHub APIs, reads tokens, uses network access, invokes upstream CLIs, or adds dependencies.
+`specspine feature sync-plan <slug> [path] [--json] [--output FILE] [--output-dir DIR] [--force]` is the local review bridge before any GitHub CLI execution. It composes existing feature issue, task issue, Pull Request, metadata, status, readiness, gap, and blocker evidence into a plan of argv arrays. The command never executes `gh`, calls GitHub APIs, reads tokens, uses network access, invokes subprocesses, invokes upstream CLIs, or adds dependencies.
 
-The sync plan JSON includes `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `metadata`, `summary`, `commands`, `notes`, and `recommended_commands`. Commands include stable ids, `kind` values of `issue`, `task-issue`, or `pull-request`, body source references, draft body content, argv arrays, and safety flags. Every command is marked `creates_remote=true`, `requires_token=true`, `requires_network=true`, and `safe_to_auto_run=false`; text output adds shell-quoted command lines for human review only. GitHub priority is represented as a label for compatibility, project scope is only noted, PR `--dry-run` is deliberately not used as a safety guarantee, and local `Owner:` metadata is not automatically mapped to assignees.
+The sync plan JSON includes `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `metadata`, `summary`, `commands`, `notes`, and `recommended_commands`. Commands include stable ids, `kind` values of `issue`, `task-issue`, or `pull-request`, body source references, draft body content, argv arrays, and safety flags. Every command is marked `creates_remote=true`, `requires_token=true`, `requires_network=true`, and `safe_to_auto_run=false`; text output adds shell-quoted command lines for human review only. GitHub priority is represented as a label for compatibility, project scope is only noted, PR dry-run mode is deliberately not used as a safety guarantee, and local `Owner:` metadata is not automatically mapped to assignees.
+
+`--output-dir` materializes the plan into local review files: `manifest.json`, `feature-issue.md`, `task-issues/T001.md` style task bodies, `pull-request.md`, and `commands.sh`. The manifest preserves the sync-plan JSON shape and adds artifact path indexes plus `body_file` / `artifact_path` fields for each command. `commands.sh` contains comments and shell-quoted `gh ... --body-file <local artifact>` commands only; it is not chmodded or executed. Existing command-owned artifact files require `--force` to overwrite, and unknown files in the directory are preserved.
 
 `specspine validate --features` checks that discovered native feature bundles have valid slugs, all three peer files, matching feature ids, allowed status markers, and consistent peer-file status.
 
@@ -198,7 +200,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 
 - `specspine.workspace`: local file templates and workspace checks.
 - `specspine.agents`: project-local `AGENTS.md` generation for AI coding agents.
-- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, task issue draft export, trace export, readiness gate evaluation, handoff packet export, issue draft export, PR draft export, and GitHub sync plan export.
+- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, task issue draft export, trace export, readiness gate evaluation, handoff packet export, issue draft export, PR draft export, GitHub sync plan export, and sync-plan artifact materialization.
 - `specspine.adapters`: upstream metadata, availability probes, lifecycle mappings, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, optional validation summary, and optional feature summary rendering.

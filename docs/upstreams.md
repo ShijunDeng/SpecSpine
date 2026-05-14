@@ -17,7 +17,7 @@ SpecSpine may:
 - Detect whether an upstream tool is installed.
 - Print official install hints.
 - Export static local lifecycle mappings for upstream adapter phases.
-- Export local GitHub CLI sync plans for human review before remote issue or PR creation.
+- Export local GitHub CLI sync plans and artifact directories for human review before remote issue or PR creation.
 - Run upstream initializer commands when the user opts in with `--run-upstream`.
 - Store adapter contracts that point to upstream artifacts and commands.
 - Map upstream outputs into the SpecSpine backbone.
@@ -58,7 +58,7 @@ The command is definition-only. It reads local fusion config for adapter enablem
 
 ## GitHub Sync Planning
 
-`specspine feature sync-plan <slug> [path] [--json]` exports planned `gh issue create` and `gh pr create` argv arrays from local feature evidence. It is a local review packet only: SpecSpine does not execute `gh`, does not use `--dry-run` as an automatic safety claim, does not read tokens, does not call GitHub APIs, and does not access the network.
+`specspine feature sync-plan <slug> [path] [--json] [--output-dir DIR]` exports planned `gh issue create` and draft `gh pr create` argv arrays from local feature evidence. With `--output-dir`, it also writes `manifest.json`, Markdown body files, and a review-only `commands.sh` that points `--body-file` at those local files. It is a local review packet only: SpecSpine does not execute `gh`, does not use PR dry-run mode as an automatic safety claim, does not read tokens, does not call GitHub APIs, does not invoke subprocesses, and does not access the network.
 
 ## Agent Mapping
 

@@ -20,6 +20,7 @@ from .agents import AgentsFileExistsError, init_agents_file
 from .features import (
     FeatureBundleExistsError,
     FeatureBundleNotFoundError,
+    FeatureSyncPlanArtifactExistsError,
     FeatureStatusTransitionError,
     InvalidFeatureStatus,
     InvalidFeatureSlug,
@@ -53,6 +54,7 @@ from .features import (
     render_pull_request_json,
     render_pull_request_text,
     set_feature_status,
+    write_feature_sync_plan_artifacts,
 )
 from .fusion import FUSION_REQUIRED_FILES, init_fusion_workspace
 from .gates import (
@@ -256,9 +258,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the text sync plan to a file instead of printing it",
     )
     feature_sync_plan_parser.add_argument(
+        "--output-dir",
+        help="write reviewable sync plan artifacts to a directory",
+    )
+    feature_sync_plan_parser.add_argument(
         "--force",
         action="store_true",
-        help="overwrite an existing output file",
+        help="overwrite existing output files written by this command",
     )
 
     feature_trace_parser = feature_subcommands.add_parser(
@@ -763,6 +769,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
 
             text_body = render_feature_sync_plan_text(plan)
+            output_path = None
             if args.output:
                 output_path = Path(args.output).expanduser().resolve()
                 if output_path.exists() and not args.force:
@@ -773,6 +780,25 @@ def main(argv: list[str] | None = None) -> int:
                     )
                     return 1
 
+            artifact_output = None
+            if args.output_dir:
+                output_dir = Path(args.output_dir).expanduser().resolve()
+                try:
+                    artifact_output = write_feature_sync_plan_artifacts(
+                        plan,
+                        output_dir,
+                        force=args.force,
+                    )
+                except FeatureSyncPlanArtifactExistsError as error:
+                    print(str(error), file=sys.stderr)
+                    for path in error.existing_paths:
+                        print(f"  existing {path}", file=sys.stderr)
+                    return 1
+                except OSError as error:
+                    print(f"Could not write feature sync plan artifacts: {error}", file=sys.stderr)
+                    return 1
+
+            if output_path is not None:
                 try:
                     output_path.parent.mkdir(parents=True, exist_ok=True)
                     output_path.write_text(text_body, encoding="utf-8")
@@ -784,6 +810,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_feature_sync_plan_json(plan), end="")
             elif args.output:
                 print(f"Wrote feature sync plan to {output_path}")
+            elif artifact_output is not None:
+                print(f"Wrote feature sync plan artifacts to {artifact_output.output_dir}")
             else:
                 print(text_body, end="")
             return 0

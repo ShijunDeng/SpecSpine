@@ -34,7 +34,7 @@ This repository is an early project skeleton. It includes:
 - A native feature acceptance-test packet exporter: `specspine feature tests`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
 - A local GitHub Pull Request draft exporter: `specspine feature pr`.
-- A local GitHub CLI synchronization plan exporter: `specspine feature sync-plan`.
+- A local GitHub CLI synchronization plan and artifact exporter: `specspine feature sync-plan`.
 - A repository quality gate definition exporter: `specspine gates`.
 - A fusion initializer: `specspine fuse`.
 - A local adapter lifecycle mapping exporter: `specspine adapters lifecycle`.
@@ -153,6 +153,7 @@ Review a local GitHub CLI synchronization plan without executing it:
 ```bash
 specspine feature sync-plan add-dark-mode .
 specspine feature sync-plan add-dark-mode . --json
+specspine feature sync-plan add-dark-mode . --output-dir .specspine/sync-plan/add-dark-mode
 ```
 
 Advance the feature lifecycle when the bundle moves forward:
@@ -400,16 +401,18 @@ JSON output includes `title`, `body`, `feature_id`, `status`, `ready`, `source_f
 Partial bundles return `0` while marking missing files, gaps, and blocking checks in the draft. If no native feature files exist for the slug, the command returns non-zero. Invalid slugs return `2`. `--output` writes the PR body to a file and refuses to overwrite an existing file unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains the text body.
 
 ```bash
-specspine feature sync-plan <slug> [path] [--json] [--output FILE] [--force]
+specspine feature sync-plan <slug> [path] [--json] [--output FILE] [--output-dir DIR] [--force]
 ```
 
-Creates a local GitHub CLI synchronization plan from a native feature bundle without executing `gh`, calling GitHub APIs, reading tokens, using network access, invoking upstream CLIs, or adding dependencies. It composes the existing feature issue draft, task issue draft package, Pull Request draft, priority/owner metadata, lifecycle status, readiness, gaps, and blockers into one reviewable packet.
+Creates a local GitHub CLI synchronization plan from a native feature bundle without executing `gh`, calling GitHub APIs, reading tokens, using network access, invoking subprocesses, invoking upstream CLIs, or adding dependencies. It composes the existing feature issue draft, task issue draft package, Pull Request draft, priority/owner metadata, lifecycle status, readiness, gaps, and blockers into one reviewable packet.
 
 JSON output includes `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `metadata`, `summary`, `commands`, `notes`, and `recommended_commands`. Each command includes stable `id`, `kind`, `description`, `argv`, `body_source`, `body`, `creates_remote`, `requires_token`, `requires_network`, and `safe_to_auto_run`. The generated argv arrays cover a feature-level `gh issue create`, one task-level `gh issue create` per execution task, and a draft `gh pr create --draft`. Labels include `specspine`, `feature:<slug>`, status, task labels where relevant, and `priority:<priority>` for the feature issue.
 
-Every command is marked as creating remote state, requiring token and network access, and not safe to auto-run. Notes explain that SpecSpine did not execute anything, a human must confirm and authenticate before running commands, GitHub Projects may require the `project` scope, `gh pr create --dry-run` is not used as a safety guarantee because it may still push git changes, and free-form `Owner:` metadata is not automatically mapped to `--assignee`.
+Every command is marked as creating remote state, requiring token and network access, and not safe to auto-run. Notes explain that SpecSpine did not execute anything, a human must confirm and authenticate before running commands, GitHub Projects may require the `project` scope, PR dry-run mode is not used as a safety guarantee because it may still push git changes, and free-form `Owner:` metadata is not automatically mapped to `--assignee`.
 
-Text output is reviewable Markdown with Summary, Metadata, Notes, Sources, Missing Files, Gaps, Blocking Checks, and shell-quoted command lines for human copy/paste only. Partial bundles return `0` with missing files and blockers recorded. If no native feature files exist for the slug, the command returns `1`; invalid slugs return `2`. `--output` writes the text plan and refuses to overwrite an existing file unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
+Text output is reviewable Markdown with Summary, Metadata, Notes, Sources, Missing Files, Gaps, Blocking Checks, and shell-quoted command lines for human copy/paste only. `--output-dir` creates or updates local review artifacts: `manifest.json`, `feature-issue.md`, `task-issues/T001.md` style task bodies, `pull-request.md`, and `commands.sh`. The manifest contains the sync-plan JSON plus local `body_file` / `artifact_path` fields and an artifact index. `commands.sh` is review-only text with comments and shell-quoted `gh ... --body-file <local artifact>` commands; it is not chmodded or executed.
+
+Partial bundles return `0` with missing files and blockers recorded. If no native feature files exist for the slug, the command returns `1`; invalid slugs return `2`. `--output` writes the text plan and refuses to overwrite an existing file unless `--force` is passed. `--output-dir` refuses to overwrite files this command would write unless `--force` is passed, and never deletes unknown files in the directory. With `--json --output` or `--json --output-dir`, stdout remains JSON while files are written.
 
 ```bash
 specspine status [path] [--json] [--adapters] [--validate] [--validation-warnings] [--feature-summaries] [--feature-status STATUS] [--feature-ready READY] [--feature-priority VALUE] [--feature-owner VALUE] [--feature-sort KEY] [--feature-sort-desc]
@@ -488,7 +491,7 @@ The command reads local fusion config only to determine adapter enablement and c
 
 Completed roadmap item: adapter lifecycle mappings are covered by `specspine adapters lifecycle`.
 Completed roadmap item: repository quality gate definitions are covered by `specspine gates`.
-Completed roadmap item: local GitHub synchronization planning before remote execution is covered by `specspine feature sync-plan`.
+Completed roadmap item: local GitHub synchronization planning and review artifact materialization before remote execution are covered by `specspine feature sync-plan`.
 
 ## Development
 
