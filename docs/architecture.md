@@ -79,7 +79,11 @@ Native feature lifecycle states are:
 - `validated`
 - `archived`
 
-`specspine feature status <slug> [path] [--set STATUS] [--json]` reads or updates those peer-file status lines. Without `--set`, it reports the current status and marks mixed peer files as inconsistent. With `--set`, it updates the existing peer files and fails clearly if no feature files exist. JSON output includes `feature_id`, `status`, `consistent`, `files`, and `missing_files`; update JSON also includes `updated_files`.
+`specspine feature status <slug> [path] [--set STATUS] [--enforce-transition] [--json]` reads or updates those peer-file status lines. Without `--set`, it reports the current status and marks mixed peer files as inconsistent. With `--set`, the default path remains a manual file-native update to any supported status and fails clearly if no feature files exist.
+
+`--enforce-transition` is an opt-in lifecycle policy for agents, reviewers, and CI jobs that want ordered transitions without changing the default command behavior. It rejects writes when the current peer status is missing, mixed, inconsistent, or unsupported. The ordered graph is `proposed -> planned|archived`, `planned -> in-progress|archived`, `in-progress -> implemented|planned|archived`, `implemented -> validated|in-progress|archived`, `validated -> archived|implemented`, with `archived` terminal. When the target status is `archived`, the command first runs the same local readiness gate as `specspine feature ready` and writes only if that gate is ready.
+
+Status JSON includes `feature_id`, `status`, `consistent`, `files`, and `missing_files`; update JSON also includes `updated_files` and a `transition` object. Enforced transition failures return code `1`, do not write files, and produce stable JSON error payloads with transition context plus readiness blockers when archive is blocked.
 
 `specspine feature tasks <slug> [path] [--json] [--output FILE] [--force]` reads the `## Tasks` section from `execution/features/<slug>.md` and exports only Markdown checklist items. The parser keeps the source order and emits flat task records with `id`, `text`, `done`, `source_file`, and `line`. JSON output includes `feature_id`, `status`, `source_file`, `source_missing`, `tasks`, `summary`, and `missing_files`.
 

@@ -22,6 +22,14 @@ FEATURE_STATUSES = (
     "validated",
     "archived",
 )
+FEATURE_TRANSITIONS = {
+    "proposed": ("planned", "archived"),
+    "planned": ("in-progress", "archived"),
+    "in-progress": ("implemented", "planned", "archived"),
+    "implemented": ("validated", "in-progress", "archived"),
+    "validated": ("archived", "implemented"),
+    "archived": (),
+}
 FEATURE_DIRECTORIES = {
     kind: str(Path(pattern.format(slug="__feature__")).parent)
     for kind, pattern in FEATURE_FILE_PATHS.items()
@@ -59,6 +67,34 @@ class FeatureBundleNotFoundError(FileNotFoundError):
             f"No feature files found for '{self.slug}' at {self.root}. "
             "Expected at least one native feature file."
         )
+
+
+@dataclass(frozen=True)
+class FeatureStatusTransitionError(ValueError):
+    feature_id: str
+    error: str
+    transition: dict[str, object]
+    message: str
+    blocking_checks: tuple[dict[str, str], ...] = ()
+    gaps: tuple[dict[str, str], ...] = ()
+    missing_files: tuple[str, ...] = ()
+
+    def __str__(self) -> str:
+        return self.message
+
+    def as_dict(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "error": self.error,
+            "feature_id": self.feature_id,
+            "transition": dict(self.transition),
+        }
+        if self.blocking_checks:
+            payload["blocking_checks"] = [dict(check) for check in self.blocking_checks]
+        if self.gaps:
+            payload["gaps"] = [dict(gap) for gap in self.gaps]
+        if self.missing_files:
+            payload["missing_files"] = list(self.missing_files)
+        return payload
 
 
 @dataclass(frozen=True)
@@ -347,6 +383,7 @@ class FeatureStatusReport:
     files: dict[str, dict[str, object]]
     missing_files: tuple[str, ...]
     updated_files: tuple[str, ...] = ()
+    transition: dict[str, object] | None = None
 
     def as_dict(self, *, include_updated: bool = False) -> dict[str, object]:
         payload: dict[str, object] = {
@@ -358,6 +395,8 @@ class FeatureStatusReport:
         }
         if include_updated:
             payload["updated_files"] = list(self.updated_files)
+        if self.transition is not None:
+            payload["transition"] = dict(self.transition)
         return payload
 
 
@@ -604,19 +643,183 @@ def get_feature_status(root: Path, slug: str) -> FeatureStatusReport:
     )
 
 
-def set_feature_status(root: Path, slug: str, status: str) -> FeatureStatusReport:
+def _transition_payload(
+    *,
+    from_status: str | None,
+    to_status: str,
+    enforced: bool,
+    allowed: bool,
+    reason: str | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "allowed": allowed,
+        "enforced": enforced,
+        "from": from_status,
+        "to": to_status,
+    }
+    if reason:
+        payload["reason"] = reason
+    return payload
+
+
+def _validate_enforced_feature_transition(
+    root: Path,
+    slug: str,
+    to_status: str,
+    status_report: FeatureStatusReport,
+) -> dict[str, object]:
+    from_status = status_report.status
+    if not status_report.consistent or from_status in {None, "mixed"}:
+        reason = "Current peer-file statuses are missing or inconsistent."
+        raise FeatureStatusTransitionError(
+            feature_id=slug,
+            error="current_status_inconsistent",
+            transition=_transition_payload(
+                from_status=from_status,
+                to_status=to_status,
+                enforced=True,
+                allowed=False,
+                reason=reason,
+            ),
+            message=(
+                f"Cannot update feature {slug} status with enforced transition: "
+                f"current status is {from_status or 'unknown'}; {reason}"
+            ),
+            missing_files=status_report.missing_files,
+        )
+
+    if from_status not in FEATURE_TRANSITIONS:
+        reason = f"Current status '{from_status}' is not a supported lifecycle status."
+        raise FeatureStatusTransitionError(
+            feature_id=slug,
+            error="current_status_invalid",
+            transition=_transition_payload(
+                from_status=from_status,
+                to_status=to_status,
+                enforced=True,
+                allowed=False,
+                reason=reason,
+            ),
+            message=(
+                f"Cannot update feature {slug} status with enforced transition: "
+                f"{reason}"
+            ),
+            missing_files=status_report.missing_files,
+        )
+
+    allowed_targets = FEATURE_TRANSITIONS[from_status]
+    if to_status not in allowed_targets:
+        if from_status == "archived":
+            reason = "Archived is terminal and cannot transition to another status."
+        else:
+            reason = (
+                f"Transition {from_status} -> {to_status} is not allowed; "
+                f"allowed targets are: {', '.join(allowed_targets)}."
+            )
+        raise FeatureStatusTransitionError(
+            feature_id=slug,
+            error="transition_not_allowed",
+            transition=_transition_payload(
+                from_status=from_status,
+                to_status=to_status,
+                enforced=True,
+                allowed=False,
+                reason=reason,
+            ),
+            message=(
+                f"Cannot update feature {slug} status with enforced transition: "
+                f"{reason}"
+            ),
+            missing_files=status_report.missing_files,
+        )
+
+    transition = _transition_payload(
+        from_status=from_status,
+        to_status=to_status,
+        enforced=True,
+        allowed=True,
+    )
+    if to_status == "archived":
+        ready_report = build_feature_ready_report(root, slug)
+        if not ready_report.ready:
+            reason = "Archive requires feature ready gate to pass first."
+            raise FeatureStatusTransitionError(
+                feature_id=slug,
+                error="archive_not_ready",
+                transition=_transition_payload(
+                    from_status=from_status,
+                    to_status=to_status,
+                    enforced=True,
+                    allowed=True,
+                    reason=reason,
+                ),
+                message=(
+                    f"Cannot archive feature {slug}: {reason} "
+                    "Run feature ready and resolve blocking checks."
+                ),
+                blocking_checks=tuple(
+                    check.as_dict() for check in ready_report.blocking_checks
+                ),
+                gaps=ready_report.gaps,
+                missing_files=ready_report.missing_files,
+            )
+
+    return transition
+
+
+def set_feature_status(
+    root: Path,
+    slug: str,
+    status: str,
+    *,
+    enforce_transition: bool = False,
+) -> FeatureStatusReport:
     slug = validate_feature_slug(slug)
     status = validate_feature_status(status)
     resolved_root = root.expanduser().resolve()
     paths = feature_bundle_paths(resolved_root, slug)
     relative_paths = _relative_feature_paths(slug)
 
+    before = get_feature_status(resolved_root, slug)
     existing_paths = [path for path in paths.values() if path.exists()]
     if not existing_paths:
+        if enforce_transition:
+            reason = "Current peer-file statuses are missing or inconsistent."
+            raise FeatureStatusTransitionError(
+                feature_id=slug,
+                error="current_status_inconsistent",
+                transition=_transition_payload(
+                    from_status=before.status,
+                    to_status=status,
+                    enforced=True,
+                    allowed=False,
+                    reason=reason,
+                ),
+                message=(
+                    f"Cannot update feature {slug} status with enforced transition: "
+                    f"current status is unknown; {reason}"
+                ),
+                missing_files=before.missing_files,
+            )
         raise FeatureBundleNotFoundError(
             slug=slug,
             root=resolved_root,
             missing_paths=tuple(paths.values()),
+        )
+
+    if enforce_transition:
+        transition = _validate_enforced_feature_transition(
+            resolved_root,
+            slug,
+            status,
+            before,
+        )
+    else:
+        transition = _transition_payload(
+            from_status=before.status,
+            to_status=status,
+            enforced=False,
+            allowed=True,
         )
 
     updated_files: list[str] = []
@@ -637,6 +840,7 @@ def set_feature_status(root: Path, slug: str, status: str) -> FeatureStatusRepor
         files=report.files,
         missing_files=report.missing_files,
         updated_files=tuple(updated_files),
+        transition=transition,
     )
 
 

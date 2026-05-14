@@ -123,6 +123,7 @@ Advance the feature lifecycle when the bundle moves forward:
 
 ```bash
 specspine feature status add-dark-mode . --set planned
+specspine feature status add-dark-mode . --set planned --enforce-transition
 specspine feature status add-dark-mode . --json
 ```
 
@@ -271,10 +272,14 @@ Creates a native feature bundle:
 The slug may contain lowercase letters, numbers, and hyphens, and must start and end with a letter or number. Existing feature files are not overwritten unless `--force` is passed.
 
 ```bash
-specspine feature status <slug> [path] [--set STATUS] [--json]
+specspine feature status <slug> [path] [--set STATUS] [--enforce-transition] [--json]
 ```
 
-Reads or updates the lifecycle status for a native feature bundle. Without `--set`, the command reports the current peer-file status and clearly marks mixed or inconsistent files. With `--set`, it updates existing peer files to an allowed status and returns non-zero if no feature files exist. Invalid slugs and invalid statuses return code `2`. `--json` emits stable JSON with `feature_id`, `status`, `consistent`, `files`, and `missing_files`; status updates also include `updated_files`.
+Reads or updates the lifecycle status for a native feature bundle. Without `--set`, the command reports the current peer-file status and clearly marks mixed or inconsistent files. With `--set`, the default behavior remains manual and compatible: it updates existing peer files to any supported status and returns non-zero if no feature files exist. Invalid slugs and invalid statuses return code `2`.
+
+`--enforce-transition` is opt-in. When passed with `--set`, SpecSpine rejects missing, mixed, inconsistent, or invalid current peer status before writing; allows only `proposed -> planned|archived`, `planned -> in-progress|archived`, `in-progress -> implemented|planned|archived`, `implemented -> validated|in-progress|archived`, `validated -> archived|implemented`; and treats `archived` as terminal. Enforced archive updates also require `specspine feature ready <slug> [path]` to pass before files are written, so incomplete bundles remain unarchived even when the lifecycle edge itself exists.
+
+`--json` emits stable JSON with `feature_id`, `status`, `consistent`, `files`, and `missing_files`; status updates also include `updated_files` and a `transition` object with `from`, `to`, `enforced`, and `allowed`. Enforced failures return code `1` without writing files and emit an error payload with `feature_id`, `error`, `transition`, and, when relevant, `blocking_checks`, `gaps`, or `missing_files`.
 
 ```bash
 specspine feature tasks <slug> [path] [--json] [--output FILE] [--force]

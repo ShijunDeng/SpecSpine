@@ -15,6 +15,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine feature ready` now evaluates a local per-feature readiness gate with blocking checks and failing exit codes.
 - `specspine feature handoff` now exports a compact feature packet that composes status, tasks, trace, readiness, release readiness, next actions, and key commands.
 - `specspine status --feature-summaries` now adds optional compact per-feature progress, readiness, gaps, blocking counts, and next actions without changing default status output.
+- `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
 - No upstream code should be copied into this repository as part of fusion work.
 
 ## Decisions
@@ -29,6 +30,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Treat `specspine validate . --fusion --features` plus the unit test suite as the local completion gate.
 - Keep GitHub issue generation offline and token-free by default.
 - Keep native feature peer files on a consistent allowed lifecycle status.
+- Prefer `specspine feature status <slug> . --set STATUS --enforce-transition` when lifecycle order matters; run `specspine feature ready <slug> . --json` before archiving.
 - Use `--run-upstream` only after explicit user instruction.
 
 ## Release Notes
@@ -42,3 +44,4 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Feature bundles can now be exported as deterministic traceability packets without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be checked with deterministic readiness gates that fail on missing files, inconsistent statuses, trace gaps, incomplete checklist evidence, missing test plans, or open release readiness items.
 - Feature bundles can now be exported as compact handoff packets without generation, GitHub credentials, token reads, network calls, upstream CLIs, or new dependencies.
+- Feature lifecycle updates can now opt into transition enforcement and archive readiness guards without changing default manual status updates.

@@ -10,6 +10,7 @@ from unittest.mock import patch
 from specspine.cli import main
 from specspine.features import (
     FEATURE_STATUSES,
+    FEATURE_TRANSITIONS,
     FeatureBundleExistsError,
     InvalidFeatureSlug,
     build_feature_handoff_report,
@@ -1789,6 +1790,15 @@ class FeatureBundleTests(TestCase):
             self.assertEqual(payload["status"], "implemented")
             self.assertTrue(payload["consistent"])
             self.assertEqual(
+                payload["transition"],
+                {
+                    "allowed": True,
+                    "enforced": False,
+                    "from": "proposed",
+                    "to": "implemented",
+                },
+            )
+            self.assertEqual(
                 payload["updated_files"],
                 [
                     "specs/features/add-dark-mode.md",
@@ -1800,6 +1810,353 @@ class FeatureBundleTests(TestCase):
                 content = (root / relative_path).read_text(encoding="utf-8")
                 self.assertIn("Status: implemented", content)
                 self.assertNotIn("Status: proposed", content)
+
+    def test_feature_status_cli_enforced_allowed_transition_writes_files(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "planned",
+                        "--enforce-transition",
+                        "--json",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["status"], "planned")
+            self.assertEqual(
+                payload["transition"],
+                {
+                    "allowed": True,
+                    "enforced": True,
+                    "from": "proposed",
+                    "to": "planned",
+                },
+            )
+            for relative_path in EXPECTED_FEATURE_FILES:
+                self.assertIn(
+                    "Status: planned",
+                    (root / relative_path).read_text(encoding="utf-8"),
+                )
+
+    def test_feature_status_cli_enforced_all_non_archive_allowed_transitions_write(
+        self,
+    ) -> None:
+        allowed_edges = [
+            (from_status, to_status)
+            for from_status, to_statuses in FEATURE_TRANSITIONS.items()
+            for to_status in to_statuses
+            if to_status != "archived"
+        ]
+
+        for from_status, to_status in allowed_edges:
+            with self.subTest(from_status=from_status, to_status=to_status):
+                with TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    init_workspace(root)
+                    create_feature_bundle(root, "add-dark-mode")
+                    set_feature_status(root, "add-dark-mode", from_status)
+                    output = StringIO()
+
+                    with redirect_stdout(output):
+                        returncode = main(
+                            [
+                                "feature",
+                                "status",
+                                "add-dark-mode",
+                                str(root),
+                                "--set",
+                                to_status,
+                                "--enforce-transition",
+                                "--json",
+                            ]
+                        )
+
+                    payload = json.loads(output.getvalue())
+                    self.assertEqual(returncode, 0)
+                    self.assertEqual(payload["status"], to_status)
+                    self.assertEqual(
+                        payload["transition"],
+                        {
+                            "allowed": True,
+                            "enforced": True,
+                            "from": from_status,
+                            "to": to_status,
+                        },
+                    )
+                    for relative_path in EXPECTED_FEATURE_FILES:
+                        self.assertIn(
+                            f"Status: {to_status}",
+                            (root / relative_path).read_text(encoding="utf-8"),
+                        )
+
+    def test_feature_status_cli_enforced_disallowed_transition_does_not_write(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            before = {
+                relative_path: (root / relative_path).read_text(encoding="utf-8")
+                for relative_path in EXPECTED_FEATURE_FILES
+            }
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "implemented",
+                        "--enforce-transition",
+                        "--json",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 1)
+            self.assertEqual(payload["error"], "transition_not_allowed")
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertEqual(payload["transition"]["from"], "proposed")
+            self.assertEqual(payload["transition"]["to"], "implemented")
+            self.assertTrue(payload["transition"]["enforced"])
+            self.assertFalse(payload["transition"]["allowed"])
+            after = {
+                relative_path: (root / relative_path).read_text(encoding="utf-8")
+                for relative_path in EXPECTED_FEATURE_FILES
+            }
+            self.assertEqual(after, before)
+
+    def test_feature_status_cli_enforced_archived_terminal_does_not_write(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            set_feature_status(root, "add-dark-mode", "archived")
+            before = {
+                relative_path: (root / relative_path).read_text(encoding="utf-8")
+                for relative_path in EXPECTED_FEATURE_FILES
+            }
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "implemented",
+                        "--enforce-transition",
+                        "--json",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 1)
+            self.assertEqual(payload["error"], "transition_not_allowed")
+            self.assertEqual(payload["transition"]["from"], "archived")
+            self.assertIn("terminal", payload["transition"]["reason"])
+            self.assertEqual(
+                {
+                    relative_path: (root / relative_path).read_text(encoding="utf-8")
+                    for relative_path in EXPECTED_FEATURE_FILES
+                },
+                before,
+            )
+
+    def test_feature_status_cli_enforced_mixed_status_fails_before_write(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            execution = root / "execution" / "features" / "add-dark-mode.md"
+            execution.write_text(
+                execution.read_text(encoding="utf-8").replace(
+                    "Status: proposed",
+                    "Status: planned",
+                ),
+                encoding="utf-8",
+            )
+            before = {
+                relative_path: (root / relative_path).read_text(encoding="utf-8")
+                for relative_path in EXPECTED_FEATURE_FILES
+            }
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "in-progress",
+                        "--enforce-transition",
+                        "--json",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 1)
+            self.assertEqual(payload["error"], "current_status_inconsistent")
+            self.assertEqual(payload["transition"]["from"], "mixed")
+            self.assertFalse(payload["transition"]["allowed"])
+            self.assertEqual(
+                {
+                    relative_path: (root / relative_path).read_text(encoding="utf-8")
+                    for relative_path in EXPECTED_FEATURE_FILES
+                },
+                before,
+            )
+
+    def test_feature_status_cli_enforced_missing_status_fails_before_write(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            spec = root / "specs" / "features" / "add-dark-mode.md"
+            spec.write_text(
+                spec.read_text(encoding="utf-8").replace("Status: proposed\n", ""),
+                encoding="utf-8",
+            )
+            before = {
+                relative_path: (root / relative_path).read_text(encoding="utf-8")
+                for relative_path in EXPECTED_FEATURE_FILES
+            }
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "planned",
+                        "--enforce-transition",
+                        "--json",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 1)
+            self.assertEqual(payload["error"], "current_status_inconsistent")
+            self.assertEqual(payload["transition"]["from"], "proposed")
+            self.assertEqual(payload["transition"]["to"], "planned")
+            self.assertTrue(payload["transition"]["enforced"])
+            self.assertFalse(payload["transition"]["allowed"])
+            self.assertEqual(
+                {
+                    relative_path: (root / relative_path).read_text(encoding="utf-8")
+                    for relative_path in EXPECTED_FEATURE_FILES
+                },
+                before,
+            )
+
+    def test_feature_status_cli_enforced_archive_requires_ready_gate(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            (root / "quality" / "features" / "add-dark-mode.md").unlink()
+            before = {
+                relative_path: (root / relative_path).read_text(encoding="utf-8")
+                for relative_path in (
+                    "specs/features/add-dark-mode.md",
+                    "execution/features/add-dark-mode.md",
+                )
+            }
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "archived",
+                        "--enforce-transition",
+                        "--json",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 1)
+            self.assertEqual(payload["error"], "archive_not_ready")
+            self.assertEqual(payload["transition"]["from"], "proposed")
+            self.assertEqual(payload["transition"]["to"], "archived")
+            self.assertTrue(payload["transition"]["allowed"])
+            self.assertIn("blocking_checks", payload)
+            self.assertIn("gaps", payload)
+            self.assertEqual(
+                payload["missing_files"],
+                ["quality/features/add-dark-mode.md"],
+            )
+            self.assertEqual(
+                {
+                    relative_path: (root / relative_path).read_text(encoding="utf-8")
+                    for relative_path in before
+                },
+                before,
+            )
+
+    def test_feature_status_cli_enforced_archive_ready_bundle_succeeds(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root, status="validated")
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "archived",
+                        "--enforce-transition",
+                        "--json",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["status"], "archived")
+            self.assertEqual(
+                payload["transition"],
+                {
+                    "allowed": True,
+                    "enforced": True,
+                    "from": "validated",
+                    "to": "archived",
+                },
+            )
+            for relative_path in EXPECTED_FEATURE_FILES:
+                self.assertIn(
+                    "Status: archived",
+                    (root / relative_path).read_text(encoding="utf-8"),
+                )
 
     def test_feature_status_cli_set_inserts_missing_status_line(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1860,6 +2217,22 @@ class FeatureBundleTests(TestCase):
                 returncode = main(["feature", "status", "BadSlug", str(root)])
             self.assertEqual(returncode, 2)
             self.assertIn("Invalid feature slug", stderr.getvalue())
+
+            stderr = StringIO()
+            with redirect_stderr(stderr):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "done",
+                        "--enforce-transition",
+                    ]
+                )
+            self.assertEqual(returncode, 2)
+            self.assertIn("Invalid feature status", stderr.getvalue())
 
     def test_feature_status_cli_set_updates_partial_bundle_only(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1990,6 +2363,15 @@ class FeatureBundleTests(TestCase):
 
     def test_dogfood_status_feature_summaries_is_validated_and_ready(self) -> None:
         report = build_feature_ready_report(REPO_ROOT, "status-feature-summaries")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.status, "validated")
+        self.assertEqual(report.missing_files, ())
+        self.assertEqual(report.gaps, ())
+        self.assertEqual(report.summary["fail"], 0)
+
+    def test_dogfood_feature_transition_policy_is_validated_and_ready(self) -> None:
+        report = build_feature_ready_report(REPO_ROOT, "feature-transition-policy")
 
         self.assertTrue(report.ready)
         self.assertEqual(report.status, "validated")

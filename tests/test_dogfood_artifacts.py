@@ -29,6 +29,7 @@ class DogfoodArtifactsTests(TestCase):
             "feature-task-export",
             "feature-traceability-export",
             "status-validation-summary",
+            "feature-transition-policy",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -57,6 +58,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:feature-task-export", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-traceability-export", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-validation-summary", "pass"), checks)
+        self.assertIn(("feature.status_consistency:feature-transition-policy", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -69,9 +71,11 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine validate . --fusion --features",
             "PYTHONPATH=src python3 -m unittest discover -s tests",
             "PYTHONPATH=src python3 -m specspine feature status <slug> . --json",
+            "PYTHONPATH=src python3 -m specspine feature status <slug> . --set planned --enforce-transition --json",
             "PYTHONPATH=src python3 -m specspine feature handoff <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature tasks <slug> . --json",
             "Keep feature specs, implementation tasks, and quality checks traceable",
+            "prefer `--enforce-transition` when advancing lifecycle state",
             "Do not vendor upstream source code.",
             "Do not read or write GitHub tokens",
             "Use `--run-upstream` only when the user explicitly asks",
@@ -161,6 +165,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/status-feature-summaries.md",
             "execution/features/status-feature-summaries.md",
             "quality/features/status-feature-summaries.md",
+            "specs/features/feature-transition-policy.md",
+            "execution/features/feature-transition-policy.md",
+            "quality/features/feature-transition-policy.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -179,4 +186,11 @@ class DogfoodArtifactsTests(TestCase):
         report = build_feature_ready_report(REPO_ROOT, "status-feature-summaries")
 
         self.assertTrue(report.ready)
+        self.assertEqual(report.summary["fail"], 0)
+
+    def test_feature_transition_policy_dogfood_bundle_passes_its_gate(self) -> None:
+        report = build_feature_ready_report(REPO_ROOT, "feature-transition-policy")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.status, "validated")
         self.assertEqual(report.summary["fail"], 0)

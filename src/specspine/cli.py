@@ -17,6 +17,7 @@ from .agents import AgentsFileExistsError, init_agents_file
 from .features import (
     FeatureBundleExistsError,
     FeatureBundleNotFoundError,
+    FeatureStatusTransitionError,
     InvalidFeatureStatus,
     InvalidFeatureSlug,
     build_feature_handoff_report,
@@ -228,6 +229,11 @@ def build_parser() -> argparse.ArgumentParser:
     feature_status_parser.add_argument("slug", help="feature id, such as add-dark-mode")
     feature_status_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     feature_status_parser.add_argument("--set", dest="set_status", help="set the feature lifecycle status")
+    feature_status_parser.add_argument(
+        "--enforce-transition",
+        action="store_true",
+        help="enforce ordered lifecycle transitions and archive readiness",
+    )
     feature_status_parser.add_argument(
         "--json",
         action="store_true",
@@ -584,7 +590,12 @@ def main(argv: list[str] | None = None) -> int:
             root = Path(args.path).expanduser().resolve()
             try:
                 if args.set_status:
-                    report = set_feature_status(root, args.slug, args.set_status)
+                    report = set_feature_status(
+                        root,
+                        args.slug,
+                        args.set_status,
+                        enforce_transition=args.enforce_transition,
+                    )
                     include_updated = True
                 else:
                     report = get_feature_status(root, args.slug)
@@ -595,6 +606,24 @@ def main(argv: list[str] | None = None) -> int:
             except InvalidFeatureStatus as error:
                 print(str(error), file=sys.stderr)
                 return 2
+            except FeatureStatusTransitionError as error:
+                if args.json:
+                    print(render_status_json(error.as_dict()), end="")
+                else:
+                    print(str(error), file=sys.stderr)
+                    for check in error.blocking_checks:
+                        print(
+                            f"  blocking {check['id']}: {check['message']}",
+                            file=sys.stderr,
+                        )
+                    for gap in error.gaps:
+                        print(
+                            f"  gap {gap['id']}: {gap['message']}",
+                            file=sys.stderr,
+                        )
+                    for path in error.missing_files:
+                        print(f"  missing {path}", file=sys.stderr)
+                return 1
             except FeatureBundleNotFoundError as error:
                 print(str(error), file=sys.stderr)
                 for path in error.missing_paths:
@@ -609,7 +638,15 @@ def main(argv: list[str] | None = None) -> int:
             if args.json:
                 print(render_status_json(payload), end="")
             else:
-                if report.consistent:
+                if include_updated:
+                    transition = report.transition or {}
+                    from_status = transition.get("from") or "unknown"
+                    marker = " with enforced transition" if transition.get("enforced") else ""
+                    print(
+                        f"Feature {report.feature_id} status updated: "
+                        f"{from_status} -> {report.status}{marker}"
+                    )
+                elif report.consistent:
                     print(f"Feature {report.feature_id} status: {report.status}")
                 else:
                     print(

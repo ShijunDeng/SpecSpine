@@ -8,6 +8,7 @@
 - [x] Implement `specspine feature new` native feature bundles.
 - [x] Implement `specspine feature issue` offline GitHub issue drafts.
 - [x] Implement `specspine feature status` native lifecycle state query/update.
+- [x] Implement opt-in `specspine feature status --enforce-transition` lifecycle transition policy.
 - [x] Implement `specspine feature tasks` execution checklist export.
 - [x] Implement `specspine feature trace` traceability handoff export.
 - [x] Implement `specspine feature ready` per-feature readiness gate.
@@ -26,6 +27,7 @@
 - [x] Dogfood readiness gate with `feature-readiness-gate`.
 - [x] Dogfood handoff packet export with `feature-handoff-packet`.
 - [x] Dogfood workspace feature summaries with `status-feature-summaries`.
+- [x] Dogfood enforced transition policy with `feature-transition-policy`.
 
 ## Next
 

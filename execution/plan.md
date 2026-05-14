@@ -10,6 +10,7 @@
 - Native feature execution checklist export through `specspine feature tasks`.
 - Native feature traceability export through `specspine feature trace`.
 - Native feature readiness gates through `specspine feature ready`.
+- Opt-in native feature transition enforcement through `specspine feature status --enforce-transition`.
 - Fusion layer generation for OpenSpec, Spec Kit, and Superpowers.
 - Status JSON, validation JSON/text, adapter doctor, and install hints.
 - Optional validation summaries in `specspine status --json --validate`.
@@ -30,7 +31,8 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine feature trace <slug> . --json` when an agent or reviewer needs acceptance criteria, tasks, checks, test plan, and gaps in one packet.
 - Use `specspine feature ready <slug> . --json` when a reviewer, agent, or CI step needs a failing per-feature release gate.
 - Use `specspine validate . --fusion --features` as the project-level gate.
-- Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`.
+- Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`; prefer `--enforce-transition` for ordered lifecycle advancement while keeping manual updates available by default.
+- Run `specspine feature ready <slug> . --json` before enforced archive updates so readiness blockers are resolved separately from transition rules.
 - Improve templates when dogfooding reveals repeated manual edits.
 - Keep upstream integrations adapter-based and avoid vendored code.
 
@@ -42,7 +44,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 
 ## Open Questions
 
-- Should future lifecycle updates enforce transition ordering, or remain manual file-native state changes?
+- Should enforced lifecycle transitions eventually become the default, or remain opt-in for compatibility?
 - Should status JSON eventually include warning details, or keep the validation summary focused on failed checks?
 - Should optional feature summaries grow filters or sorting after multi-feature dogfooding, or remain a compact append-only view?
 - Should readiness summaries eventually be included in workspace status, or remain an explicit per-feature gate?

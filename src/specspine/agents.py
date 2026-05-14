@@ -32,6 +32,7 @@ AGENTS_TEMPLATE = """
     specspine validate . --features
     specspine feature new <slug> . --title "..." --why "..."
     specspine feature status <slug> . --json
+    specspine feature status <slug> . --set planned --enforce-transition --json
     specspine feature handoff <slug> . --json
     specspine feature tasks <slug> . --json
     specspine feature trace <slug> . --json
@@ -45,7 +46,8 @@ AGENTS_TEMPLATE = """
     - Read `specspine status . --json --validate` before planning or editing.
     - Use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features.
     - For new requirements, create a feature bundle with `specspine feature new`.
-    - Keep feature peer files on a consistent lifecycle status with `specspine feature status`.
+    - Keep feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.
+    - Before archiving, run `specspine feature ready <slug> . --json`, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.
     - Start feature implementation, review, and acceptance handoffs with `specspine feature handoff <slug> . --json`.
     - Use `specspine feature tasks`, `specspine feature trace`, and `specspine feature ready` for focused task, trace, and gate views.
     - Run `specspine validate .` before and after edits; add `--features` when feature bundles are involved.

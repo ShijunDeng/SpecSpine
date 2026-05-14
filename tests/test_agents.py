@@ -47,6 +47,7 @@ class AgentsTests(TestCase):
             "specspine validate . --features",
             'specspine feature new <slug> . --title "..." --why "..."',
             "specspine feature status <slug> . --json",
+            "specspine feature status <slug> . --set planned --enforce-transition --json",
             "specspine feature handoff <slug> . --json",
             "specspine feature trace <slug> . --json",
             "specspine feature ready <slug> . --json",
@@ -56,6 +57,9 @@ class AgentsTests(TestCase):
             "Do not vendor upstream code.",
             "do not read or write GitHub tokens",
             "do not call the GitHub API",
+            "prefer `--enforce-transition` when advancing lifecycle state",
+            "Before archiving, run `specspine feature ready <slug> . --json`",
+            "specspine feature status <slug> . --set archived --enforce-transition",
             "Use `--run-upstream` only when the user explicitly asks",
         ):
             with self.subTest(expected=expected):

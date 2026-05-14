@@ -7,7 +7,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Workspace initialization for intent, product, architecture, execution, and quality artifacts.
 - Agent instruction generation through `specspine agents init`.
 - Native feature bundles spanning `specs/features/`, `execution/features/`, and `quality/features/`.
-- Native feature lifecycle status query/update across feature peer files.
+- Native feature lifecycle status query/update across feature peer files, with an opt-in enforced transition policy for ordered lifecycle updates.
 - Native feature task export from execution checklists.
 - Native feature traceability export across acceptance criteria, tasks, required checks, and test plans.
 - Native feature readiness gate across peer files, lifecycle status, trace gaps, completed checklists, test plan evidence, and release readiness.
@@ -30,7 +30,8 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Initialize the full fusion layer with `specspine fuse . --agent codex`, which writes adapter contracts but does not invoke upstream tools.
 - Run `specspine status . --json` before work to understand missing artifacts, enabled upstreams, and next recommendations; add `--validate` when a single packet should also show quality-gate summary and failed check ids; add `--feature-summaries` only when choosing or comparing multiple native features.
 - Create new requirements with `specspine feature new <slug> . --title "..." --why "..."`, then keep the spec, execution, and quality peer files aligned by `Feature ID`.
-- Move feature bundles through `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` with `specspine feature status <slug> . --set STATUS`.
+- Move feature bundles through `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` with `specspine feature status <slug> . --set STATUS`; add `--enforce-transition` when agents or CI should reject out-of-order transitions.
+- Before archiving with `--enforce-transition`, pass `specspine feature ready <slug> . --json` so incomplete bundles cannot be archived by lifecycle status alone.
 - Start implementation, acceptance, and review agent work with `specspine feature handoff <slug> . --json`.
 - Hand execution checklists to implementation agents with `specspine feature tasks <slug> . --json`.
 - Hand a full traceability packet to agents or reviewers with `specspine feature trace <slug> . --json`.
@@ -47,6 +48,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - `feature tasks <slug> --json` reports stable ordered task records from `execution/features/<slug>.md`.
 - `feature trace <slug> --json` reports sources, missing files, acceptance criteria, tasks, required checks, test plan entries, summary counts, and trace gaps without calling external services.
 - `feature ready <slug> --json` reports stable checks, blocking checks, summary counts, missing files, and gaps, returning non-zero until the feature is implemented or validated and all required evidence is complete.
+- `feature status <slug> --set STATUS --enforce-transition --json` reports stable transition success or failure payloads, preserves default manual status updates when the flag is absent, blocks writes for invalid transition edges or inconsistent current peer status, and requires readiness before enforced archive writes.
 - `feature handoff <slug> --json` reports a compact feature packet with status, readiness, sources, gaps, blocking checks, trace sections, release readiness, recommended commands, deterministic next actions, and summary counts without calling external services.
 - Enabled upstream metadata reports OpenSpec, Spec Kit, and Superpowers as enabled when their adapter files are present.
 - Validation passes for complete workspace, fusion artifacts, and native feature bundles with consistent allowed lifecycle status.
