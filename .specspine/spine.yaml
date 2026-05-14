@@ -1,0 +1,23 @@
+name: SpecSpine Workspace
+version: 0.1
+backbone:
+  intent: specs/intent.md
+  product: specs/product.md
+  architecture: specs/architecture.md
+  execution_plan: execution/plan.md
+  task_board: execution/tasks.md
+  quality_checklist: quality/checklist.md
+  review_notes: quality/review.md
+fusion:
+  config: .specspine/fusion.yaml
+  map: .specspine/fusion-map.md
+adapters:
+  openspec:
+    enabled: true
+    config: .specspine/adapters/openspec.md
+  speckit:
+    enabled: true
+    config: .specspine/adapters/speckit.md
+  superpowers:
+    enabled: true
+    config: .specspine/adapters/superpowers.md

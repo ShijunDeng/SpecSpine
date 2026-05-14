@@ -1,0 +1,37 @@
+# Product Spec
+
+## Scope
+
+SpecSpine is a local CLI and file convention for spec-driven AI development. The product surface includes:
+
+- Workspace initialization for intent, product, architecture, execution, and quality artifacts.
+- Agent instruction generation through `specspine agents init`.
+- Native feature bundles spanning `specs/features/`, `execution/features/`, and `quality/features/`.
+- Local GitHub issue draft generation from feature bundles without API calls.
+- Fusion initialization for OpenSpec, Spec Kit, and Superpowers as external adapters.
+- Status, validation, doctor, and adapter inspection commands suitable for CI and coding agents.
+
+## Non-Goals
+
+- Hosting a server, database, or background daemon.
+- Vendoring OpenSpec, Spec Kit, Superpowers, or any upstream source tree.
+- Owning upstream lifecycle files after an external tool generates them.
+- Reading GitHub tokens, writing GitHub tokens, or creating remote GitHub issues by default.
+- Replacing OpenSpec proposals, Spec Kit plans, or Superpowers skills with private reimplementations.
+
+## User Workflows
+
+- Initialize a base workspace with `specspine init .` and create agent guidance with `specspine agents init .`.
+- Initialize the full fusion layer with `specspine fuse . --agent codex`, which writes adapter contracts but does not invoke upstream tools.
+- Run `specspine status . --json` before work to understand missing artifacts, enabled upstreams, and next recommendations.
+- Create new requirements with `specspine feature new <slug> . --title "..." --why "..."`, then keep the spec, execution, and quality peer files aligned by `Feature ID`.
+- Generate an offline issue draft with `specspine feature issue <slug> . --json` or `--output`.
+- Verify readiness with `specspine validate . --fusion --features` and the unit test suite.
+
+## Acceptance Criteria
+
+- Base and fusion workspaces can be initialized without external dependencies.
+- A complete fused workspace reports `workspace.complete=true` and `fusion.complete=true` in status JSON.
+- Enabled upstream metadata reports OpenSpec, Spec Kit, and Superpowers as enabled when their adapter files are present.
+- Validation passes for complete workspace and fusion artifacts, and gracefully skips feature checks when no feature bundles exist.
+- Fusion config preserves `integration_mode: adapter` and `vendored_upstream_code: false`.

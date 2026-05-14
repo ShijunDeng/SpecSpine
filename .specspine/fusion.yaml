@@ -1,0 +1,37 @@
+name: SpecSpine Fusion
+version: 0.1
+integration_mode: adapter
+vendored_upstream_code: false
+agent:
+  key: codex
+  openspec_tool: codex
+  speckit_integration: codex
+upstreams:
+  openspec:
+    enabled: true
+    role: "change proposals, living spec deltas, and artifact-guided spec lifecycle"
+    repo: "https://github.com/Fission-AI/OpenSpec"
+    license: "MIT"
+    adapter: ".specspine/adapters/openspec.md"
+  speckit:
+    enabled: true
+    role: "intent-first specification, planning, task breakdown, and agent integration files"
+    repo: "https://github.com/github/spec-kit"
+    license: "MIT"
+    adapter: ".specspine/adapters/speckit.md"
+  superpowers:
+    enabled: true
+    role: "software engineering discipline: brainstorming, planning, TDD, subagent execution, and review"
+    repo: "https://github.com/obra/superpowers"
+    license: "MIT"
+    adapter: ".specspine/adapters/superpowers.md"
+workflow:
+  intent: ["specs/intent.md", "openspec proposal", "speckit specify"]
+  product_spec: ["specs/product.md", "speckit specify", "openspec specs"]
+  architecture: ["specs/architecture.md", "openspec design", "speckit plan"]
+  execution: ["execution/plan.md", "execution/tasks.md", "speckit tasks"]
+  quality: ["quality/checklist.md", "quality/superpowers.md", "superpowers skills"]
+upstream_init:
+  - openspec: "openspec init . --tools codex"
+  - speckit: "specify init . --integration codex"
+  - superpowers: "Verify that the Superpowers agent plugin/extension is installed."
