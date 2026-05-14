@@ -26,6 +26,7 @@ This repository is an early project skeleton. It includes:
 - A project-local agent instruction initializer: `specspine agents init`.
 - A native feature bundle creator: `specspine feature new`.
 - A native feature lifecycle status command: `specspine feature status`.
+- A native feature task exporter: `specspine feature tasks`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
 - A fusion initializer: `specspine fuse`.
 - A compact workspace status packet with optional validation summaries: `specspine status --json --validate`.
@@ -85,6 +86,13 @@ Draft a local GitHub issue from the feature bundle:
 ```bash
 specspine feature issue add-dark-mode .
 specspine feature issue add-dark-mode . --json
+```
+
+Export implementation tasks from the feature execution file:
+
+```bash
+specspine feature tasks add-dark-mode .
+specspine feature tasks add-dark-mode . --json
 ```
 
 Advance the feature lifecycle when the bundle moves forward:
@@ -245,6 +253,14 @@ specspine feature status <slug> [path] [--set STATUS] [--json]
 Reads or updates the lifecycle status for a native feature bundle. Without `--set`, the command reports the current peer-file status and clearly marks mixed or inconsistent files. With `--set`, it updates existing peer files to an allowed status and returns non-zero if no feature files exist. Invalid slugs and invalid statuses return code `2`. `--json` emits stable JSON with `feature_id`, `status`, `consistent`, `files`, and `missing_files`; status updates also include `updated_files`.
 
 ```bash
+specspine feature tasks <slug> [path] [--json] [--output FILE] [--force]
+```
+
+Exports Markdown checklist items from `execution/features/<slug>.md` under `## Tasks`. Supported item forms are `- [ ] task`, `- [x] task`, `* [ ] task`, and `* [x] task`. Text output is a short agent handoff with feature id, status, source, summary, and ordered task list. `--json` emits stable JSON with `feature_id`, `status`, `source_file`, `source_missing`, `tasks`, `summary`, and `missing_files`; each task includes `id`, `text`, `done`, `source_file`, and `line`.
+
+If the execution file exists but has no checklist items, the command returns an empty task list and says no tasks were found. If spec or quality files exist but the execution file is missing, the command still returns `0` with empty tasks, `source_missing=true`, and the missing execution file recorded. If no native feature files exist for the slug, it returns non-zero. `--output` writes the text handoff to a file and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout is JSON and the file contains text.
+
+```bash
 specspine feature issue <slug> [path] [--json] [--output FILE] [--force]
 ```
 
@@ -300,7 +316,7 @@ Prints upstream install instructions and project links.
 ## Roadmap
 
 - Feature lifecycle transition policy and adapter mappings.
-- Task decomposition from specs.
+- Task decomposition from specs and richer task summaries.
 - Quality gate definitions.
 - Agent handoff packets.
 - Richer adapter sync for OpenSpec, Spec Kit, Superpowers, and other workflow engines.

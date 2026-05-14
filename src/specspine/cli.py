@@ -19,9 +19,12 @@ from .features import (
     FeatureBundleNotFoundError,
     InvalidFeatureStatus,
     InvalidFeatureSlug,
+    build_feature_tasks_report,
     build_issue_draft,
     create_feature_bundle,
     get_feature_status,
+    render_feature_tasks_json,
+    render_feature_tasks_text,
     render_issue_json,
     render_issue_text,
     set_feature_status,
@@ -129,6 +132,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the issue body to a file instead of printing the text draft",
     )
     feature_issue_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite an existing output file",
+    )
+
+    feature_tasks_parser = feature_subcommands.add_parser(
+        "tasks",
+        help="export executable checklist tasks from a native feature bundle",
+    )
+    feature_tasks_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    feature_tasks_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    feature_tasks_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    feature_tasks_parser.add_argument(
+        "--output",
+        help="write the text task list to a file instead of printing it",
+    )
+    feature_tasks_parser.add_argument(
         "--force",
         action="store_true",
         help="overwrite an existing output file",
@@ -348,6 +372,48 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Wrote GitHub issue draft body to {output_path}")
             else:
                 print(render_issue_text(draft), end="")
+            return 0
+
+        if args.feature_command == "tasks":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                report = build_feature_tasks_report(root, args.slug)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not read feature tasks: {error}", file=sys.stderr)
+                return 1
+
+            text_body = render_feature_tasks_text(report)
+            if args.output:
+                output_path = Path(args.output).expanduser().resolve()
+                if output_path.exists() and not args.force:
+                    print(
+                        f"Output file already exists: {output_path}. "
+                        "Use --force to overwrite it.",
+                        file=sys.stderr,
+                    )
+                    return 1
+
+                try:
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(text_body, encoding="utf-8")
+                except OSError as error:
+                    print(f"Could not write feature tasks: {error}", file=sys.stderr)
+                    return 1
+
+            if args.json:
+                print(render_feature_tasks_json(report), end="")
+            elif args.output:
+                print(f"Wrote feature task list to {output_path}")
+            else:
+                print(text_body, end="")
             return 0
 
         if args.feature_command == "status":

@@ -82,6 +82,55 @@ class IssueDraft:
 
 
 @dataclass(frozen=True)
+class FeatureTask:
+    id: str
+    text: str
+    done: bool
+    source_file: str
+    line: int
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "done": self.done,
+            "id": self.id,
+            "line": self.line,
+            "source_file": self.source_file,
+            "text": self.text,
+        }
+
+
+@dataclass(frozen=True)
+class FeatureTasksReport:
+    feature_id: str
+    status: str
+    source_file: str
+    source_missing: bool
+    tasks: tuple[FeatureTask, ...]
+    missing_files: tuple[str, ...]
+
+    @property
+    def summary(self) -> dict[str, int]:
+        done = sum(1 for task in self.tasks if task.done)
+        total = len(self.tasks)
+        return {
+            "done": done,
+            "open": total - done,
+            "total": total,
+        }
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "feature_id": self.feature_id,
+            "missing_files": list(self.missing_files),
+            "source_file": self.source_file,
+            "source_missing": self.source_missing,
+            "status": self.status,
+            "summary": self.summary,
+            "tasks": [task.as_dict() for task in self.tasks],
+        }
+
+
+@dataclass(frozen=True)
 class FeatureStatusReport:
     feature_id: str
     status: str | None
@@ -473,6 +522,44 @@ def _extract_markdown_section(content: str, heading: str) -> str | None:
     return section or None
 
 
+def _extract_markdown_section_lines(content: str, heading: str) -> list[tuple[int, str]]:
+    lines = content.splitlines()
+    section_start: int | None = None
+    section_level: int | None = None
+
+    for index, raw_line in enumerate(lines):
+        parsed = _markdown_heading(raw_line)
+        if parsed is None:
+            continue
+
+        level, text = parsed
+        if section_start is None:
+            if level >= 2 and text.lower() == heading.lower():
+                section_start = index + 1
+                section_level = level
+            continue
+
+        if section_level is not None and level <= section_level:
+            return [
+                (line_number, line)
+                for line_number, line in enumerate(
+                    lines[section_start:index],
+                    start=section_start + 1,
+                )
+            ]
+
+    if section_start is None:
+        return []
+
+    return [
+        (line_number, line)
+        for line_number, line in enumerate(
+            lines[section_start:],
+            start=section_start + 1,
+        )
+    ]
+
+
 def _extract_scalar(content: str, key: str) -> str | None:
     for raw_line in content.splitlines():
         stripped = raw_line.strip()
@@ -673,6 +760,119 @@ def build_issue_draft(root: Path, slug: str) -> IssueDraft:
         missing_files=tuple(missing_files),
         status=status,
     )
+
+
+CHECKBOX_TASK_RE = re.compile(r"^\s*[-*]\s+\[([ xX])\]\s+(.+?)\s*$")
+
+
+def parse_feature_tasks(
+    content: str,
+    *,
+    source_file: str,
+) -> tuple[FeatureTask, ...]:
+    tasks: list[FeatureTask] = []
+
+    for line_number, raw_line in _extract_markdown_section_lines(content, "Tasks"):
+        match = CHECKBOX_TASK_RE.match(raw_line)
+        if match is None:
+            continue
+
+        task_id = f"T{len(tasks) + 1:03d}"
+        marker, text = match.groups()
+        tasks.append(
+            FeatureTask(
+                id=task_id,
+                text=text.strip(),
+                done=marker.lower() == "x",
+                source_file=source_file,
+                line=line_number,
+            )
+        )
+
+    return tuple(tasks)
+
+
+def build_feature_tasks_report(root: Path, slug: str) -> FeatureTasksReport:
+    slug = validate_feature_slug(slug)
+    resolved_root = root.expanduser().resolve()
+    paths = feature_bundle_paths(resolved_root, slug)
+    relative_paths = _relative_feature_paths(slug)
+
+    contents: dict[str, str] = {}
+    missing_files: list[str] = []
+    missing_paths: list[Path] = []
+
+    for kind in FEATURE_FILE_PATHS:
+        path = paths[kind]
+        relative_path = relative_paths[kind]
+        if path.exists():
+            contents[kind] = path.read_text(encoding="utf-8")
+            continue
+
+        missing_files.append(relative_path)
+        missing_paths.append(path)
+
+    if not contents:
+        raise FeatureBundleNotFoundError(
+            slug=slug,
+            root=resolved_root,
+            missing_paths=tuple(missing_paths),
+        )
+
+    source_file = relative_paths["execution"]
+    execution_content = contents.get("execution")
+    tasks: tuple[FeatureTask, ...] = ()
+    if execution_content is not None:
+        tasks = parse_feature_tasks(execution_content, source_file=source_file)
+
+    status_report = get_feature_status(resolved_root, slug)
+
+    return FeatureTasksReport(
+        feature_id=slug,
+        status=status_report.status or "unknown",
+        source_file=source_file,
+        source_missing=execution_content is None,
+        tasks=tasks,
+        missing_files=tuple(missing_files),
+    )
+
+
+def render_feature_tasks_json(report: FeatureTasksReport) -> str:
+    return json.dumps(report.as_dict(), indent=2, sort_keys=True) + "\n"
+
+
+def render_feature_tasks_text(report: FeatureTasksReport) -> str:
+    summary = report.summary
+    lines = [
+        f"Feature tasks: {report.feature_id}",
+        f"Status: {report.status}",
+        f"Source: {report.source_file}",
+        (
+            "Summary: "
+            f"total={summary['total']} "
+            f"done={summary['done']} "
+            f"open={summary['open']}"
+        ),
+        "",
+        "Tasks:",
+    ]
+
+    if report.tasks:
+        for task in report.tasks:
+            marker = "x" if task.done else " "
+            lines.append(
+                f"- [{marker}] {task.id} {task.source_file}:{task.line} {task.text}"
+            )
+    elif report.source_missing:
+        lines.append(f"No tasks found because source file is missing: {report.source_file}")
+    else:
+        lines.append(f"No checklist tasks found in {report.source_file}.")
+
+    if report.missing_files:
+        lines.extend(["", "Missing feature files:"])
+        lines.extend(f"- {relative_path}" for relative_path in report.missing_files)
+
+    return "\n".join(lines) + "\n"
 
 
 def render_issue_json(draft: IssueDraft) -> str:

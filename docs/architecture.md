@@ -21,6 +21,7 @@ The CLI is intentionally thin:
 - `specspine agents init` creates project-local `AGENTS.md` instructions for AI coding agents.
 - `specspine feature new` creates a traceable native feature bundle.
 - `specspine feature status` reads or updates native feature lifecycle state.
+- `specspine feature tasks` exports execution checklist items as stable agent tasks.
 - `specspine feature issue` exports a local GitHub issue draft from a native feature bundle.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
@@ -77,6 +78,10 @@ Native feature lifecycle states are:
 
 `specspine feature status <slug> [path] [--set STATUS] [--json]` reads or updates those peer-file status lines. Without `--set`, it reports the current status and marks mixed peer files as inconsistent. With `--set`, it updates the existing peer files and fails clearly if no feature files exist. JSON output includes `feature_id`, `status`, `consistent`, `files`, and `missing_files`; update JSON also includes `updated_files`.
 
+`specspine feature tasks <slug> [path] [--json] [--output FILE] [--force]` reads the `## Tasks` section from `execution/features/<slug>.md` and exports only Markdown checklist items. The parser keeps the source order and emits flat task records with `id`, `text`, `done`, `source_file`, and `line`. JSON output includes `feature_id`, `status`, `source_file`, `source_missing`, `tasks`, `summary`, and `missing_files`.
+
+Task export is local and non-generative. It does not infer tasks from prose, call upstream tools, call GitHub, read tokens, or require `gh`. If the execution file exists but contains no checklist items, the command returns an empty list with a clear no-tasks message. If spec or quality files exist while execution is missing, the command still returns an empty list and marks `source_missing=true`; if all feature files are missing, it returns non-zero.
+
 `specspine feature issue <slug> [path]` is the local bridge from native feature bundles to GitHub issue workflows. It reads the spec, execution, and quality peer files and builds a structured issue draft with:
 
 - title from the spec file's first-line H1, falling back to slug title case.
@@ -117,7 +122,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 
 - `specspine.workspace`: local file templates and workspace checks.
 - `specspine.agents`: project-local `AGENTS.md` generation for AI coding agents.
-- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, and issue draft export.
+- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, and issue draft export.
 - `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, and optional validation summary rendering.

@@ -20,7 +20,11 @@ class DogfoodArtifactsTests(TestCase):
             feature["slug"]: feature
             for feature in status["features"]
         }
-        for slug in ("feature-status-lifecycle", "status-validation-summary"):
+        for slug in (
+            "feature-status-lifecycle",
+            "feature-task-export",
+            "status-validation-summary",
+        ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
                 self.assertEqual(dogfood["status"], "validated")
@@ -42,6 +46,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("fusion.integration_mode", "pass"), checks)
         self.assertIn(("fusion.vendored_upstream_code", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-status-lifecycle", "pass"), checks)
+        self.assertIn(("feature.status_consistency:feature-task-export", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-validation-summary", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
@@ -54,6 +59,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine validate . --fusion --features",
             "PYTHONPATH=src python3 -m unittest discover -s tests",
             "PYTHONPATH=src python3 -m specspine feature status <slug> . --json",
+            "PYTHONPATH=src python3 -m specspine feature tasks <slug> . --json",
             "Keep feature specs, implementation tasks, and quality checks traceable",
             "Do not vendor upstream source code.",
             "Do not read or write GitHub tokens",
@@ -132,6 +138,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/status-validation-summary.md",
             "execution/features/status-validation-summary.md",
             "quality/features/status-validation-summary.md",
+            "specs/features/feature-task-export.md",
+            "execution/features/feature-task-export.md",
+            "quality/features/feature-task-export.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")

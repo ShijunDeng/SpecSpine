@@ -10,12 +10,14 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - The generated workspace templates were too generic for dogfooding and have been replaced with repository-specific intent, product, architecture, execution, and quality content.
 - Native feature lifecycle status can now be queried, updated, listed in status JSON, and validated across peer files.
 - `specspine status --validate` now reports workspace, fusion, and feature validation summaries without becoming a failing gate command.
+- `specspine feature tasks` now exports execution checklist items into stable text and JSON task lists for implementation agents.
 - No upstream code should be copied into this repository as part of fusion work.
 
 ## Decisions
 
 - Treat `specspine status . --json` as the first context packet for future agents.
 - Use `specspine status . --json --validate` when agents need context and failed quality checks together.
+- Treat `specspine feature tasks <slug> . --json` as the local feature implementation handoff when an execution checklist exists.
 - Treat `specspine validate . --fusion --features` plus the unit test suite as the local completion gate.
 - Keep GitHub issue generation offline and token-free by default.
 - Keep native feature peer files on a consistent allowed lifecycle status.
@@ -27,3 +29,4 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Future feature work should start with native feature bundles under `specs/features/`, `execution/features/`, and `quality/features/`.
 - Feature bundles support `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` statuses.
 - Status packets can now include compact validation summaries with failed checks only.
+- Feature execution checklists can now be exported without generation, GitHub credentials, or upstream tool calls.

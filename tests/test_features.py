@@ -1,4 +1,5 @@
 import json
+import os
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
@@ -12,7 +13,9 @@ from specspine.features import (
     FeatureBundleExistsError,
     InvalidFeatureSlug,
     build_issue_draft,
+    build_feature_tasks_report,
     create_feature_bundle,
+    parse_feature_tasks,
     set_feature_status,
 )
 from specspine.status import build_status
@@ -25,6 +28,8 @@ EXPECTED_FEATURE_FILES = {
     "execution/features/add-dark-mode.md",
     "quality/features/add-dark-mode.md",
 }
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 class FeatureBundleTests(TestCase):
@@ -241,6 +246,380 @@ class FeatureBundleTests(TestCase):
 
             self.assertEqual(returncode, 0)
             self.assertIn("Add dark mode", spec.read_text(encoding="utf-8"))
+
+    def test_parse_feature_tasks_preserves_order_lines_and_done_flags(self) -> None:
+        content = "\n".join(
+            [
+                "# Add dark mode Execution",
+                "",
+                "Feature ID: add-dark-mode",
+                "Status: planned",
+                "",
+                "## Tasks",
+                "",
+                "- [ ] Implement theme storage.",
+                "* [x] Add system preference detection.",
+                "- [X] Update docs.",
+                "- plain bullet ignored",
+                "notes ignored",
+                "",
+                "## Dependencies",
+                "",
+                "- [ ] Not part of tasks.",
+            ]
+        )
+
+        tasks = parse_feature_tasks(
+            content,
+            source_file="execution/features/add-dark-mode.md",
+        )
+
+        self.assertEqual([task.id for task in tasks], ["T001", "T002", "T003"])
+        self.assertEqual(
+            [task.text for task in tasks],
+            [
+                "Implement theme storage.",
+                "Add system preference detection.",
+                "Update docs.",
+            ],
+        )
+        self.assertEqual([task.done for task in tasks], [False, True, True])
+        self.assertEqual([task.line for task in tasks], [8, 9, 10])
+        self.assertEqual(
+            {task.source_file for task in tasks},
+            {"execution/features/add-dark-mode.md"},
+        )
+
+    def test_parse_feature_tasks_keeps_lower_heading_tasks_and_markdown_text(self) -> None:
+        content = "\n".join(
+            [
+                "# Add dark mode Execution",
+                "",
+                "## Tasks",
+                "",
+                "- [ ] Keep inline `mode: dark` value: unchanged.",
+                "- not a checklist",
+                "### Follow-up",
+                "",
+                "* [X] Preserve `cli --flag`: output text.",
+                "",
+                "## Dependencies",
+                "",
+                "- [ ] Not part of tasks.",
+            ]
+        )
+
+        tasks = parse_feature_tasks(
+            content,
+            source_file="execution/features/add-dark-mode.md",
+        )
+
+        self.assertEqual([task.id for task in tasks], ["T001", "T002"])
+        self.assertEqual(
+            [task.text for task in tasks],
+            [
+                "Keep inline `mode: dark` value: unchanged.",
+                "Preserve `cli --flag`: output text.",
+            ],
+        )
+        self.assertEqual([task.done for task in tasks], [False, True])
+        self.assertEqual([task.line for task in tasks], [5, 9])
+
+    def test_feature_tasks_cli_text_and_json_outputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            execution = root / "execution" / "features" / "add-dark-mode.md"
+            execution.write_text(
+                "\n".join(
+                    [
+                        "# Add dark mode Execution",
+                        "",
+                        "Feature ID: add-dark-mode",
+                        "Status: planned",
+                        "",
+                        "## Tasks",
+                        "- [ ] Implement theme storage.",
+                        "- [x] Add theme tests.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            text_output = StringIO()
+            with redirect_stdout(text_output):
+                text_returncode = main(
+                    ["feature", "tasks", "add-dark-mode", str(root)]
+                )
+
+            self.assertEqual(text_returncode, 0)
+            text = text_output.getvalue()
+            self.assertIn("Feature tasks: add-dark-mode", text)
+            self.assertIn("Status: mixed", text)
+            self.assertIn("Summary: total=2 done=1 open=1", text)
+            self.assertIn(
+                "- [ ] T001 execution/features/add-dark-mode.md:7 Implement theme storage.",
+                text,
+            )
+            self.assertIn(
+                "- [x] T002 execution/features/add-dark-mode.md:8 Add theme tests.",
+                text,
+            )
+
+            json_output = StringIO()
+            with redirect_stdout(json_output):
+                json_returncode = main(
+                    ["feature", "tasks", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(json_output.getvalue())
+            self.assertEqual(json_returncode, 0)
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertEqual(payload["source_file"], "execution/features/add-dark-mode.md")
+            self.assertFalse(payload["source_missing"])
+            self.assertEqual(payload["summary"], {"done": 1, "open": 1, "total": 2})
+            self.assertEqual(
+                payload["tasks"],
+                [
+                    {
+                        "done": False,
+                        "id": "T001",
+                        "line": 7,
+                        "source_file": "execution/features/add-dark-mode.md",
+                        "text": "Implement theme storage.",
+                    },
+                    {
+                        "done": True,
+                        "id": "T002",
+                        "line": 8,
+                        "source_file": "execution/features/add-dark-mode.md",
+                        "text": "Add theme tests.",
+                    },
+                ],
+            )
+
+    def test_feature_tasks_cli_reports_no_tasks_found(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            execution = root / "execution" / "features" / "add-dark-mode.md"
+            execution.write_text(
+                "\n".join(
+                    [
+                        "# Add dark mode Execution",
+                        "",
+                        "Feature ID: add-dark-mode",
+                        "Status: planned",
+                        "",
+                        "## Tasks",
+                        "",
+                        "- plain bullet",
+                        "implementation notes",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["feature", "tasks", "add-dark-mode", str(root)])
+
+            self.assertEqual(returncode, 0)
+            self.assertIn("Summary: total=0 done=0 open=0", output.getvalue())
+            self.assertIn(
+                "No checklist tasks found in execution/features/add-dark-mode.md.",
+                output.getvalue(),
+            )
+
+    def test_feature_tasks_cli_handles_missing_execution_partial_bundle(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            (root / "execution" / "features" / "add-dark-mode.md").unlink()
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "tasks", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertTrue(payload["source_missing"])
+            self.assertEqual(payload["tasks"], [])
+            self.assertEqual(payload["summary"], {"done": 0, "open": 0, "total": 0})
+            self.assertEqual(
+                payload["missing_files"],
+                ["execution/features/add-dark-mode.md"],
+            )
+
+    def test_feature_tasks_cli_text_reports_missing_execution_source(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            (root / "execution" / "features" / "add-dark-mode.md").unlink()
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["feature", "tasks", "add-dark-mode", str(root)])
+
+            self.assertEqual(returncode, 0)
+            self.assertIn("Source: execution/features/add-dark-mode.md", output.getvalue())
+            self.assertIn(
+                "No tasks found because source file is missing: "
+                "execution/features/add-dark-mode.md",
+                output.getvalue(),
+            )
+
+    def test_feature_tasks_cli_all_files_missing_returns_nonzero(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(["feature", "tasks", "add-dark-mode", str(root)])
+
+            self.assertEqual(returncode, 1)
+            self.assertIn("No feature files found", stderr.getvalue())
+            self.assertIn(
+                "missing execution/features/add-dark-mode.md",
+                stderr.getvalue(),
+            )
+
+    def test_feature_tasks_cli_all_files_missing_does_not_call_gh_or_leak_tokens(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            stdout = StringIO()
+            stderr = StringIO()
+
+            with patch.dict(
+                os.environ,
+                {
+                    "PATH": "",
+                    "GH_TOKEN": "secret-gh-token",
+                    "GITHUB_TOKEN": "secret-github-token",
+                },
+            ):
+                with patch("subprocess.run", side_effect=AssertionError("gh called")):
+                    with redirect_stdout(stdout), redirect_stderr(stderr):
+                        returncode = main(
+                            ["feature", "tasks", "add-dark-mode", str(root)]
+                        )
+
+            combined = stdout.getvalue() + stderr.getvalue()
+            self.assertEqual(returncode, 1)
+            self.assertNotIn("secret-gh-token", combined)
+            self.assertNotIn("secret-github-token", combined)
+
+    def test_feature_tasks_cli_output_file_overwrite_force_and_json_output(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            output_file = root / "tasks.txt"
+            output_file.write_text("existing\n", encoding="utf-8")
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(
+                    [
+                        "feature",
+                        "tasks",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(output_file),
+                    ]
+                )
+
+            self.assertEqual(returncode, 1)
+            self.assertIn("Output file already exists", stderr.getvalue())
+            self.assertEqual(output_file.read_text(encoding="utf-8"), "existing\n")
+
+            stdout = StringIO()
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "feature",
+                        "tasks",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--output",
+                        str(output_file),
+                        "--force",
+                    ]
+                )
+
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertIn("Feature tasks: add-dark-mode", output_file.read_text(encoding="utf-8"))
+            self.assertNotIn("Wrote feature task list", stdout.getvalue())
+
+    def test_feature_tasks_cli_output_creates_missing_parent_directories(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            output_file = root / "nested" / "reports" / "tasks.txt"
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "tasks",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(output_file),
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            self.assertTrue(output_file.exists())
+            self.assertIn("Wrote feature task list", output.getvalue())
+            self.assertIn(
+                "Feature tasks: add-dark-mode",
+                output_file.read_text(encoding="utf-8"),
+            )
+
+    def test_feature_tasks_cli_does_not_require_gh_or_github_tokens(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            output = StringIO()
+            fake_token = "secret-test-token"
+
+            with patch.dict(os.environ, {"PATH": "", "GITHUB_TOKEN": fake_token}):
+                with redirect_stdout(output):
+                    returncode = main(
+                        ["feature", "tasks", "add-dark-mode", str(root), "--json"]
+                    )
+
+            self.assertEqual(returncode, 0)
+            self.assertNotIn(fake_token, output.getvalue())
+
+    def test_build_feature_tasks_report_matches_summary(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+
+            report = build_feature_tasks_report(root, "add-dark-mode")
+
+            self.assertEqual(report.summary["total"], 1)
+            self.assertEqual(report.tasks[0].id, "T001")
 
     def test_status_json_lists_feature_files(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -516,6 +895,14 @@ class FeatureBundleTests(TestCase):
             self.assertIn("specs/features/add-dark-mode.md (in-progress)", text)
             self.assertIn("execution/features/add-dark-mode.md (in-progress)", text)
             self.assertIn("quality/features/add-dark-mode.md (in-progress)", text)
+
+    def test_dogfood_feature_task_export_is_validated_and_exports_tasks(self) -> None:
+        report = build_feature_tasks_report(REPO_ROOT, "feature-task-export")
+
+        self.assertEqual(report.status, "validated")
+        self.assertGreater(report.summary["total"], 0)
+        self.assertTrue(all(task.source_file == "execution/features/feature-task-export.md" for task in report.tasks))
+        self.assertTrue(all("TODO" not in task.text for task in report.tasks))
 
     def test_validate_cli_can_check_feature_bundles(self) -> None:
         with TemporaryDirectory() as tmp:
