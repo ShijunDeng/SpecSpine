@@ -29,6 +29,7 @@ PYTHONPATH=src python3 -m specspine feature pr <slug> . --json
 
 - Start by reading `specspine status . --json --validate`; use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features; finish with `specspine validate . --fusion --features` and the unit test command above.
 - Keep feature specs, implementation tasks, and quality checks traceable by `Feature ID`.
+- Use `specspine feature new` as the starting workflow for new requirements; the generated peer files include focused handoff, tests, PR, ready, and validation guidance.
 - Keep native feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.
 - Before archiving, run `specspine feature ready <slug> . --json`, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.
 - Start implementation, acceptance, and review handoffs with `specspine feature handoff <slug> . --json`; use `feature tasks`, `feature trace`, `feature ready`, and `feature tests` for focused follow-up views.

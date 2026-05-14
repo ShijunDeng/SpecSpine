@@ -18,6 +18,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
 - `specspine feature pr` now exports offline Pull Request drafts that compose local feature evidence without GitHub API calls, token reads, `gh`, or network access.
 - `specspine feature tests` now exports acceptance-test packets that map acceptance criteria to pending test cases and surface existing test plan, quality checks, gaps, and blockers without running tests or generating code.
+- `specspine feature new` now generates native feature bundles with focused spec, execution, quality, handoff, tests, PR, ready, and validation guidance instead of broad generic placeholders.
 - No upstream code should be copied into this repository as part of fusion work.
 
 ## Decisions
@@ -32,6 +33,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Treat `specspine feature tests <slug> . --json` as the focused local packet for QA and testing agents.
 - Treat `specspine feature pr <slug> . --json` as the local Pull Request draft bridge after readiness and trace evidence are available.
 - Treat `specspine validate . --fusion --features` plus the unit test suite as the local completion gate.
+- Treat generated feature templates as the starting workflow contract for new requirements: keep acceptance criteria testable, tasks traceable, quality gates unchecked until evidence exists, and handoff/tests/pr/ready commands visible.
 - Keep GitHub issue and Pull Request draft generation offline and token-free by default.
 - Keep native feature peer files on a consistent allowed lifecycle status.
 - Prefer `specspine feature status <slug> . --set STATUS --enforce-transition` when lifecycle order matters; run `specspine feature ready <slug> . --json` before archiving.
@@ -51,3 +53,4 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Feature lifecycle updates can now opt into transition enforcement and archive readiness guards without changing default manual status updates.
 - Feature bundles can now be exported as offline Pull Request drafts with GitHub Markdown checklist evidence and key local commands.
 - Feature bundles can now be exported as acceptance-test packets with GitHub Markdown checklist test cases and existing local quality evidence.
+- New feature bundles now include edge cases, constraints, traceability notes, dependencies, open questions, agent handoff commands, acceptance-test guidance, PR draft guidance, readiness checks, and validation gates from creation time.

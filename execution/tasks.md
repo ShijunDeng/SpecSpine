@@ -15,6 +15,7 @@
 - [x] Implement `specspine feature handoff` compact agent handoff packet export.
 - [x] Implement `specspine feature tests` acceptance-test packet export.
 - [x] Implement `specspine feature pr` offline Pull Request draft export.
+- [x] Refresh `specspine feature new` templates for focused handoff, tests, PR, ready, and validation workflows.
 - [x] Implement `specspine fuse` adapter-mode fusion generation.
 - [x] Implement `specspine status . --json`.
 - [x] Implement `specspine status . --json --validate` validation summaries.
@@ -41,6 +42,7 @@
 - [ ] Observe whether reviewers and CI jobs prefer `feature ready --json` for per-feature release gates.
 - [ ] Observe whether QA and testing agents prefer `feature tests --json` as their focused acceptance-test context.
 - [ ] Observe whether reviewers use `feature pr --json` as the local bridge from feature evidence into Pull Request review.
+- [ ] Observe whether new feature bundles need less manual template cleanup after the focused workflow guidance.
 - [ ] Monitor whether agents prefer `status --json --validate` as the default startup packet.
 - [ ] Observe whether agents use `status --json --validate --feature-summaries` only when comparing multiple features.
 - [ ] Revisit generated templates after dogfooding this workspace for one or more development cycles.

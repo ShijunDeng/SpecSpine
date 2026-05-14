@@ -585,7 +585,19 @@ def build_feature_files(
 
             ## Acceptance Criteria
 
-            - [ ] TODO: Define the observable outcomes required before this feature is complete.
+            - [ ] TODO: Define one observable outcome that can be mapped directly to a test case.
+
+            ## Edge Cases
+
+            - TODO: Capture boundary, error, permission, migration, or rollback cases reviewers should check.
+
+            ## Constraints
+
+            - TODO: Note technical, operational, policy, compatibility, or timing constraints.
+
+            ## Traceability Notes
+
+            - TODO: Link acceptance criteria to tasks, tests, docs, rollout evidence, or review notes as work progresses.
         """,
         FEATURE_FILE_PATHS["execution"].format(slug=slug): f"""
             # {resolved_title} Execution
@@ -609,6 +621,16 @@ def build_feature_files(
             ## Open Questions
 
             - TODO: Track questions that must be answered before or during implementation.
+
+            ## Agent Handoff
+
+            - Run `specspine feature handoff {slug} . --json` before implementation or review handoff.
+            - Run `specspine feature tasks {slug} . --json` for the focused implementation checklist.
+            - Run `specspine feature trace {slug} . --json` to inspect acceptance, tasks, quality checks, test plan, and gaps.
+            - Run `specspine feature tests {slug} . --json` to build the acceptance-test packet.
+            - Run `specspine feature ready {slug} . --json` after implementation evidence is complete.
+            - Run `specspine feature pr {slug} . --json` to draft local Pull Request review notes.
+            - Run `specspine validate . --fusion --features` before handoff or release.
         """,
         FEATURE_FILE_PATHS["quality"].format(slug=slug): f"""
             # {resolved_title} Quality
@@ -619,13 +641,15 @@ def build_feature_files(
 
             ## Required Checks
 
-            - [ ] TODO: Acceptance criteria are reviewed against the final implementation.
-            - [ ] TODO: Tests cover the changed behavior.
-            - [ ] TODO: Documentation or release notes are updated when needed.
+            - [ ] TODO: Acceptance criteria are reviewed against implementation evidence.
+            - [ ] TODO: Test coverage proves the changed behavior and edge cases.
+            - [ ] TODO: Documentation, release notes, or PR draft reflect user-facing behavior.
+            - [ ] TODO: `specspine feature ready {slug} . --json` has no blocking checks after evidence is complete.
+            - [ ] TODO: `specspine validate . --fusion --features` passes.
 
             ## Test Plan
 
-            - TODO: Describe unit, integration, manual, or exploratory checks.
+            - TODO: Add unit, integration, CLI, manual, or exploratory checks that prove each acceptance criterion.
 
             ## Review Notes
 
@@ -633,7 +657,10 @@ def build_feature_files(
 
             ## Release Readiness
 
-            - [ ] TODO: Confirm the feature is ready to ship or explicitly record blockers.
+            - [ ] TODO: Acceptance criteria, tasks, required checks, and test plan evidence are complete.
+            - [ ] TODO: Docs, release notes, or `specspine feature pr {slug} . --json` output are ready for reviewers.
+            - [ ] TODO: `specspine feature ready {slug} . --json` and `specspine validate . --fusion --features` have been run.
+            - [ ] TODO: No known blockers remain, or blockers are documented in review notes.
         """,
     }
 
@@ -1883,8 +1910,10 @@ def _recommended_handoff_commands(slug: str) -> tuple[str, ...]:
         f"specspine feature handoff {slug} . --json",
         f"specspine feature tasks {slug} . --json",
         f"specspine feature trace {slug} . --json",
+        f"specspine feature tests {slug} . --json",
         f"specspine feature ready {slug} . --json",
-        "specspine validate . --features",
+        f"specspine feature pr {slug} . --json",
+        "specspine validate . --fusion --features",
     )
 
 

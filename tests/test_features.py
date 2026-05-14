@@ -145,6 +145,13 @@ class FeatureBundleTests(TestCase):
             self.assertIn("## Scope", spec)
             self.assertIn("## Non-Goals", spec)
             self.assertIn("## Acceptance Criteria", spec)
+            self.assertIn("## Edge Cases", spec)
+            self.assertIn("## Constraints", spec)
+            self.assertIn("## Traceability Notes", spec)
+            self.assertIn(
+                "- [ ] TODO: Define one observable outcome",
+                spec,
+            )
 
             execution = (
                 root / "execution" / "features" / "add-dark-mode.md"
@@ -153,6 +160,18 @@ class FeatureBundleTests(TestCase):
             self.assertIn("## Tasks", execution)
             self.assertIn("## Dependencies", execution)
             self.assertIn("## Open Questions", execution)
+            self.assertIn("## Agent Handoff", execution)
+            for command in (
+                "specspine feature handoff add-dark-mode . --json",
+                "specspine feature tasks add-dark-mode . --json",
+                "specspine feature trace add-dark-mode . --json",
+                "specspine feature tests add-dark-mode . --json",
+                "specspine feature ready add-dark-mode . --json",
+                "specspine feature pr add-dark-mode . --json",
+                "specspine validate . --fusion --features",
+            ):
+                with self.subTest(command=command):
+                    self.assertIn(command, execution)
 
             quality = (root / "quality" / "features" / "add-dark-mode.md").read_text(
                 encoding="utf-8"
@@ -161,10 +180,69 @@ class FeatureBundleTests(TestCase):
             self.assertIn("## Test Plan", quality)
             self.assertIn("## Review Notes", quality)
             self.assertIn("## Release Readiness", quality)
+            self.assertIn("Acceptance criteria are reviewed", quality)
+            self.assertIn("Test coverage proves", quality)
+            self.assertIn("Documentation, release notes, or PR draft", quality)
+            self.assertIn("specspine feature ready add-dark-mode . --json", quality)
+            self.assertIn("specspine validate . --fusion --features", quality)
+            self.assertIn("specspine feature pr add-dark-mode . --json", quality)
+            quality_source = "quality/features/add-dark-mode.md"
+            quality_checks = parse_quality_checks(quality, source_file=quality_source)
+            release_readiness = parse_release_readiness(
+                quality,
+                source_file=quality_source,
+            )
+            self.assertEqual(len(quality_checks), 5)
+            self.assertEqual(len(release_readiness), 4)
+            self.assertTrue(all(not check.done for check in quality_checks))
+            self.assertTrue(all(not check.done for check in release_readiness))
 
             report = build_validation_report(root, include_features=True)
             self.assertTrue(report["ok"])
             self.assertEqual(validation_exit_code(report), 0)
+
+    def test_new_feature_bundle_validates_but_is_not_ready(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+
+            validation = build_validation_report(root, include_features=True)
+            ready = build_feature_ready_report(root, "add-dark-mode")
+
+            blocking_ids = {check.id for check in ready.blocking_checks}
+            self.assertTrue(validation["ok"])
+            self.assertEqual(validation_exit_code(validation), 0)
+            self.assertFalse(ready.ready)
+            self.assertEqual(ready.status, "proposed")
+            self.assertEqual(ready.missing_files, ())
+            self.assertEqual(ready.gaps, ())
+            self.assertIn("feature.lifecycle_status", blocking_ids)
+            self.assertIn("feature.acceptance_criteria", blocking_ids)
+            self.assertIn("feature.tasks", blocking_ids)
+            self.assertIn("feature.required_checks", blocking_ids)
+            self.assertIn("feature.release_readiness", blocking_ids)
+
+    def test_new_feature_bundle_trace_and_tests_extract_placeholders(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+
+            trace = build_feature_trace_report(root, "add-dark-mode")
+            tests = build_feature_tests_report(root, "add-dark-mode")
+
+            self.assertEqual(trace.gaps, ())
+            self.assertEqual([item.id for item in trace.acceptance_criteria], ["AC001"])
+            self.assertEqual([task.id for task in trace.tasks], ["T001"])
+            self.assertEqual(
+                [check.id for check in trace.quality_checks],
+                ["Q001", "Q002", "Q003", "Q004", "Q005"],
+            )
+            self.assertEqual([item.id for item in trace.test_plan], ["TP001"])
+            self.assertFalse(tests.ready)
+            self.assertEqual([test_case.id for test_case in tests.test_cases], ["TC001"])
+            self.assertEqual(tests.test_cases[0].acceptance_criterion_id, "AC001")
 
     def test_create_feature_bundle_does_not_overwrite_existing_files(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1179,8 +1257,10 @@ class FeatureBundleTests(TestCase):
                     "specspine feature handoff add-dark-mode . --json",
                     "specspine feature tasks add-dark-mode . --json",
                     "specspine feature trace add-dark-mode . --json",
+                    "specspine feature tests add-dark-mode . --json",
                     "specspine feature ready add-dark-mode . --json",
-                    "specspine validate . --features",
+                    "specspine feature pr add-dark-mode . --json",
+                    "specspine validate . --fusion --features",
                 ],
             )
 

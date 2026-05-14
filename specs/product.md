@@ -6,7 +6,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 
 - Workspace initialization for intent, product, architecture, execution, and quality artifacts.
 - Agent instruction generation through `specspine agents init`.
-- Native feature bundles spanning `specs/features/`, `execution/features/`, and `quality/features/`.
+- Native feature bundles spanning `specs/features/`, `execution/features/`, and `quality/features/`, with generated guidance for spec, execution, quality, handoff, tests, PR drafts, readiness, and validation.
 - Native feature lifecycle status query/update across feature peer files, with an opt-in enforced transition policy for ordered lifecycle updates.
 - Native feature task export from execution checklists.
 - Native feature traceability export across acceptance criteria, tasks, required checks, and test plans.
@@ -31,7 +31,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Initialize a base workspace with `specspine init .` and create agent guidance with `specspine agents init .`.
 - Initialize the full fusion layer with `specspine fuse . --agent codex`, which writes adapter contracts but does not invoke upstream tools.
 - Run `specspine status . --json` before work to understand missing artifacts, enabled upstreams, and next recommendations; add `--validate` when a single packet should also show quality-gate summary and failed check ids; add `--feature-summaries` only when choosing or comparing multiple native features.
-- Create new requirements with `specspine feature new <slug> . --title "..." --why "..."`, then keep the spec, execution, and quality peer files aligned by `Feature ID`.
+- Create new requirements with `specspine feature new <slug> . --title "..." --why "..."`; the generated peer files prompt for non-goals, edge cases, constraints, dependencies, open questions, traceability notes, focused handoff/tests/pr/ready commands, and local validation gates.
 - Move feature bundles through `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` with `specspine feature status <slug> . --set STATUS`; add `--enforce-transition` when agents or CI should reject out-of-order transitions.
 - Before archiving with `--enforce-transition`, pass `specspine feature ready <slug> . --json` so incomplete bundles cannot be archived by lifecycle status alone.
 - Start implementation, acceptance, and review agent work with `specspine feature handoff <slug> . --json`.
@@ -56,6 +56,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - `feature handoff <slug> --json` reports a compact feature packet with status, readiness, sources, gaps, blocking checks, trace sections, release readiness, recommended commands, deterministic next actions, and summary counts without calling external services.
 - `feature tests <slug> --json` reports a QA-focused packet with status, readiness, source files, missing files, gaps, blocking checks, acceptance criteria, existing test plan, quality checks, deterministic `TC001 -> AC001` pending test cases, summary counts, and recommended local commands without running tests, generating test code, calling external services, or reading tokens.
 - `feature pr <slug> --json` reports an offline Pull Request draft with title, body, status, readiness, sources, missing files, gaps, blocking checks, summary counts, and recommended commands without calling GitHub APIs, `gh`, network services, or reading tokens.
+- `feature new <slug>` generates unchecked quality and release-readiness gates so structural validation can pass while `feature ready` remains blocked until acceptance criteria, test coverage, docs or PR draft, and local validation evidence are complete.
 - Enabled upstream metadata reports OpenSpec, Spec Kit, and Superpowers as enabled when their adapter files are present.
 - Validation passes for complete workspace, fusion artifacts, and native feature bundles with consistent allowed lifecycle status.
 - Fusion config preserves `integration_mode: adapter` and `vendored_upstream_code: false`.

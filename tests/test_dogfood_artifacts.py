@@ -32,6 +32,7 @@ class DogfoodArtifactsTests(TestCase):
             "feature-transition-policy",
             "feature-pr-draft",
             "feature-test-packet",
+            "feature-template-refresh",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -85,6 +86,7 @@ class DogfoodArtifactsTests(TestCase):
             "Do not vendor upstream source code.",
             "Do not read or write GitHub tokens",
             "Use `--run-upstream` only when the user explicitly asks",
+            "generated peer files include focused handoff, tests, PR, ready, and validation guidance",
         ]
         for snippet in required_snippets:
             self.assertIn(snippet, content)
@@ -180,6 +182,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/feature-test-packet.md",
             "execution/features/feature-test-packet.md",
             "quality/features/feature-test-packet.md",
+            "specs/features/feature-template-refresh.md",
+            "execution/features/feature-template-refresh.md",
+            "quality/features/feature-template-refresh.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -216,6 +221,13 @@ class DogfoodArtifactsTests(TestCase):
 
     def test_feature_test_packet_dogfood_bundle_passes_its_gate(self) -> None:
         report = build_feature_ready_report(REPO_ROOT, "feature-test-packet")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.status, "validated")
+        self.assertEqual(report.summary["fail"], 0)
+
+    def test_feature_template_refresh_dogfood_bundle_passes_its_gate(self) -> None:
+        report = build_feature_ready_report(REPO_ROOT, "feature-template-refresh")
 
         self.assertTrue(report.ready)
         self.assertEqual(report.status, "validated")

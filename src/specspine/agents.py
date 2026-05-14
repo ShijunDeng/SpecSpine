@@ -30,6 +30,7 @@ AGENTS_TEMPLATE = """
     specspine status . --json --validate --feature-summaries
     specspine validate .
     specspine validate . --features
+    specspine validate . --fusion --features
     specspine feature new <slug> . --title "..." --why "..."
     specspine feature status <slug> . --json
     specspine feature status <slug> . --set planned --enforce-transition --json
@@ -47,13 +48,13 @@ AGENTS_TEMPLATE = """
 
     - Read `specspine status . --json --validate` before planning or editing.
     - Use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features.
-    - For new requirements, create a feature bundle with `specspine feature new`.
+    - For new requirements, create a feature bundle with `specspine feature new`; the generated peer files include focused handoff, tests, PR, readiness, and validation guidance.
     - Keep feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.
     - Before archiving, run `specspine feature ready <slug> . --json`, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.
     - Start feature implementation, review, and acceptance handoffs with `specspine feature handoff <slug> . --json`.
     - Use `specspine feature tasks`, `specspine feature trace`, `specspine feature ready`, and `specspine feature tests` for focused task, trace, gate, and acceptance-test views.
     - Use `specspine feature pr <slug> . --json` to prepare an offline Pull Request draft from local evidence without reading tokens or calling GitHub.
-    - Run `specspine validate .` before and after edits; add `--features` when feature bundles are involved.
+    - Run `specspine validate .` before and after edits; use `specspine validate . --fusion --features` when feature bundles or fusion artifacts are involved.
     - Keep OpenSpec, Spec Kit, and Superpowers as external adapters. Do not vendor upstream code.
     - By default, do not read or write GitHub tokens and do not call the GitHub API.
     - Use `--run-upstream` only when the user explicitly asks to invoke upstream tools.

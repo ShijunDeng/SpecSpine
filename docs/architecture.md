@@ -64,13 +64,13 @@ Status validation checks workspace, fusion, and native feature bundles by defaul
 
 Validation is local-first and zero-dependency. The default mode validates base workspace files only. `--fusion` requires the fusion layer and enforces adapter-mode/no-vendored-code boundaries. `--adapters` probes external upstream adapters only when explicitly requested.
 
-`specspine feature new <slug> [path]` creates three peer files:
+`specspine feature new <slug> [path]` creates three peer files that start the spec -> execution -> quality workflow:
 
-- `specs/features/<slug>.md` for intent, users, scope, non-goals, and acceptance criteria.
-- `execution/features/<slug>.md` for milestones, tasks, dependencies, and open questions.
-- `quality/features/<slug>.md` for required checks, test plan, review notes, and release readiness.
+- `specs/features/<slug>.md` for intent, users, scope, non-goals, acceptance criteria, edge cases, constraints, and traceability notes.
+- `execution/features/<slug>.md` for milestones, tasks, dependencies, open questions, and focused agent handoff commands.
+- `quality/features/<slug>.md` for required checks, test plan, review notes, and release readiness gates.
 
-Each file records the same `Feature ID: <slug>` and starts at `Status: proposed`. The command refuses to overwrite existing feature files unless `--force` is passed.
+Each file records the same `Feature ID: <slug>` and starts at `Status: proposed`. The generated quality checklists stay unchecked so a new bundle validates as structurally complete but does not pass `specspine feature ready` until implementation, tests, docs or PR draft, `feature ready`, and `validate . --fusion --features` evidence are complete. The command refuses to overwrite existing feature files unless `--force` is passed.
 
 Native feature lifecycle states are:
 
@@ -111,7 +111,7 @@ The trace report includes `feature_id`, `status`, `sources`, `missing_files`, or
 
 The readiness report includes `feature_id`, `ready`, `status`, stable `checks`, `blocking_checks`, `summary`, `missing_files`, and `gaps`. It is local and deterministic, and does not execute the test plan or call external services. Ready returns `0`; not-ready and missing bundles return `1`; invalid slugs return `2`.
 
-`specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]` composes the existing local feature status, trace, tasks, readiness, and release readiness evidence into one minimal packet for agents. JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`.
+`specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]` composes the existing local feature status, trace, tasks, readiness, and release readiness evidence into one minimal packet for agents. JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Its recommended commands match the generated execution template's focused `handoff`, `tasks`, `trace`, `tests`, `ready`, `pr`, and `validate . --fusion --features` workflow.
 
 The handoff summary preserves the focused report counts: trace total/done/open, ready pass/fail/total, tasks total/done/open, gap count, and blocking check count. Next actions are deterministic and ordered: create or restore missing bundles, add missing peer files or sections, complete open tasks, resolve blocking checks, then review/merge/archive ready bundles. Missing bundles return `1` with a packet; invalid slugs return `2`; partial bundles return `0`. Output behavior matches other feature exporters: `--output` writes text with overwrite protection, and `--json --output` prints JSON while writing text to the file.
 

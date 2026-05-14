@@ -37,7 +37,7 @@ This repository is an early project skeleton. It includes:
 - A compact workspace status packet with optional validation and feature summaries: `specspine status --json --validate --feature-summaries`.
 - An executable validation layer: `specspine validate --json`.
 - Adapter metadata for OpenSpec, Spec Kit, and Superpowers.
-- Default spec templates for intent, product, architecture, features, quality, and execution.
+- Default templates for intent, product, architecture, feature workflow bundles, quality, and execution.
 - A lightweight test suite and GitHub Actions CI.
 
 ## Install Locally
@@ -85,6 +85,8 @@ Create a traceable feature bundle:
 ```bash
 specspine feature new add-dark-mode . --title "Add dark mode" --why "Reduce eye strain"
 ```
+
+New feature bundles start with focused spec -> execution -> quality guidance: goals and non-goals, acceptance criteria that can become tests, edge cases, constraints, dependencies, open questions, agent handoff commands, required checks, test plan, PR draft, readiness, and validation gates.
 
 Export the compact implementation/review handoff packet:
 
@@ -327,7 +329,7 @@ specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]
 
 Exports a compact feature-level handoff packet for implementation, acceptance, and review agents. It composes existing local evidence from feature status, trace, ready, tasks, and release readiness reports. It does not call GitHub APIs, read tokens, invoke upstream CLIs, use network access, or add third-party dependencies.
 
-JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Summary includes trace total/done/open, ready pass/fail/total, task total/done/open, gap count, and blocking check count. Text output is brief and includes feature/status/ready, counts, sources, next actions, open tasks, blocking checks, and key commands.
+JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Summary includes trace total/done/open, ready pass/fail/total, task total/done/open, gap count, and blocking check count. Text output is brief and includes feature/status/ready, counts, sources, next actions, open tasks, blocking checks, and key commands. The generated `feature new` execution template mirrors these focused commands for `handoff`, `tasks`, `trace`, `tests`, `ready`, `pr`, and `validate . --fusion --features`.
 
 Missing bundles return `1` with create-or-restore guidance. Invalid slugs return `2`. Partial bundles return `0` and include missing files, trace gaps, and next actions. `--output` writes the text handoff and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
 
