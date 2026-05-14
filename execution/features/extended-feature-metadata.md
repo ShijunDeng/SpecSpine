@@ -33,7 +33,6 @@ Why: Local feature bundles need richer machine-consumable triage metadata before
 
 ## Open Questions
 
-- Whether future versions should expose local filters for milestone, project, release, or effort.
 - Whether future GitHub integrations should map these local fields to typed Issue Fields after an explicit authenticated sync workflow exists.
 
 ## Agent Handoff

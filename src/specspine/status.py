@@ -40,6 +40,10 @@ FEATURE_SUMMARY_SORT_KEYS = (
     "blocking",
     "tasks-open",
     "priority",
+    "milestone",
+    "target-release",
+    "project",
+    "effort",
 )
 _FEATURE_SUMMARY_STATUS_ORDER = {
     status: index
@@ -52,6 +56,21 @@ _FEATURE_SUMMARY_PRIORITY_ORDER = {
     "medium": 1,
     "low": 2,
     "unknown": 3,
+}
+_FEATURE_SUMMARY_EFFORT_ORDER = {
+    "xs": 0,
+    "s": 1,
+    "m": 2,
+    "l": 3,
+    "xl": 4,
+    "xxl": 5,
+    "unknown": 6,
+}
+_FEATURE_SUMMARY_DEFAULT_VALUES = {
+    "milestone": "unassigned",
+    "target-release": "unassigned",
+    "project": "unassigned",
+    "effort": "unknown",
 }
 
 
@@ -272,6 +291,20 @@ def parse_feature_summary_owner_filters(values: list[str] | None) -> tuple[str, 
     return tuple(owners)
 
 
+def parse_feature_summary_metadata_filters(
+    values: list[str] | None,
+    *,
+    default: str,
+) -> tuple[str, ...]:
+    filters: list[str] = []
+    for value in values or []:
+        normalized = value.strip().lower() or default
+        if normalized not in filters:
+            filters.append(normalized)
+
+    return tuple(filters)
+
+
 def parse_feature_summary_sort_key(value: str | None) -> str | None:
     if value is None:
         return None
@@ -329,6 +362,20 @@ def _feature_summary_matches_owner(
     return owner in owner_filters
 
 
+def _feature_summary_matches_metadata(
+    summary: dict[str, Any],
+    field: str,
+    filters: tuple[str, ...],
+    *,
+    default: str,
+) -> bool:
+    if not filters:
+        return True
+
+    value = str(summary.get(field) or default).strip().lower() or default
+    return value in filters
+
+
 def _feature_summary_tasks_open(summary: dict[str, Any]) -> int:
     tasks = summary.get("tasks_summary", {})
     if not isinstance(tasks, dict):
@@ -360,7 +407,48 @@ def _feature_summary_sort_value(summary: dict[str, Any], sort_key: str) -> tuple
             _FEATURE_SUMMARY_PRIORITY_ORDER["unknown"],
         )
         return (order, slug)
+    if sort_key in {"milestone", "target-release", "project"}:
+        field = "target_release" if sort_key == "target-release" else sort_key
+        default = _FEATURE_SUMMARY_DEFAULT_VALUES[sort_key]
+        value = str(summary.get(field) or default).strip() or default
+        default_bucket = 1 if value.lower() == default else 0
+        return (default_bucket, value.lower(), value, slug)
+    if sort_key == "effort":
+        effort = str(summary.get("effort") or "unknown").strip() or "unknown"
+        effort_key = effort.lower()
+        order = _FEATURE_SUMMARY_EFFORT_ORDER.get(
+            effort_key,
+            _FEATURE_SUMMARY_EFFORT_ORDER["unknown"],
+        )
+        default_bucket = 1 if effort_key == "unknown" else 0
+        return (default_bucket, order, effort_key, slug)
     return (slug,)
+
+
+def _feature_summary_sort_metadata_desc(
+    summaries: list[dict[str, Any]],
+    sort_key: str,
+) -> list[dict[str, Any]]:
+    assigned: list[dict[str, Any]] = []
+    defaults: list[dict[str, Any]] = []
+    for summary in summaries:
+        if _feature_summary_sort_value(summary, sort_key)[0] == 0:
+            assigned.append(summary)
+        else:
+            defaults.append(summary)
+
+    def slug_key(summary: dict[str, Any]) -> str:
+        return str(summary.get("slug") or summary.get("feature_id") or "")
+
+    assigned_by_slug = sorted(assigned, key=slug_key)
+    return [
+        *sorted(
+            assigned_by_slug,
+            key=lambda summary: _feature_summary_sort_value(summary, sort_key)[1:3],
+            reverse=True,
+        ),
+        *sorted(defaults, key=slug_key),
+    ]
 
 
 def filter_and_sort_feature_summaries(
@@ -370,6 +458,10 @@ def filter_and_sort_feature_summaries(
     ready_filter: bool | None = None,
     priority_filters: tuple[str, ...] = (),
     owner_filters: tuple[str, ...] = (),
+    milestone_filters: tuple[str, ...] = (),
+    target_release_filters: tuple[str, ...] = (),
+    project_filters: tuple[str, ...] = (),
+    effort_filters: tuple[str, ...] = (),
     sort_key: str | None = None,
     sort_desc: bool = False,
 ) -> list[dict[str, Any]]:
@@ -379,6 +471,30 @@ def filter_and_sort_feature_summaries(
         if _feature_summary_matches_status(summary, status_filters)
         and _feature_summary_matches_priority(summary, priority_filters)
         and _feature_summary_matches_owner(summary, owner_filters)
+        and _feature_summary_matches_metadata(
+            summary,
+            "milestone",
+            milestone_filters,
+            default="unassigned",
+        )
+        and _feature_summary_matches_metadata(
+            summary,
+            "target_release",
+            target_release_filters,
+            default="unassigned",
+        )
+        and _feature_summary_matches_metadata(
+            summary,
+            "project",
+            project_filters,
+            default="unassigned",
+        )
+        and _feature_summary_matches_metadata(
+            summary,
+            "effort",
+            effort_filters,
+            default="unknown",
+        )
         and (
             ready_filter is None
             or bool(summary.get("ready", False)) is ready_filter
@@ -386,6 +502,8 @@ def filter_and_sort_feature_summaries(
     ]
 
     if sort_key is not None:
+        if sort_desc and sort_key in _FEATURE_SUMMARY_DEFAULT_VALUES:
+            return _feature_summary_sort_metadata_desc(filtered, sort_key)
         return sorted(
             filtered,
             key=lambda summary: _feature_summary_sort_value(summary, sort_key),
@@ -482,6 +600,10 @@ def build_feature_summaries(
     ready_filter: bool | None = None,
     priority_filters: tuple[str, ...] = (),
     owner_filters: tuple[str, ...] = (),
+    milestone_filters: tuple[str, ...] = (),
+    target_release_filters: tuple[str, ...] = (),
+    project_filters: tuple[str, ...] = (),
+    effort_filters: tuple[str, ...] = (),
     sort_key: str | None = None,
     sort_desc: bool = False,
     require_coverage: bool = False,
@@ -564,6 +686,10 @@ def build_feature_summaries(
         ready_filter=ready_filter,
         priority_filters=priority_filters,
         owner_filters=owner_filters,
+        milestone_filters=milestone_filters,
+        target_release_filters=target_release_filters,
+        project_filters=project_filters,
+        effort_filters=effort_filters,
         sort_key=sort_key,
         sort_desc=sort_desc,
     )
@@ -621,6 +747,10 @@ def build_status(
     feature_summary_ready: bool | None = None,
     feature_summary_priorities: tuple[str, ...] = (),
     feature_summary_owners: tuple[str, ...] = (),
+    feature_summary_milestones: tuple[str, ...] = (),
+    feature_summary_target_releases: tuple[str, ...] = (),
+    feature_summary_projects: tuple[str, ...] = (),
+    feature_summary_efforts: tuple[str, ...] = (),
     feature_summary_sort: str | None = None,
     feature_summary_sort_desc: bool = False,
     feature_summary_require_coverage: bool = False,
@@ -684,6 +814,10 @@ def build_status(
             ready_filter=feature_summary_ready,
             priority_filters=feature_summary_priorities,
             owner_filters=feature_summary_owners,
+            milestone_filters=feature_summary_milestones,
+            target_release_filters=feature_summary_target_releases,
+            project_filters=feature_summary_projects,
+            effort_filters=feature_summary_efforts,
             sort_key=feature_summary_sort,
             sort_desc=feature_summary_sort_desc,
             require_coverage=feature_summary_require_coverage,

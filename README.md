@@ -195,6 +195,7 @@ specspine status . --json
 specspine status . --json --validate
 specspine status . --json --validate --validation-warnings
 specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-priority high --feature-sort priority
+specspine status . --json --feature-summaries --feature-project "Native feature bundles" --feature-sort effort
 specspine status . --json --feature-summaries --feature-policy --feature-ready yes
 ```
 
@@ -438,7 +439,7 @@ Text output is reviewable Markdown with Summary, Metadata, Notes, Sources, Missi
 Partial bundles return `0` with missing files and blockers recorded. If no native feature files exist for the slug, the command returns `1`; invalid slugs return `2`. `--output` writes the text plan and refuses to overwrite an existing file unless `--force` is passed. `--output-dir` refuses to overwrite files this command would write unless `--force` is passed, and never deletes unknown files in the directory. With `--json --output` or `--json --output-dir`, stdout remains JSON while files are written.
 
 ```bash
-specspine status [path] [--json] [--adapters] [--validate] [--validation-warnings] [--feature-summaries] [--feature-require-coverage] [--feature-status STATUS] [--feature-ready READY] [--feature-priority VALUE] [--feature-owner VALUE] [--feature-sort KEY] [--feature-sort-desc]
+specspine status [path] [--json] [--adapters] [--validate] [--validation-warnings] [--feature-summaries] [--feature-require-coverage] [--feature-status STATUS] [--feature-ready READY] [--feature-priority VALUE] [--feature-owner VALUE] [--feature-milestone VALUE] [--feature-target-release VALUE] [--feature-project VALUE] [--feature-effort VALUE] [--feature-sort KEY] [--feature-sort-desc]
 ```
 
 Summarizes workspace completeness, fusion completeness, core artifact status, native feature files, feature lifecycle status, enabled upstreams, and recommended next actions. `--json` emits a stable compact context packet for agents and scripts. `--adapters` also checks external OpenSpec, Spec Kit, and Superpowers availability.
@@ -451,7 +452,7 @@ Summarizes workspace completeness, fusion completeness, core artifact status, na
 
 Add `--feature-require-coverage` when summary readiness must match `specspine feature ready --require-coverage`. In that mode each summary's `ready`, `ready_summary`, `blocking_checks`, and `next_actions` include the local Test Coverage gate; JSON summaries also include `coverage_required: true`, and text rows include `coverage=yes`. Default summaries omit that field and keep the existing readiness behavior.
 
-Feature summary filters and sorting are local and deterministic. `--feature-status STATUS` can be repeated and accepts `proposed`, `planned`, `in-progress`, `implemented`, `validated`, `archived`, `invalid`, and `unknown`. `--feature-ready READY` accepts `yes`, `no`, `true`, `false`, `ready`, and `not-ready`; with `--feature-require-coverage`, this filter uses coverage-required readiness. `--feature-priority VALUE` can be repeated and accepts `high`, `medium`, `low`, and `unknown`. `--feature-owner VALUE` can be repeated and performs a case-insensitive exact match, with `unassigned` matching missing owners. `--feature-sort KEY` accepts `slug`, `status`, `ready`, `gaps`, `blocking`, `tasks-open`, and `priority`; priority sort uses `high`, `medium`, `low`, then `unknown`, and `--feature-sort-desc` reverses the selected order. These options are valid only with `--feature-summaries`; unsupported values or missing `--feature-summaries` return code `2`.
+Feature summary filters and sorting are local and deterministic. `--feature-status STATUS` can be repeated and accepts `proposed`, `planned`, `in-progress`, `implemented`, `validated`, `archived`, `invalid`, and `unknown`. `--feature-ready READY` accepts `yes`, `no`, `true`, `false`, `ready`, and `not-ready`; with `--feature-require-coverage`, this filter uses coverage-required readiness. `--feature-priority VALUE` can be repeated and accepts `high`, `medium`, `low`, and `unknown`. `--feature-owner VALUE`, `--feature-milestone VALUE`, `--feature-target-release VALUE`, `--feature-project VALUE`, and `--feature-effort VALUE` can be repeated and perform case-insensitive exact matches against normalized summary metadata; `unassigned` matches missing owner, milestone, target release, and project values, while `unknown` matches missing effort. `--feature-sort KEY` accepts `slug`, `status`, `ready`, `gaps`, `blocking`, `tasks-open`, `priority`, `milestone`, `target-release`, `project`, and `effort`; priority sort uses `high`, `medium`, `low`, then `unknown`, effort sort uses `XS`, `S`, `M`, `L`, `XL`, `XXL`, then `unknown`, metadata sorts use normalized lexical order, and metadata default values stay last. `--feature-sort-desc` reverses the selected order while keeping metadata defaults last. These options are valid only with `--feature-summaries`; unsupported values or missing `--feature-summaries` return code `2`.
 
 ```bash
 specspine gates [path] [--json]

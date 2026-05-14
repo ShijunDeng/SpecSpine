@@ -74,6 +74,7 @@ from .status import (
     InvalidFeatureSummaryOption,
     build_status,
     parse_feature_summary_owner_filters,
+    parse_feature_summary_metadata_filters,
     parse_feature_summary_priority_filters,
     parse_feature_summary_ready_filter,
     parse_feature_summary_sort_key,
@@ -471,9 +472,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="filter feature summaries by owner; repeat to include more than one",
     )
     status_parser.add_argument(
+        "--feature-milestone",
+        action="append",
+        default=[],
+        metavar="VALUE",
+        help="filter feature summaries by milestone; repeat to include more than one",
+    )
+    status_parser.add_argument(
+        "--feature-target-release",
+        action="append",
+        default=[],
+        metavar="VALUE",
+        help="filter feature summaries by target release; repeat to include more than one",
+    )
+    status_parser.add_argument(
+        "--feature-project",
+        action="append",
+        default=[],
+        metavar="VALUE",
+        help="filter feature summaries by project; repeat to include more than one",
+    )
+    status_parser.add_argument(
+        "--feature-effort",
+        action="append",
+        default=[],
+        metavar="VALUE",
+        help="filter feature summaries by effort; repeat to include more than one",
+    )
+    status_parser.add_argument(
         "--feature-sort",
         metavar="KEY",
-        help="sort feature summaries by slug, status, ready, gaps, blocking, tasks-open, or priority",
+        help="sort feature summaries by slug, status, ready, gaps, blocking, tasks-open, priority, milestone, target-release, project, or effort",
     )
     status_parser.add_argument(
         "--feature-sort-desc",
@@ -1153,6 +1182,10 @@ def main(argv: list[str] | None = None) -> int:
             or args.feature_ready is not None
             or args.feature_priority
             or args.feature_owner
+            or args.feature_milestone
+            or args.feature_target_release
+            or args.feature_project
+            or args.feature_effort
             or args.feature_sort is not None
             or args.feature_sort_desc
             or args.feature_require_coverage
@@ -1161,7 +1194,9 @@ def main(argv: list[str] | None = None) -> int:
         if feature_summary_options_requested and not args.feature_summaries:
             print(
                 "--feature-status, --feature-ready, --feature-priority, "
-                "--feature-owner, --feature-sort, --feature-sort-desc, "
+                "--feature-owner, --feature-milestone, "
+                "--feature-target-release, --feature-project, "
+                "--feature-effort, --feature-sort, --feature-sort-desc, "
                 "--feature-require-coverage, and --feature-policy "
                 "require --feature-summaries.",
                 file=sys.stderr,
@@ -1172,6 +1207,10 @@ def main(argv: list[str] | None = None) -> int:
         feature_summary_ready: bool | None = None
         feature_summary_priorities: tuple[str, ...] = ()
         feature_summary_owners: tuple[str, ...] = ()
+        feature_summary_milestones: tuple[str, ...] = ()
+        feature_summary_target_releases: tuple[str, ...] = ()
+        feature_summary_projects: tuple[str, ...] = ()
+        feature_summary_efforts: tuple[str, ...] = ()
         feature_summary_sort: str | None = None
         if args.feature_summaries:
             try:
@@ -1187,6 +1226,22 @@ def main(argv: list[str] | None = None) -> int:
                 feature_summary_owners = parse_feature_summary_owner_filters(
                     args.feature_owner
                 )
+                feature_summary_milestones = parse_feature_summary_metadata_filters(
+                    args.feature_milestone,
+                    default="unassigned",
+                )
+                feature_summary_target_releases = parse_feature_summary_metadata_filters(
+                    args.feature_target_release,
+                    default="unassigned",
+                )
+                feature_summary_projects = parse_feature_summary_metadata_filters(
+                    args.feature_project,
+                    default="unassigned",
+                )
+                feature_summary_efforts = parse_feature_summary_metadata_filters(
+                    args.feature_effort,
+                    default="unknown",
+                )
                 feature_summary_sort = parse_feature_summary_sort_key(args.feature_sort)
             except InvalidFeatureSummaryOption as error:
                 print(str(error), file=sys.stderr)
@@ -1199,6 +1254,10 @@ def main(argv: list[str] | None = None) -> int:
             "feature_summary_ready": feature_summary_ready,
             "feature_summary_priorities": feature_summary_priorities,
             "feature_summary_owners": feature_summary_owners,
+            "feature_summary_milestones": feature_summary_milestones,
+            "feature_summary_target_releases": feature_summary_target_releases,
+            "feature_summary_projects": feature_summary_projects,
+            "feature_summary_efforts": feature_summary_efforts,
             "feature_summary_sort": feature_summary_sort,
             "feature_summary_sort_desc": args.feature_sort_desc,
             "feature_summary_require_coverage": args.feature_require_coverage,

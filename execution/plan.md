@@ -23,7 +23,7 @@
 - Feature-specific adapter handoff packets and per-adapter artifact materialization through `specspine adapters handoff --output-dir`.
 - Optional validation summaries in `specspine status --json --validate`.
 - Opt-in validation warning details in `specspine status --json --validate --validation-warnings`.
-- Optional native feature summaries in `specspine status --json --feature-summaries`, with local status/readiness filters, coverage-required readiness, and deterministic sorting.
+- Optional native feature summaries in `specspine status --json --feature-summaries`, with local status/readiness/metadata filters, coverage-required readiness, and deterministic sorting by operational and metadata fields.
 - Optional workspace readiness policy through `.specspine/policy.yaml`, `specspine policy`, `feature ready --policy`, and `status --feature-summaries --feature-policy`.
 - Repository-level quality gate definition export through `specspine gates`, including optional severity, owner, and CI metadata labels.
 - Unit tests and GitHub Actions coverage for the current command surface.
@@ -68,7 +68,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 
 - Should enforced lifecycle transitions eventually become the default, or remain opt-in for compatibility?
 - Should future warning categories beyond scaffold placeholders be exposed through the same opt-in status flag?
-- Should feature summary triage later add filters or sorts for local milestone, target release, project, or effort metadata?
+- Should future remote sync map local milestone, target release, project, or effort metadata into GitHub Issue Fields only after an explicit authenticated workflow is requested?
 - Should readiness summaries eventually be included in workspace status, or remain an explicit per-feature gate?
 - Should future policy sections cover lifecycle transitions or adapter handoff gates beyond readiness coverage?
 - Should the refreshed feature bundle template later grow explicit rollout-owner or implementation-file metadata, or stay minimal until a real workflow needs it?

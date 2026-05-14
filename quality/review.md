@@ -67,6 +67,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Validation can now warn on unchanged base workspace Markdown scaffold placeholders without failing warning-only workspaces.
 - Status packets can now opt into compact feature summaries for multi-feature triage while omitting them by default.
 - Feature summary packets can now be filtered by lifecycle status, readiness, priority, and owner, sorted by local summary fields including priority, and rejected with code `2` when summary-only options are used without `--feature-summaries`.
+- Feature summary packets can now also be filtered and sorted by milestone, target release, project, and effort, using local normalized metadata and keeping missing/default metadata buckets last for metadata sorts.
 - Feature summary readiness can now opt into coverage-required gating without changing default summary fields or text output.
 - Workspace readiness policy can now select which features require coverage-required readiness by default, feature id, priority, or status while preserving default command compatibility.
 - Feature execution checklists can now be exported without generation, GitHub credentials, or upstream tool calls.

@@ -200,6 +200,51 @@ def write_status_feature_filter_set(root: Path) -> None:
     )
 
 
+def write_status_feature_metadata_filter_set(root: Path) -> None:
+    write_status_feature_bundle(
+        root,
+        slug="alpha-xs",
+        status="validated",
+        milestone="M1",
+        target_release="2026.1",
+        project="Alpha Board",
+        effort="XS",
+    )
+    write_status_feature_bundle(
+        root,
+        slug="bravo-medium",
+        status="validated",
+        milestone="M2",
+        target_release="2026.2",
+        project="Bravo Board",
+        effort="M",
+    )
+    write_status_feature_bundle(
+        root,
+        slug="charlie-xl",
+        status="validated",
+        milestone="M2",
+        target_release="2026.3",
+        project="Alpha Board",
+        effort="XL",
+    )
+    write_status_feature_bundle(
+        root,
+        slug="delta-unassigned",
+        status="validated",
+        milestone="",
+        target_release="",
+        project="",
+        effort="",
+    )
+
+
+def write_status_policy(root: Path, body: str) -> None:
+    policy_path = root / ".specspine" / "policy.yaml"
+    policy_path.parent.mkdir(parents=True, exist_ok=True)
+    policy_path.write_text(body, encoding="utf-8")
+
+
 def feature_summary_slugs(payload: dict[str, object]) -> list[str]:
     summaries = payload["feature_summaries"]
     assert isinstance(summaries, list)
@@ -1013,98 +1058,194 @@ class StatusTests(TestCase):
                 ["zeta-planned", "middle-implemented", "alpha-validated"],
             )
 
-    def test_status_filters_and_sorts_ignore_extended_metadata_fields(self) -> None:
+    def test_status_feature_metadata_filters_single_and_repeated_values(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_workspace(root)
+            write_status_feature_metadata_filter_set(root)
+
+            cases = (
+                (
+                    ["--feature-milestone", "m2"],
+                    ["bravo-medium", "charlie-xl"],
+                ),
+                (
+                    ["--feature-milestone", "M1", "--feature-milestone", "m2"],
+                    ["alpha-xs", "bravo-medium", "charlie-xl"],
+                ),
+                (
+                    ["--feature-target-release", "2026.1"],
+                    ["alpha-xs"],
+                ),
+                (
+                    [
+                        "--feature-target-release",
+                        "2026.1",
+                        "--feature-target-release",
+                        "2026.3",
+                    ],
+                    ["alpha-xs", "charlie-xl"],
+                ),
+                (
+                    ["--feature-project", "alpha board"],
+                    ["alpha-xs", "charlie-xl"],
+                ),
+                (
+                    [
+                        "--feature-project",
+                        "Alpha Board",
+                        "--feature-project",
+                        "bravo board",
+                    ],
+                    ["alpha-xs", "bravo-medium", "charlie-xl"],
+                ),
+                (
+                    ["--feature-effort", "xs"],
+                    ["alpha-xs"],
+                ),
+                (
+                    ["--feature-effort", "XS", "--feature-effort", "xl"],
+                    ["alpha-xs", "charlie-xl"],
+                ),
+            )
+
+            for options, expected in cases:
+                with self.subTest(options=options):
+                    output = StringIO()
+                    with redirect_stdout(output):
+                        returncode = main(
+                            [
+                                "status",
+                                str(root),
+                                "--json",
+                                "--feature-summaries",
+                                *options,
+                            ]
+                        )
+
+                    self.assertEqual(returncode, 0)
+                    self.assertEqual(
+                        feature_summary_slugs(json.loads(output.getvalue())),
+                        expected,
+                    )
+
+    def test_status_feature_metadata_filters_or_within_field_and_and_across_fields(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_metadata_filter_set(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-milestone",
+                        "M1",
+                        "--feature-milestone",
+                        "m2",
+                        "--feature-target-release",
+                        "2026.1",
+                        "--feature-target-release",
+                        "2026.3",
+                        "--feature-project",
+                        "alpha board",
+                        "--feature-effort",
+                        "xs",
+                        "--feature-effort",
+                        "XL",
+                        "--feature-sort",
+                        "slug",
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            self.assertEqual(
+                feature_summary_slugs(json.loads(output.getvalue())),
+                ["alpha-xs", "charlie-xl"],
+            )
+
+    def test_status_feature_effort_filters_and_sort_normalize_case(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(root, slug="bravo-xs-lower", effort="xs")
+            write_status_feature_bundle(root, slug="alpha-xs-upper", effort="XS")
+            write_status_feature_bundle(root, slug="delta-m-lower", effort="m")
+            write_status_feature_bundle(root, slug="charlie-m-upper", effort="M")
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-effort",
+                        "XS",
+                        "--feature-effort",
+                        "m",
+                        "--feature-sort",
+                        "effort",
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            self.assertEqual(
+                feature_summary_slugs(json.loads(output.getvalue())),
+                [
+                    "alpha-xs-upper",
+                    "bravo-xs-lower",
+                    "charlie-m-upper",
+                    "delta-m-lower",
+                ],
+            )
+
+    def test_status_feature_metadata_filters_match_default_values(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(root, slug="old-metadata", status="validated")
             write_status_feature_bundle(
                 root,
-                slug="zeta-planned",
-                status="planned",
-                priority="low",
-                owner="Dana",
+                slug="assigned-metadata",
+                status="validated",
                 milestone="M1",
                 target_release="2026.1",
-                project="Project Z",
-                effort="L",
-            )
-            write_status_feature_bundle(
-                root,
-                slug="alpha-validated",
-                status="validated",
-                priority="high",
-                owner="Ada",
-                milestone="M3",
-                target_release="2026.3",
-                project="Project A",
+                project="Alpha Board",
                 effort="S",
             )
-            write_status_feature_bundle(
-                root,
-                slug="middle-implemented",
-                status="implemented",
-                include_quality=False,
-                open_task=True,
-                priority="medium",
-                owner="Dana",
-                milestone="M2",
-                target_release="2026.2",
-                project="Project M",
-                effort="M",
-            )
-            filtered_output = StringIO()
-            sorted_output = StringIO()
 
-            with redirect_stdout(filtered_output):
-                filtered_returncode = main(
-                    [
-                        "status",
-                        str(root),
-                        "--json",
-                        "--feature-summaries",
-                        "--feature-owner",
-                        "dana",
-                    ]
-                )
-            with redirect_stdout(sorted_output):
-                sorted_returncode = main(
-                    [
-                        "status",
-                        str(root),
-                        "--json",
-                        "--feature-summaries",
-                        "--feature-sort",
-                        "priority",
-                    ]
-                )
+            cases = (
+                (["--feature-milestone", "unassigned"], ["old-metadata"]),
+                (["--feature-target-release", "unassigned"], ["old-metadata"]),
+                (["--feature-project", "unassigned"], ["old-metadata"]),
+                (["--feature-effort", "unknown"], ["old-metadata"]),
+            )
 
-            self.assertEqual(filtered_returncode, 0)
-            self.assertEqual(sorted_returncode, 0)
-            self.assertEqual(
-                feature_summary_slugs(json.loads(filtered_output.getvalue())),
-                ["middle-implemented", "zeta-planned"],
-            )
-            sorted_payload = json.loads(sorted_output.getvalue())
-            self.assertEqual(
-                feature_summary_slugs(sorted_payload),
-                ["alpha-validated", "middle-implemented", "zeta-planned"],
-            )
-            self.assertEqual(
-                {
-                    summary["slug"]: (
-                        summary["milestone"],
-                        summary["target_release"],
-                        summary["project"],
-                        summary["effort"],
+            for options, expected in cases:
+                with self.subTest(options=options):
+                    output = StringIO()
+                    with redirect_stdout(output):
+                        returncode = main(
+                            [
+                                "status",
+                                str(root),
+                                "--json",
+                                "--feature-summaries",
+                                *options,
+                            ]
+                        )
+
+                    self.assertEqual(returncode, 0)
+                    self.assertEqual(
+                        feature_summary_slugs(json.loads(output.getvalue())),
+                        expected,
                     )
-                    for summary in sorted_payload["feature_summaries"]
-                },
-                {
-                    "alpha-validated": ("M3", "2026.3", "Project A", "S"),
-                    "middle-implemented": ("M2", "2026.2", "Project M", "M"),
-                    "zeta-planned": ("M1", "2026.1", "Project Z", "L"),
-                },
-            )
 
     def test_status_feature_priority_sort_covers_unknown_and_descending(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1171,6 +1312,174 @@ class StatusTests(TestCase):
                 ["charlie-unknown", "bravo-low", "alpha-medium", "delta-high"],
             )
 
+    def test_status_feature_metadata_sort_keys_and_descending_order(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_metadata_filter_set(root)
+
+            expected_by_key = {
+                "milestone": [
+                    "alpha-xs",
+                    "bravo-medium",
+                    "charlie-xl",
+                    "delta-unassigned",
+                ],
+                "target-release": [
+                    "alpha-xs",
+                    "bravo-medium",
+                    "charlie-xl",
+                    "delta-unassigned",
+                ],
+                "project": [
+                    "alpha-xs",
+                    "charlie-xl",
+                    "bravo-medium",
+                    "delta-unassigned",
+                ],
+                "effort": [
+                    "alpha-xs",
+                    "bravo-medium",
+                    "charlie-xl",
+                    "delta-unassigned",
+                ],
+            }
+            expected_desc_by_key = {
+                "milestone": [
+                    "bravo-medium",
+                    "charlie-xl",
+                    "alpha-xs",
+                    "delta-unassigned",
+                ],
+                "target-release": [
+                    "charlie-xl",
+                    "bravo-medium",
+                    "alpha-xs",
+                    "delta-unassigned",
+                ],
+                "project": [
+                    "bravo-medium",
+                    "alpha-xs",
+                    "charlie-xl",
+                    "delta-unassigned",
+                ],
+                "effort": [
+                    "charlie-xl",
+                    "bravo-medium",
+                    "alpha-xs",
+                    "delta-unassigned",
+                ],
+            }
+
+            for sort_key, expected in expected_by_key.items():
+                with self.subTest(sort_key=sort_key):
+                    output = StringIO()
+                    desc_output = StringIO()
+                    with redirect_stdout(output):
+                        returncode = main(
+                            [
+                                "status",
+                                str(root),
+                                "--json",
+                                "--feature-summaries",
+                                "--feature-sort",
+                                sort_key,
+                            ]
+                        )
+                    with redirect_stdout(desc_output):
+                        desc_returncode = main(
+                            [
+                                "status",
+                                str(root),
+                                "--json",
+                                "--feature-summaries",
+                                "--feature-sort",
+                                sort_key,
+                                "--feature-sort-desc",
+                            ]
+                        )
+
+                    self.assertEqual(returncode, 0)
+                    self.assertEqual(desc_returncode, 0)
+                    self.assertEqual(
+                        feature_summary_slugs(json.loads(output.getvalue())),
+                        expected,
+                    )
+                    self.assertEqual(
+                        feature_summary_slugs(json.loads(desc_output.getvalue())),
+                        expected_desc_by_key[sort_key],
+                    )
+
+    def test_status_feature_metadata_filters_coexist_with_policy_coverage_and_validate(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(
+                root,
+                slug="policy-target",
+                priority="high",
+                milestone="M1",
+                target_release="2026.1",
+                project="Alpha Board",
+                effort="M",
+            )
+            write_status_feature_bundle(
+                root,
+                slug="other-target",
+                priority="low",
+                milestone="M2",
+                target_release="2026.2",
+                project="Bravo Board",
+                effort="XS",
+            )
+            write_status_policy(
+                root,
+                "\n".join(
+                    [
+                        "readiness:",
+                        "  require_coverage:",
+                        "    enabled: true",
+                        "    priorities:",
+                        "      - high",
+                    ]
+                )
+                + "\n",
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--validate",
+                        "--feature-summaries",
+                        "--feature-policy",
+                        "--feature-require-coverage",
+                        "--feature-milestone",
+                        "m1",
+                        "--feature-project",
+                        "alpha board",
+                        "--feature-effort",
+                        "m",
+                        "--feature-sort",
+                        "effort",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertIn("validation", payload)
+            self.assertEqual(feature_summary_slugs(payload), ["policy-target"])
+            summary = payload["feature_summaries"][0]
+            self.assertTrue(summary["coverage_required"])
+            self.assertTrue(summary["policy_coverage_required"])
+            self.assertEqual(
+                summary["policy_source"],
+                str(root.resolve() / ".specspine" / "policy.yaml"),
+            )
+
     def test_status_text_feature_summaries_apply_filters_and_sorting(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1200,6 +1509,51 @@ class StatusTests(TestCase):
                 feature_summary_text.index("zeta-planned -"),
                 feature_summary_text.index("middle-implemented -"),
             )
+
+    def test_status_text_feature_summaries_keep_format_with_metadata_filter_and_sort(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_metadata_filter_set(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--feature-summaries",
+                        "--feature-project",
+                        "alpha board",
+                        "--feature-sort",
+                        "effort",
+                        "--feature-sort-desc",
+                    ]
+                )
+
+            text = output.getvalue()
+            self.assertEqual(returncode, 0)
+            self.assertIn("Feature summaries:", text)
+            self.assertIn("Recommended next actions:", text)
+            feature_summary_text = text.split("Feature summaries:", 1)[1]
+            self.assertIn(
+                "charlie-xl - status=validated priority=unknown "
+                "owner=unassigned milestone=M2 target_release=2026.3 "
+                "ready=yes tasks=2/0 gaps=0 blocking=0",
+                feature_summary_text,
+            )
+            self.assertIn(
+                "alpha-xs - status=validated priority=unknown "
+                "owner=unassigned milestone=M1 target_release=2026.1 "
+                "ready=yes tasks=2/0 gaps=0 blocking=0",
+                feature_summary_text,
+            )
+            self.assertLess(
+                feature_summary_text.index("charlie-xl -"),
+                feature_summary_text.index("alpha-xs -"),
+            )
+            self.assertNotIn("bravo-medium -", feature_summary_text)
+            self.assertNotIn("delta-unassigned -", feature_summary_text)
 
     def test_status_feature_summary_filter_no_matches_text_and_json(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1315,16 +1669,24 @@ class StatusTests(TestCase):
                             "--feature-summaries",
                             "--feature-status",
                             "validated",
+                            "--feature-milestone",
+                            "M1",
+                            "--feature-target-release",
+                            "2026.1",
+                            "--feature-project",
+                            "Alpha Board",
+                            "--feature-effort",
+                            "XS",
                             "--feature-ready",
                             "yes",
                             "--feature-sort",
-                            "slug",
+                            "effort",
                         ]
                     )
 
             payload = json.loads(output.getvalue())
             self.assertEqual(returncode, 0)
-            self.assertEqual(feature_summary_slugs(payload), ["alpha-validated"])
+            self.assertEqual(feature_summary_slugs(payload), [])
             self.assertIn("warning_checks", payload["validation"])
             subprocess_run.assert_not_called()
             subprocess_popen.assert_not_called()
@@ -1345,6 +1707,10 @@ class StatusTests(TestCase):
                 ["--feature-ready", "yes"],
                 ["--feature-priority", "high"],
                 ["--feature-owner", "Dana"],
+                ["--feature-milestone", "M1"],
+                ["--feature-target-release", "2026.1"],
+                ["--feature-project", "Alpha Board"],
+                ["--feature-effort", "M"],
                 ["--feature-sort", "slug"],
                 ["--feature-sort-desc"],
                 ["--feature-require-coverage"],
@@ -1360,6 +1726,10 @@ class StatusTests(TestCase):
                     self.assertEqual(returncode, 2)
                     self.assertEqual(stdout.getvalue(), "")
                     self.assertIn("require --feature-summaries", stderr.getvalue())
+                    self.assertIn("--feature-milestone", stderr.getvalue())
+                    self.assertIn("--feature-target-release", stderr.getvalue())
+                    self.assertIn("--feature-project", stderr.getvalue())
+                    self.assertIn("--feature-effort", stderr.getvalue())
                     self.assertIn("--feature-require-coverage", stderr.getvalue())
 
     def test_status_feature_summary_invalid_options_return_two(self) -> None:
@@ -1385,6 +1755,11 @@ class StatusTests(TestCase):
                     self.assertEqual(returncode, 2)
                     self.assertEqual(stdout.getvalue(), "")
                     self.assertIn(expected_error, stderr.getvalue())
+                    if "sort" in expected_error:
+                        self.assertIn("milestone", stderr.getvalue())
+                        self.assertIn("target-release", stderr.getvalue())
+                        self.assertIn("project", stderr.getvalue())
+                        self.assertIn("effort", stderr.getvalue())
 
     def test_status_validate_reports_failed_checks_but_returns_zero(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1431,6 +1806,7 @@ class StatusTests(TestCase):
                 feature_summary_sort: str | None = None,
                 feature_summary_sort_desc: bool = False,
                 feature_summary_require_coverage: bool = False,
+                **kwargs: object,
             ) -> dict[str, object]:
                 return build_status(
                     path,
@@ -1443,6 +1819,7 @@ class StatusTests(TestCase):
                     feature_summary_sort=feature_summary_sort,
                     feature_summary_sort_desc=feature_summary_sort_desc,
                     feature_summary_require_coverage=feature_summary_require_coverage,
+                    **kwargs,
                     adapter_probe=fake_available_adapters,
                 )
 
@@ -1486,6 +1863,7 @@ class StatusTests(TestCase):
                 feature_summary_sort: str | None = None,
                 feature_summary_sort_desc: bool = False,
                 feature_summary_require_coverage: bool = False,
+                **kwargs: object,
             ) -> dict[str, object]:
                 return build_status(
                     path,
@@ -1498,6 +1876,7 @@ class StatusTests(TestCase):
                     feature_summary_sort=feature_summary_sort,
                     feature_summary_sort_desc=feature_summary_sort_desc,
                     feature_summary_require_coverage=feature_summary_require_coverage,
+                    **kwargs,
                     adapter_probe=fake_available_adapters,
                 )
 
@@ -1549,6 +1928,7 @@ class StatusTests(TestCase):
                 feature_summary_sort: str | None = None,
                 feature_summary_sort_desc: bool = False,
                 feature_summary_require_coverage: bool = False,
+                **kwargs: object,
             ) -> dict[str, object]:
                 return build_status(
                     path,
@@ -1561,6 +1941,7 @@ class StatusTests(TestCase):
                     feature_summary_sort=feature_summary_sort,
                     feature_summary_sort_desc=feature_summary_sort_desc,
                     feature_summary_require_coverage=feature_summary_require_coverage,
+                    **kwargs,
                     adapter_probe=fake_available_adapters,
                 )
 

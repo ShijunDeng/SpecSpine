@@ -33,7 +33,7 @@ SpecSpine feature bundles need richer local triage context before maintainers de
 - Calling GitHub APIs, invoking `gh`, reading tokens, or writing remote issue fields.
 - Adding dependencies or vendoring upstream source code.
 - Requiring every existing feature file to be edited before it parses successfully.
-- Adding new status filters for milestone, release, project, or effort.
+- Calling remote services or syncing milestone, release, project, or effort values automatically.
 
 ## Acceptance Criteria
 

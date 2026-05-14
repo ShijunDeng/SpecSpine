@@ -47,6 +47,7 @@ class DogfoodArtifactsTests(TestCase):
             "adapter-handoff-artifacts",
             "workspace-readiness-policy",
             "extended-feature-metadata",
+            "feature-metadata-filters",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -92,6 +93,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:adapter-handoff-artifacts", "pass"), checks)
         self.assertIn(("feature.status_consistency:workspace-readiness-policy", "pass"), checks)
         self.assertIn(("feature.status_consistency:extended-feature-metadata", "pass"), checks)
+        self.assertIn(("feature.status_consistency:feature-metadata-filters", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -104,6 +106,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries",
             "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug",
             "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries --feature-require-coverage --feature-ready yes --feature-sort priority",
+            "PYTHONPATH=src python3 -m specspine status . --json --feature-summaries --feature-project \"Native feature bundles\" --feature-sort effort",
             "PYTHONPATH=src python3 -m specspine policy . --json",
             "PYTHONPATH=src python3 -m specspine status . --json --feature-summaries --feature-policy --feature-ready yes",
             "PYTHONPATH=src python3 -m specspine gates . --json",
@@ -268,6 +271,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/extended-feature-metadata.md",
             "execution/features/extended-feature-metadata.md",
             "quality/features/extended-feature-metadata.md",
+            "specs/features/feature-metadata-filters.md",
+            "execution/features/feature-metadata-filters.md",
+            "quality/features/feature-metadata-filters.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -491,6 +497,35 @@ class DogfoodArtifactsTests(TestCase):
         policy_report = build_feature_ready_report(
             REPO_ROOT,
             "extended-feature-metadata",
+            policy_applied=True,
+            coverage_required_by_policy=False,
+            policy_source=str(REPO_ROOT / ".specspine" / "policy.yaml"),
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+        self.assertTrue(policy_report.ready)
+        self.assertTrue(policy_report.policy_applied)
+        self.assertFalse(policy_report.coverage_required_by_policy)
+        self.assertEqual(policy_report.summary["fail"], 0)
+
+    def test_feature_metadata_filters_dogfood_bundle_passes_default_coverage_and_policy_gates(self) -> None:
+        default_report = build_feature_ready_report(
+            REPO_ROOT,
+            "feature-metadata-filters",
+        )
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "feature-metadata-filters",
+            require_coverage=True,
+        )
+        policy_report = build_feature_ready_report(
+            REPO_ROOT,
+            "feature-metadata-filters",
             policy_applied=True,
             coverage_required_by_policy=False,
             policy_source=str(REPO_ROOT / ".specspine" / "policy.yaml"),
