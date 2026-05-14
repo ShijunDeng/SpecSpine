@@ -29,6 +29,7 @@
 - [x] Implement local feature summary filters and sorting for `specspine status --feature-summaries`.
 - [x] Implement coverage-required readiness summaries for `specspine status --feature-summaries --feature-require-coverage`.
 - [x] Implement optional workspace readiness policy with `specspine policy`, `feature ready --policy`, and `status --feature-summaries --feature-policy`.
+- [x] Implement extended local feature metadata for generated specs, summaries, handoffs, test packets, issue drafts, PR drafts, and sync-plan artifacts.
 - [x] Implement `specspine adapters lifecycle` static adapter lifecycle mapping export.
 - [x] Implement `specspine adapters handoff` feature-specific adapter handoff export.
 - [x] Implement `specspine adapters handoff --output-dir` local per-adapter artifact materialization.
@@ -57,6 +58,7 @@
 - [x] Dogfood adapter feature handoff with `adapter-feature-handoff`.
 - [x] Dogfood adapter handoff artifacts with `adapter-handoff-artifacts`.
 - [x] Dogfood workspace readiness policy with `workspace-readiness-policy`.
+- [x] Dogfood extended feature metadata with `extended-feature-metadata`.
 
 ## Next
 

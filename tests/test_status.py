@@ -24,6 +24,10 @@ def write_status_feature_bundle(
     open_task: bool = False,
     priority: str | None = None,
     owner: str | None = None,
+    milestone: str | None = None,
+    target_release: str | None = None,
+    project: str | None = None,
+    effort: str | None = None,
 ) -> None:
     (root / "specs" / "features").mkdir(parents=True, exist_ok=True)
     (root / "execution" / "features").mkdir(parents=True, exist_ok=True)
@@ -33,6 +37,14 @@ def write_status_feature_bundle(
         spec_metadata_lines.append(f"Priority: {priority}")
     if owner is not None:
         spec_metadata_lines.append(f"Owner: {owner}")
+    if milestone is not None:
+        spec_metadata_lines.append(f"Milestone: {milestone}")
+    if target_release is not None:
+        spec_metadata_lines.append(f"Target Release: {target_release}")
+    if project is not None:
+        spec_metadata_lines.append(f"Project: {project}")
+    if effort is not None:
+        spec_metadata_lines.append(f"Effort: {effort}")
     (root / "specs" / "features" / f"{slug}.md").write_text(
         "\n".join(
             [
@@ -282,15 +294,19 @@ class StatusTests(TestCase):
                     "complete",
                     "feature_id",
                     "gaps",
+                    "effort",
+                    "milestone",
                     "missing_files",
                     "next_actions",
                     "owner",
                     "priority",
+                    "project",
                     "ready",
                     "ready_summary",
                     "recommended_commands",
                     "slug",
                     "status",
+                    "target_release",
                     "tasks_summary",
                 },
             )
@@ -299,6 +315,10 @@ class StatusTests(TestCase):
             self.assertEqual(summary["status"], "validated")
             self.assertEqual(summary["priority"], "unknown")
             self.assertEqual(summary["owner"], "unassigned")
+            self.assertEqual(summary["milestone"], "unassigned")
+            self.assertEqual(summary["target_release"], "unassigned")
+            self.assertEqual(summary["project"], "unassigned")
+            self.assertEqual(summary["effort"], "unknown")
             self.assertTrue(summary["complete"])
             self.assertTrue(summary["ready"])
             self.assertEqual(summary["missing_files"], [])
@@ -346,6 +366,30 @@ class StatusTests(TestCase):
                     for action in summary["next_actions"]
                 )
             )
+
+    def test_status_feature_summaries_include_extended_metadata(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(
+                root,
+                priority="high",
+                owner="Platform Team",
+                milestone="Beta",
+                target_release="2026.2",
+                project="Triage Board",
+                effort="M",
+            )
+
+            payload = build_status(root, include_feature_summaries=True)
+            summary = payload["feature_summaries"][0]
+
+            self.assertEqual(summary["priority"], "high")
+            self.assertEqual(summary["owner"], "Platform Team")
+            self.assertEqual(summary["milestone"], "Beta")
+            self.assertEqual(summary["target_release"], "2026.2")
+            self.assertEqual(summary["project"], "Triage Board")
+            self.assertEqual(summary["effort"], "M")
 
     def test_status_feature_require_coverage_ready_filter_uses_coverage_gate(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -618,7 +662,8 @@ class StatusTests(TestCase):
             self.assertIn("Feature summaries:", text)
             self.assertIn(
                 "add-dark-mode - status=validated priority=unknown "
-                "owner=unassigned ready=yes tasks=2/0 gaps=0 blocking=0",
+                "owner=unassigned milestone=unassigned "
+                "target_release=unassigned ready=yes tasks=2/0 gaps=0 blocking=0",
                 text,
             )
             self.assertNotIn("coverage=", text)
@@ -646,7 +691,8 @@ class StatusTests(TestCase):
             self.assertEqual(returncode, 0)
             self.assertIn(
                 "add-dark-mode - status=validated priority=unknown "
-                "owner=unassigned ready=no coverage=yes tasks=2/0 gaps=0 blocking=1",
+                "owner=unassigned milestone=unassigned "
+                "target_release=unassigned ready=no coverage=yes tasks=2/0 gaps=0 blocking=1",
                 text,
             )
             self.assertIn("feature.test_coverage", text)
@@ -965,6 +1011,99 @@ class StatusTests(TestCase):
             self.assertEqual(
                 feature_summary_slugs(json.loads(desc_output.getvalue())),
                 ["zeta-planned", "middle-implemented", "alpha-validated"],
+            )
+
+    def test_status_filters_and_sorts_ignore_extended_metadata_fields(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(
+                root,
+                slug="zeta-planned",
+                status="planned",
+                priority="low",
+                owner="Dana",
+                milestone="M1",
+                target_release="2026.1",
+                project="Project Z",
+                effort="L",
+            )
+            write_status_feature_bundle(
+                root,
+                slug="alpha-validated",
+                status="validated",
+                priority="high",
+                owner="Ada",
+                milestone="M3",
+                target_release="2026.3",
+                project="Project A",
+                effort="S",
+            )
+            write_status_feature_bundle(
+                root,
+                slug="middle-implemented",
+                status="implemented",
+                include_quality=False,
+                open_task=True,
+                priority="medium",
+                owner="Dana",
+                milestone="M2",
+                target_release="2026.2",
+                project="Project M",
+                effort="M",
+            )
+            filtered_output = StringIO()
+            sorted_output = StringIO()
+
+            with redirect_stdout(filtered_output):
+                filtered_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-owner",
+                        "dana",
+                    ]
+                )
+            with redirect_stdout(sorted_output):
+                sorted_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-sort",
+                        "priority",
+                    ]
+                )
+
+            self.assertEqual(filtered_returncode, 0)
+            self.assertEqual(sorted_returncode, 0)
+            self.assertEqual(
+                feature_summary_slugs(json.loads(filtered_output.getvalue())),
+                ["middle-implemented", "zeta-planned"],
+            )
+            sorted_payload = json.loads(sorted_output.getvalue())
+            self.assertEqual(
+                feature_summary_slugs(sorted_payload),
+                ["alpha-validated", "middle-implemented", "zeta-planned"],
+            )
+            self.assertEqual(
+                {
+                    summary["slug"]: (
+                        summary["milestone"],
+                        summary["target_release"],
+                        summary["project"],
+                        summary["effort"],
+                    )
+                    for summary in sorted_payload["feature_summaries"]
+                },
+                {
+                    "alpha-validated": ("M3", "2026.3", "Project A", "S"),
+                    "middle-implemented": ("M2", "2026.2", "Project M", "M"),
+                    "zeta-planned": ("M1", "2026.1", "Project Z", "L"),
+                },
             )
 
     def test_status_feature_priority_sort_covers_unknown_and_descending(self) -> None:

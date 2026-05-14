@@ -51,7 +51,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine adapters lifecycle . --json` when an agent or maintainer needs local status-to-upstream phase definitions before adapter sync or upstream planning.
 - Use `specspine adapters handoff <slug> . --json` when an agent needs OpenSpec, Spec Kit, and Superpowers handoff steps for one native feature without executing upstream tooling; add `--output-dir .specspine/adapter-handoff/<slug>` when separate reviewable adapter files and a safety manifest should be materialized locally.
 - Use `specspine validate . --fusion --features` as the project-level gate.
-- Let `specspine feature new <slug> . --title "..." --why "..."` seed the feature's spec, execution, quality, handoff, task issue draft, tests, PR, ready, validation workflow, and initial `Priority: medium` / `Owner: unassigned` metadata before implementation begins.
+- Let `specspine feature new <slug> . --title "..." --why "..."` seed the feature's spec, execution, quality, handoff, task issue draft, tests, PR, ready, validation workflow, and initial local triage metadata before implementation begins.
 - Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`; prefer `--enforce-transition` for ordered lifecycle advancement while keeping manual updates available by default.
 - Run `specspine feature ready <slug> . --json` before enforced archive updates so readiness blockers are resolved separately from transition rules.
 - Continue dogfooding generated templates and tighten them when repeated manual edits appear.
@@ -68,7 +68,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 
 - Should enforced lifecycle transitions eventually become the default, or remain opt-in for compatibility?
 - Should future warning categories beyond scaffold placeholders be exposed through the same opt-in status flag?
-- Should feature summary triage later need richer structured metadata beyond local `Priority:` and `Owner:`, such as milestone, target release, or remote project fields?
+- Should feature summary triage later add filters or sorts for local milestone, target release, project, or effort metadata?
 - Should readiness summaries eventually be included in workspace status, or remain an explicit per-feature gate?
 - Should future policy sections cover lifecycle transitions or adapter handoff gates beyond readiness coverage?
 - Should the refreshed feature bundle template later grow explicit rollout-owner or implementation-file metadata, or stay minimal until a real workflow needs it?

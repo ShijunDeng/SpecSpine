@@ -207,6 +207,17 @@ def _empty_count_summary() -> dict[str, int]:
     }
 
 
+def _empty_feature_metadata() -> FeatureMetadata:
+    return FeatureMetadata(
+        priority="unknown",
+        owner="unassigned",
+        milestone="unassigned",
+        target_release="unassigned",
+        project="unassigned",
+        effort="unknown",
+    )
+
+
 def parse_feature_summary_status_filters(values: list[str] | None) -> tuple[str, ...]:
     statuses: list[str] = []
     for value in values or []:
@@ -404,8 +415,7 @@ def _invalid_feature_summary(
         "feature_id": slug,
         "slug": slug,
         "status": "invalid",
-        "priority": "unknown",
-        "owner": "unassigned",
+        **_empty_feature_metadata().as_dict(),
         "complete": bool(feature.get("complete", False)),
         "ready": False,
         "missing_files": missing_files,
@@ -440,8 +450,7 @@ def _missing_feature_summary(
         "feature_id": slug,
         "slug": slug,
         "status": str(feature.get("status") or "unknown"),
-        "priority": "unknown",
-        "owner": "unassigned",
+        **_empty_feature_metadata().as_dict(),
         "complete": bool(feature.get("complete", False)),
         "ready": False,
         "missing_files": missing_files,
@@ -489,7 +498,7 @@ def build_feature_summaries(
         try:
             metadata = read_feature_metadata(resolved_root, slug)
         except InvalidFeatureSlug:
-            metadata = FeatureMetadata(priority="unknown", owner="unassigned")
+            metadata = _empty_feature_metadata()
         policy_coverage_required = False
         if policy is not None:
             policy_coverage_required = policy.require_coverage.requires_coverage(
@@ -531,8 +540,7 @@ def build_feature_summaries(
             "feature_id": report.feature_id,
             "slug": report.feature_id,
             "status": report.status,
-            "priority": metadata.priority,
-            "owner": metadata.owner,
+            **metadata.as_dict(),
             "complete": bool(feature.get("complete", False)),
             "ready": report.ready,
             "missing_files": list(report.missing_files),
@@ -790,6 +798,8 @@ def render_status_text(status: dict[str, Any]) -> str:
                     f"status={summary['status']} "
                     f"priority={summary['priority']} "
                     f"owner={summary['owner']} "
+                    f"milestone={summary['milestone']} "
+                    f"target_release={summary['target_release']} "
                     f"ready={'yes' if summary['ready'] else 'no'} "
                     f"{coverage_marker}"
                     f"tasks={tasks['done']}/{tasks['open']} "

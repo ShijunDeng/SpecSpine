@@ -29,6 +29,7 @@ from specspine.features import (
     parse_release_readiness,
     parse_test_coverage,
     parse_test_plan,
+    read_feature_metadata,
     set_feature_status,
 )
 from specspine.status import build_status
@@ -145,12 +146,45 @@ def add_feature_metadata(
     *,
     priority: str = "high",
     owner: str = "Platform Team",
+    milestone: str = "Beta",
+    target_release: str = "2026.2",
+    project: str = "Triage Board",
+    effort: str = "M",
 ) -> None:
     spec = root / "specs" / "features" / f"{slug}.md"
     content = spec.read_text(encoding="utf-8")
     content = content.replace(
         f"Feature ID: {slug}\n",
-        f"Feature ID: {slug}\nPriority: {priority}\nOwner: {owner}\n",
+        (
+            f"Feature ID: {slug}\n"
+            f"Priority: {priority}\n"
+            f"Owner: {owner}\n"
+            f"Milestone: {milestone}\n"
+            f"Target Release: {target_release}\n"
+            f"Project: {project}\n"
+            f"Effort: {effort}\n"
+        ),
+        1,
+    )
+    spec.write_text(content, encoding="utf-8")
+
+
+def add_legacy_priority_owner_metadata(
+    root: Path,
+    slug: str = "add-dark-mode",
+    *,
+    priority: str = "high",
+    owner: str = "Platform Team",
+) -> None:
+    spec = root / "specs" / "features" / f"{slug}.md"
+    content = spec.read_text(encoding="utf-8")
+    content = content.replace(
+        f"Feature ID: {slug}\n",
+        (
+            f"Feature ID: {slug}\n"
+            f"Priority: {priority}\n"
+            f"Owner: {owner}\n"
+        ),
         1,
     )
     spec.write_text(content, encoding="utf-8")
@@ -185,6 +219,10 @@ class FeatureBundleTests(TestCase):
             )
             self.assertIn("Priority: medium", spec)
             self.assertIn("Owner: unassigned", spec)
+            self.assertIn("Milestone: unassigned", spec)
+            self.assertIn("Target Release: unassigned", spec)
+            self.assertIn("Project: unassigned", spec)
+            self.assertIn("Effort: unknown", spec)
             self.assertIn("## Why", spec)
             self.assertIn("## Users", spec)
             self.assertIn("## Scope", spec)
@@ -260,6 +298,132 @@ class FeatureBundleTests(TestCase):
             report = build_validation_report(root, include_features=True)
             self.assertTrue(report["ok"])
             self.assertEqual(validation_exit_code(report), 0)
+
+    def test_read_feature_metadata_defaults_for_old_files(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+
+            metadata = read_feature_metadata(root, "add-dark-mode")
+
+            self.assertEqual(
+                metadata.as_dict(),
+                {
+                    "effort": "unknown",
+                    "milestone": "unassigned",
+                    "owner": "unassigned",
+                    "priority": "unknown",
+                    "project": "unassigned",
+                    "target_release": "unassigned",
+                },
+            )
+
+    def test_read_feature_metadata_parses_extended_fields(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            add_feature_metadata(root)
+
+            metadata = read_feature_metadata(root, "add-dark-mode")
+
+            self.assertEqual(
+                metadata.as_dict(),
+                {
+                    "effort": "M",
+                    "milestone": "Beta",
+                    "owner": "Platform Team",
+                    "priority": "high",
+                    "project": "Triage Board",
+                    "target_release": "2026.2",
+                },
+            )
+
+    def test_read_feature_metadata_is_case_and_whitespace_stable(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            spec = root / "specs" / "features" / "add-dark-mode.md"
+            spec.write_text(
+                "\n".join(
+                    [
+                        "# Add dark mode",
+                        "",
+                        "feature id: add-dark-mode",
+                        "STATUS: validated",
+                        "  priority  :  HIGH  ",
+                        "\tOwner\t:\t Platform Team  ",
+                        "milestone:   Beta  ",
+                        "TARGET RELEASE :  2026.2 ",
+                        "Project:   Triage Board",
+                        "effort :   M  ",
+                        "",
+                        "## Acceptance Criteria",
+                        "",
+                        "- [x] Users can enable dark mode.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            metadata = read_feature_metadata(root, "add-dark-mode")
+
+            self.assertEqual(
+                metadata.as_dict(),
+                {
+                    "effort": "M",
+                    "milestone": "Beta",
+                    "owner": "Platform Team",
+                    "priority": "high",
+                    "project": "Triage Board",
+                    "target_release": "2026.2",
+                },
+            )
+
+    def test_legacy_priority_owner_outputs_default_extended_metadata(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            add_legacy_priority_owner_metadata(root)
+
+            expected = {
+                "effort": "unknown",
+                "milestone": "unassigned",
+                "owner": "Platform Team",
+                "priority": "high",
+                "project": "unassigned",
+                "target_release": "unassigned",
+            }
+
+            issue = build_issue_draft(root, "add-dark-mode")
+            pr = build_pull_request_draft(root, "add-dark-mode")
+            sync_plan = build_feature_sync_plan(root, "add-dark-mode")
+            handoff = build_feature_handoff_report(root, "add-dark-mode")
+            tests = build_feature_tests_report(root, "add-dark-mode")
+
+            for payload in (
+                issue.as_dict(),
+                pr.as_dict(),
+                sync_plan.as_dict(),
+                handoff.as_dict(),
+                tests.as_dict(),
+            ):
+                with self.subTest(output=payload["feature_id"]):
+                    self.assertEqual(payload["metadata"], expected)
+
+            for body in (
+                issue.body,
+                pr.body,
+                *(command.body for command in sync_plan.commands),
+            ):
+                self.assertIn("- Milestone: unassigned", body)
+                self.assertIn("- Target Release: unassigned", body)
+                self.assertIn("- Project: unassigned", body)
+                self.assertIn("- Effort: unknown", body)
 
     def test_new_feature_bundle_validates_but_is_not_ready(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1223,7 +1387,17 @@ class FeatureBundleTests(TestCase):
             self.assertEqual(payload["feature_id"], "add-dark-mode")
             self.assertEqual(payload["status"], "validated")
             self.assertTrue(payload["ready"])
-            self.assertEqual(payload["metadata"], {"owner": "Platform Team", "priority": "high"})
+            self.assertEqual(
+                payload["metadata"],
+                {
+                    "effort": "M",
+                    "milestone": "Beta",
+                    "owner": "Platform Team",
+                    "priority": "high",
+                    "project": "Triage Board",
+                    "target_release": "2026.2",
+                },
+            )
             self.assertEqual(payload["missing_files"], [])
             self.assertEqual(payload["gaps"], [])
             self.assertEqual(payload["blocking_checks"], [])
@@ -1232,7 +1406,7 @@ class FeatureBundleTests(TestCase):
                 {
                     "commands_total": 4,
                     "issue_commands": 1,
-                    "notes_total": 6,
+                    "notes_total": 7,
                     "pull_request_commands": 1,
                     "task_issue_commands": 2,
                 },
@@ -1256,6 +1430,8 @@ class FeatureBundleTests(TestCase):
             for command in payload["commands"]:
                 self.assertEqual(set(command), expected_command_keys)
                 self.assertTrue(command["body"].strip())
+                self.assertIn("## Metadata", command["body"])
+                self.assertIn("- Target Release: 2026.2", command["body"])
                 self.assertTrue(
                     command["body_source"].startswith(
                         ".specspine/sync-plan/add-dark-mode/"
@@ -1354,6 +1530,13 @@ class FeatureBundleTests(TestCase):
                 for arg in command["argv"]
             ]
             self.assertNotIn("--assignee", flat_argv)
+            self.assertNotIn("--milestone", flat_argv)
+            self.assertNotIn("--project", flat_argv)
+            self.assertNotIn("--field", flat_argv)
+            self.assertNotIn("Beta", flat_argv)
+            self.assertNotIn("2026.2", flat_argv)
+            self.assertNotIn("Triage Board", flat_argv)
+            self.assertNotIn("M", flat_argv)
             notes_text = "\n".join(payload["notes"])
             self.assertIn("did not execute gh", notes_text)
             self.assertIn("authenticate GitHub CLI", notes_text)
@@ -1562,6 +1745,16 @@ class FeatureBundleTests(TestCase):
 
             manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["feature_id"], "add-dark-mode")
+            self.assertEqual(manifest["metadata"]["milestone"], "Beta")
+            self.assertEqual(manifest["metadata"]["target_release"], "2026.2")
+            self.assertIn(
+                "- Project: Triage Board",
+                (output_dir / "feature-issue.md").read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                "- Effort: M",
+                (output_dir / "pull-request.md").read_text(encoding="utf-8"),
+            )
             self.assertEqual(manifest["artifact_version"], 1)
             self.assertEqual(manifest["artifact_root"], ".")
             self.assertEqual(manifest["artifacts"]["manifest"], "manifest.json")
@@ -3028,6 +3221,7 @@ class FeatureBundleTests(TestCase):
                     "blocking_checks",
                     "feature_id",
                     "gaps",
+                    "metadata",
                     "missing_files",
                     "quality_checks",
                     "ready",
@@ -4896,6 +5090,33 @@ class FeatureBundleTests(TestCase):
                 "TODO: Add `quality/features/add-dark-mode.md` with a `## Test Plan` section.",
                 payload["body"],
             )
+
+    def test_feature_issue_and_pr_include_extended_metadata(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            add_feature_metadata(root)
+
+            issue = build_issue_draft(root, "add-dark-mode")
+            pr = build_pull_request_draft(root, "add-dark-mode")
+
+            expected = {
+                "effort": "M",
+                "milestone": "Beta",
+                "owner": "Platform Team",
+                "priority": "high",
+                "project": "Triage Board",
+                "target_release": "2026.2",
+            }
+            self.assertEqual(issue.as_dict()["metadata"], expected)
+            self.assertEqual(pr.as_dict()["metadata"], expected)
+            for body in (issue.body, pr.body):
+                self.assertIn("## Metadata", body)
+                self.assertIn("- Milestone: Beta", body)
+                self.assertIn("- Target Release: 2026.2", body)
+                self.assertIn("- Project: Triage Board", body)
+                self.assertIn("- Effort: M", body)
 
     def test_feature_issue_partial_bundle_text_lists_missing_files(self) -> None:
         with TemporaryDirectory() as tmp:

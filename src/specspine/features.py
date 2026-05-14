@@ -50,11 +50,19 @@ class InvalidFeatureStatus(ValueError):
 class FeatureMetadata:
     priority: str
     owner: str
+    milestone: str
+    target_release: str
+    project: str
+    effort: str
 
     def as_dict(self) -> dict[str, str]:
         return {
+            "effort": self.effort,
+            "milestone": self.milestone,
             "owner": self.owner,
             "priority": self.priority,
+            "project": self.project,
+            "target_release": self.target_release,
         }
 
 
@@ -131,11 +139,13 @@ class IssueDraft:
     source_files: tuple[str, ...]
     missing_files: tuple[str, ...]
     status: str
+    metadata: FeatureMetadata
 
     def as_dict(self) -> dict[str, object]:
         return {
             "body": self.body,
             "feature_id": self.feature_id,
+            "metadata": self.metadata.as_dict(),
             "missing_files": list(self.missing_files),
             "source_files": list(self.source_files),
             "status": self.status,
@@ -156,6 +166,7 @@ class PullRequestDraft:
     blocking_checks: tuple[FeatureReadyCheck, ...]
     summary: dict[str, object]
     recommended_commands: tuple[str, ...]
+    metadata: FeatureMetadata
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -165,6 +176,7 @@ class PullRequestDraft:
             "body": self.body,
             "feature_id": self.feature_id,
             "gaps": [dict(gap) for gap in self.gaps],
+            "metadata": self.metadata.as_dict(),
             "missing_files": list(self.missing_files),
             "ready": self.ready,
             "recommended_commands": list(self.recommended_commands),
@@ -602,6 +614,7 @@ class FeatureHandoffReport:
     recommended_commands: tuple[str, ...]
     next_actions: tuple[str, ...]
     has_native_files: bool
+    metadata: FeatureMetadata
 
     @property
     def summary(self) -> dict[str, object]:
@@ -624,6 +637,7 @@ class FeatureHandoffReport:
             "feature_id": self.feature_id,
             "gaps": [dict(gap) for gap in self.gaps],
             "missing_files": list(self.missing_files),
+            "metadata": self.metadata.as_dict(),
             "next_actions": list(self.next_actions),
             "quality_checks": [item.as_dict() for item in self.quality_checks],
             "ready": self.ready,
@@ -655,6 +669,7 @@ class FeatureTestsReport:
     ready_summary: dict[str, int]
     recommended_commands: tuple[str, ...]
     has_native_files: bool
+    metadata: FeatureMetadata
     test_coverage: tuple[FeatureTestCoverageLink, ...] = ()
 
     @property
@@ -694,6 +709,7 @@ class FeatureTestsReport:
             "feature_id": self.feature_id,
             "gaps": [dict(gap) for gap in self.gaps],
             "missing_files": list(self.missing_files),
+            "metadata": self.metadata.as_dict(),
             "quality_checks": [item.as_dict() for item in self.quality_checks],
             "ready": self.ready,
             "recommended_commands": list(self.recommended_commands),
@@ -775,6 +791,32 @@ def normalize_feature_owner(owner: str | None) -> str:
     return normalized
 
 
+def normalize_feature_assignment(value: str | None) -> str:
+    if value is None:
+        return "unassigned"
+
+    normalized = value.strip()
+    if not normalized:
+        return "unassigned"
+    if normalized.lower() == "unassigned":
+        return "unassigned"
+
+    return normalized
+
+
+def normalize_feature_effort(effort: str | None) -> str:
+    if effort is None:
+        return "unknown"
+
+    normalized = effort.strip()
+    if not normalized:
+        return "unknown"
+    if normalized.lower() == "unknown":
+        return "unknown"
+
+    return normalized
+
+
 def feature_title(slug: str, title: str | None = None) -> str:
     if title and title.strip():
         return title.strip()
@@ -805,6 +847,10 @@ def build_feature_files(
             Status: proposed
             Priority: medium
             Owner: unassigned
+            Milestone: unassigned
+            Target Release: unassigned
+            Project: unassigned
+            Effort: unknown
 
             ## Why
 
@@ -1389,13 +1435,37 @@ def read_feature_metadata(root: Path, slug: str) -> FeatureMetadata:
     slug = validate_feature_slug(slug)
     spec_path = feature_bundle_paths(root, slug)["spec"]
     if not spec_path.exists():
-        return FeatureMetadata(priority="unknown", owner="unassigned")
+        return FeatureMetadata(
+            priority="unknown",
+            owner="unassigned",
+            milestone="unassigned",
+            target_release="unassigned",
+            project="unassigned",
+            effort="unknown",
+        )
 
     content = spec_path.read_text(encoding="utf-8")
     return FeatureMetadata(
         priority=normalize_feature_priority(_extract_scalar(content, "Priority")),
         owner=normalize_feature_owner(_extract_scalar(content, "Owner")),
+        milestone=normalize_feature_assignment(_extract_scalar(content, "Milestone")),
+        target_release=normalize_feature_assignment(
+            _extract_scalar(content, "Target Release")
+        ),
+        project=normalize_feature_assignment(_extract_scalar(content, "Project")),
+        effort=normalize_feature_effort(_extract_scalar(content, "Effort")),
     )
+
+
+def _render_metadata_lines(metadata: FeatureMetadata) -> list[str]:
+    return [
+        f"- Priority: {metadata.priority}",
+        f"- Owner: {metadata.owner}",
+        f"- Milestone: {metadata.milestone}",
+        f"- Target Release: {metadata.target_release}",
+        f"- Project: {metadata.project}",
+        f"- Effort: {metadata.effort}",
+    ]
 
 
 def _first_scalar(contents: dict[str, str], key: str) -> str | None:
@@ -1466,12 +1536,17 @@ def _render_issue_body(
     test_plan: str,
     source_files: tuple[str, ...],
     missing_files: tuple[str, ...],
+    metadata: FeatureMetadata,
 ) -> str:
     lines = [
         "## Feature",
         "",
         f"- Feature ID: `{feature_id}`",
         f"- Status: {status}",
+        "",
+        "## Metadata",
+        "",
+        *_render_metadata_lines(metadata),
         "",
         "## Why",
         "",
@@ -1543,6 +1618,7 @@ def build_issue_draft(root: Path, slug: str) -> IssueDraft:
     spec_content = contents.get("spec", "")
     title = _first_line_h1(spec_content) or feature_title(slug)
     status = _first_scalar(contents, "Status") or "TODO: Confirm feature status."
+    metadata = read_feature_metadata(resolved_root, slug)
     why = _why_or_placeholder(contents, relative_path=relative_paths["spec"])
     acceptance_criteria = _section_or_placeholder(
         contents,
@@ -1571,6 +1647,7 @@ def build_issue_draft(root: Path, slug: str) -> IssueDraft:
         test_plan=test_plan,
         source_files=tuple(source_files),
         missing_files=tuple(missing_files),
+        metadata=metadata,
     )
 
     return IssueDraft(
@@ -1580,6 +1657,7 @@ def build_issue_draft(root: Path, slug: str) -> IssueDraft:
         source_files=tuple(source_files),
         missing_files=tuple(missing_files),
         status=status,
+        metadata=metadata,
     )
 
 
@@ -2370,6 +2448,7 @@ def build_feature_handoff_report(
     slug = validate_feature_slug(slug)
     resolved_root = root.expanduser().resolve()
     status_report = get_feature_status(resolved_root, slug)
+    metadata = read_feature_metadata(resolved_root, slug)
     has_native_files = any(file["exists"] for file in status_report.files.values())
 
     try:
@@ -2446,6 +2525,7 @@ def build_feature_handoff_report(
         recommended_commands=_recommended_handoff_commands(slug),
         next_actions=next_actions,
         has_native_files=has_native_files,
+        metadata=metadata,
     )
 
 
@@ -2462,6 +2542,13 @@ def render_feature_handoff_text(report: FeatureHandoffReport) -> str:
         f"Feature handoff: {report.feature_id}",
         f"Status: {report.status}",
         f"Ready: {'yes' if report.ready else 'no'}",
+        (
+            "Metadata: "
+            f"priority={report.metadata.priority} "
+            f"owner={report.metadata.owner} "
+            f"milestone={report.metadata.milestone} "
+            f"target_release={report.metadata.target_release}"
+        ),
         (
             "Counts: "
             f"trace={trace['total']}/{trace['done']}/{trace['open']} "
@@ -2554,6 +2641,7 @@ def _render_task_issue_body(
     task: FeatureTask,
     acceptance_criteria: tuple[FeatureTraceChecklistItem, ...],
     recommended_commands: tuple[str, ...],
+    metadata: FeatureMetadata,
 ) -> str:
     marker = "x" if task.done else " "
     lines = [
@@ -2561,6 +2649,10 @@ def _render_task_issue_body(
         "",
         f"- Feature ID: `{feature_id}`",
         f"- Status: {status}",
+        "",
+        "## Metadata",
+        "",
+        *_render_metadata_lines(metadata),
         "",
         "## Task",
         "",
@@ -2593,6 +2685,7 @@ def build_feature_task_issues_report(root: Path, slug: str) -> FeatureTaskIssues
     except FeatureBundleNotFoundError:
         acceptance_criteria = ()
 
+    metadata = read_feature_metadata(resolved_root, slug)
     recommended_commands = _recommended_task_issue_commands(slug)
     issues = tuple(
         FeatureTaskIssueDraft(
@@ -2603,6 +2696,7 @@ def build_feature_task_issues_report(root: Path, slug: str) -> FeatureTaskIssues
                 task=task,
                 acceptance_criteria=acceptance_criteria,
                 recommended_commands=recommended_commands,
+                metadata=metadata,
             ),
             feature_id=slug,
             task_id=task.id,
@@ -2758,6 +2852,7 @@ def build_feature_tests_report(root: Path, slug: str) -> FeatureTestsReport:
         ready_summary=handoff.ready_summary,
         recommended_commands=_recommended_test_packet_commands(slug),
         has_native_files=handoff.has_native_files,
+        metadata=handoff.metadata,
     )
 
 
@@ -2772,6 +2867,13 @@ def render_feature_tests_text(report: FeatureTestsReport) -> str:
         f"Feature: {report.feature_id}",
         f"Status: {report.status}",
         f"Ready: {'yes' if report.ready else 'no'}",
+        (
+            "Metadata: "
+            f"priority={report.metadata.priority} "
+            f"owner={report.metadata.owner} "
+            f"milestone={report.metadata.milestone} "
+            f"target_release={report.metadata.target_release}"
+        ),
         "Sources:",
     ]
     if report.source_files:
@@ -2951,6 +3053,7 @@ def _render_pull_request_body(
     missing_files: tuple[str, ...],
     gaps: tuple[dict[str, str], ...],
     recommended_commands: tuple[str, ...],
+    metadata: FeatureMetadata,
 ) -> str:
     trace = summary["trace"]
     ready_summary = summary["ready"]
@@ -2979,6 +3082,10 @@ def _render_pull_request_body(
             f"fail={ready_summary['fail']} "
             f"total={ready_summary['total']}"
         ),
+        "",
+        "## Metadata",
+        "",
+        *_render_metadata_lines(metadata),
         "",
         "## Feature",
         "",
@@ -3088,6 +3195,7 @@ def build_pull_request_draft(root: Path, slug: str) -> PullRequestDraft:
     why = _why_or_placeholder(contents, relative_path=relative_paths["spec"])
     handoff = build_feature_handoff_report(resolved_root, slug)
     ready_report = build_feature_ready_report(resolved_root, slug)
+    metadata = read_feature_metadata(resolved_root, slug)
     recommended_commands = _recommended_pr_commands(slug)
     summary = {
         **handoff.summary,
@@ -3109,6 +3217,7 @@ def build_pull_request_draft(root: Path, slug: str) -> PullRequestDraft:
         missing_files=tuple(missing_files),
         gaps=handoff.gaps,
         recommended_commands=recommended_commands,
+        metadata=metadata,
     )
 
     return PullRequestDraft(
@@ -3123,6 +3232,7 @@ def build_pull_request_draft(root: Path, slug: str) -> PullRequestDraft:
         blocking_checks=handoff.blocking_checks,
         summary=summary,
         recommended_commands=recommended_commands,
+        metadata=metadata,
     )
 
 
@@ -3225,6 +3335,11 @@ def _sync_plan_notes(metadata: FeatureMetadata) -> tuple[str, ...]:
             f"Priority is represented as the compatible label "
             f"priority:{metadata.priority}; this plan does not call GitHub Issue "
             "Fields APIs."
+        ),
+        (
+            "Milestone, target release, project, and effort are local SpecSpine "
+            "draft context in this plan; SpecSpine does not call GitHub Issue "
+            "Fields or Projects APIs."
         ),
     ]
     if metadata.owner == "unassigned":
@@ -3535,8 +3650,7 @@ def render_feature_sync_plan_text(plan: FeatureSyncPlan) -> str:
         "",
         "## Metadata",
         "",
-        f"- Priority: {plan.metadata.priority}",
-        f"- Owner: {plan.metadata.owner}",
+        *_render_metadata_lines(plan.metadata),
         "",
         "## Notes",
         "",

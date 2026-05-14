@@ -46,6 +46,7 @@ class DogfoodArtifactsTests(TestCase):
             "status-coverage-readiness-summaries",
             "adapter-handoff-artifacts",
             "workspace-readiness-policy",
+            "extended-feature-metadata",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -90,6 +91,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:status-coverage-readiness-summaries", "pass"), checks)
         self.assertIn(("feature.status_consistency:adapter-handoff-artifacts", "pass"), checks)
         self.assertIn(("feature.status_consistency:workspace-readiness-policy", "pass"), checks)
+        self.assertIn(("feature.status_consistency:extended-feature-metadata", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -263,6 +265,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/workspace-readiness-policy.md",
             "execution/features/workspace-readiness-policy.md",
             "quality/features/workspace-readiness-policy.md",
+            "specs/features/extended-feature-metadata.md",
+            "execution/features/extended-feature-metadata.md",
+            "quality/features/extended-feature-metadata.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -471,6 +476,35 @@ class DogfoodArtifactsTests(TestCase):
         self.assertTrue(policy_report.ready)
         self.assertTrue(policy_report.policy_applied)
         self.assertTrue(policy_report.coverage_required_by_policy)
+        self.assertEqual(policy_report.summary["fail"], 0)
+
+    def test_extended_feature_metadata_dogfood_bundle_passes_default_coverage_and_policy_gates(self) -> None:
+        default_report = build_feature_ready_report(
+            REPO_ROOT,
+            "extended-feature-metadata",
+        )
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "extended-feature-metadata",
+            require_coverage=True,
+        )
+        policy_report = build_feature_ready_report(
+            REPO_ROOT,
+            "extended-feature-metadata",
+            policy_applied=True,
+            coverage_required_by_policy=False,
+            policy_source=str(REPO_ROOT / ".specspine" / "policy.yaml"),
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+        self.assertTrue(policy_report.ready)
+        self.assertTrue(policy_report.policy_applied)
+        self.assertFalse(policy_report.coverage_required_by_policy)
         self.assertEqual(policy_report.summary["fail"], 0)
 
     def test_feature_test_packet_dogfood_exports_test_cases(self) -> None:
