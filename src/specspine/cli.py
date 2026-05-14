@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from . import __version__
@@ -11,6 +12,11 @@ from .adapters import (
     build_upstream_init_commands,
     probe_adapters,
     run_upstream_initializers,
+)
+from .features import (
+    FeatureBundleExistsError,
+    InvalidFeatureSlug,
+    create_feature_bundle,
 )
 from .fusion import FUSION_REQUIRED_FILES, init_fusion_workspace
 from .status import build_status, render_status_json, render_status_text
@@ -76,6 +82,19 @@ def build_parser() -> argparse.ArgumentParser:
     fuse_parser.add_argument("--skip-speckit", action="store_true", help="do not enable the Spec Kit adapter")
     fuse_parser.add_argument("--skip-superpowers", action="store_true", help="do not enable the Superpowers adapter")
 
+    feature_parser = subcommands.add_parser("feature", help="manage native SpecSpine features")
+    feature_subcommands = feature_parser.add_subparsers(dest="feature_command", required=True)
+
+    feature_new_parser = feature_subcommands.add_parser(
+        "new",
+        help="create a traceable feature bundle",
+    )
+    feature_new_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    feature_new_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    feature_new_parser.add_argument("--title", help="human-readable feature title")
+    feature_new_parser.add_argument("--why", help="short reason this feature matters")
+    feature_new_parser.add_argument("--force", action="store_true", help="overwrite existing feature files")
+
     doctor_parser = subcommands.add_parser("doctor", help="check SpecSpine workspace files")
     doctor_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     doctor_parser.add_argument(
@@ -113,6 +132,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--fusion",
         action="store_true",
         help="also require and validate SpecSpine fusion files",
+    )
+    validate_parser.add_argument(
+        "--features",
+        action="store_true",
+        help="also validate native feature bundle consistency",
     )
     validate_parser.add_argument(
         "--adapters",
@@ -191,6 +215,30 @@ def main(argv: list[str] | None = None) -> int:
             failed = failed or result.returncode != 0
         return 1 if failed else 0
 
+    if args.command == "feature":
+        if args.feature_command == "new":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                written = create_feature_bundle(
+                    root,
+                    args.slug,
+                    title=args.title,
+                    why=args.why,
+                    force=args.force,
+                )
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleExistsError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.existing_paths:
+                    print(f"  existing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+
+            print(f"Created SpecSpine feature bundle '{args.slug}' at {root}")
+            _print_created(written, root)
+            return 0
+
     if args.command == "doctor":
         required_files = dict(BASE_WORKSPACE_FILES)
         if args.fusion:
@@ -225,6 +273,7 @@ def main(argv: list[str] | None = None) -> int:
         report = build_validation_report(
             Path(args.path),
             include_fusion=args.fusion,
+            include_features=args.features,
             include_adapters=args.adapters,
         )
         if args.json:

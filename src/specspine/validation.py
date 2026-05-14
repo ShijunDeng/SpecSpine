@@ -6,6 +6,12 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from .adapters import ADAPTER_SPECS, AdapterStatus, probe_adapters
+from .features import (
+    FEATURE_FILE_PATHS,
+    InvalidFeatureSlug,
+    list_feature_bundles,
+    validate_feature_slug,
+)
 from .fusion import FUSION_REQUIRED_FILES
 from .status import _clean_scalar, _read_yaml_section, build_status
 from .workspace import BASE_WORKSPACE_FILES, check_workspace
@@ -313,6 +319,124 @@ def _adapter_availability_checks(
     return checks
 
 
+def _content_has_scalar(content: str, key: str, expected_value: str) -> bool:
+    for raw_line in content.splitlines():
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#") or ":" not in stripped:
+            continue
+
+        current_key, current_value = stripped.split(":", 1)
+        if current_key.strip().lower() != key.lower():
+            continue
+        if current_value.strip().lower() == expected_value.lower():
+            return True
+
+    return False
+
+
+def _content_has_feature_id(content: str, slug: str) -> bool:
+    return _content_has_scalar(content, "Feature ID", slug) or _content_has_scalar(
+        content,
+        "feature",
+        slug,
+    )
+
+
+def _feature_bundle_checks(root: Path) -> list[ValidationCheck]:
+    features = list_feature_bundles(root)
+    if not features:
+        return [
+            _check(
+                "feature.discovery",
+                "skip",
+                "No feature bundles were found.",
+            )
+        ]
+
+    checks: list[ValidationCheck] = []
+    for feature in features:
+        slug = str(feature["slug"])
+        files = feature["files"]
+        if not isinstance(files, dict):
+            continue
+
+        try:
+            validate_feature_slug(slug)
+            checks.append(
+                _check(
+                    f"feature.slug:{slug}",
+                    "pass",
+                    f"Feature slug is valid: {slug}",
+                )
+            )
+        except InvalidFeatureSlug as error:
+            checks.append(
+                _check(
+                    f"feature.slug:{slug}",
+                    "fail",
+                    str(error),
+                )
+            )
+            continue
+
+        for kind, pattern in FEATURE_FILE_PATHS.items():
+            relative_path = pattern.format(slug=slug)
+            target = root / relative_path
+            if target.exists():
+                checks.append(
+                    _check(
+                        f"feature.required_file:{slug}:{kind}",
+                        "pass",
+                        f"Feature {slug} {kind} file exists: {relative_path}",
+                    )
+                )
+            else:
+                checks.append(
+                    _check(
+                        f"feature.required_file:{slug}:{kind}",
+                        "fail",
+                        f"Feature {slug} {kind} file is missing: {relative_path}",
+                    )
+                )
+                continue
+
+            try:
+                content = target.read_text(encoding="utf-8")
+            except OSError:
+                checks.append(
+                    _check(
+                        f"feature.readable:{slug}:{kind}",
+                        "fail",
+                        f"Feature {slug} {kind} file could not be read: {relative_path}",
+                    )
+                )
+                continue
+
+            has_feature_id = _content_has_feature_id(content, slug)
+            checks.append(
+                _check(
+                    f"feature.id:{slug}:{kind}",
+                    "pass" if has_feature_id else "fail",
+                    f"Feature {slug} {kind} file declares its feature id."
+                    if has_feature_id
+                    else f"Feature {slug} {kind} file must declare Feature ID: {slug}.",
+                )
+            )
+
+            has_proposed_status = _content_has_scalar(content, "Status", "proposed")
+            checks.append(
+                _check(
+                    f"feature.status:{slug}:{kind}",
+                    "pass" if has_proposed_status else "fail",
+                    f"Feature {slug} {kind} file declares Status: proposed."
+                    if has_proposed_status
+                    else f"Feature {slug} {kind} file must declare Status: proposed.",
+                )
+            )
+
+    return checks
+
+
 def _summary(checks: list[ValidationCheck]) -> dict[str, int]:
     counts = {status: 0 for status in VALIDATION_STATUSES}
     for check in checks:
@@ -325,6 +449,7 @@ def build_validation_report(
     path: Path,
     *,
     include_fusion: bool = False,
+    include_features: bool = False,
     include_adapters: bool = False,
     adapter_probe: AdapterProbe = probe_adapters,
 ) -> dict[str, Any]:
@@ -351,6 +476,9 @@ def build_validation_report(
         )
         checks.extend(_fusion_contract_checks(root))
         checks.extend(_fusion_adapter_contract_checks(root))
+
+    if include_features:
+        checks.extend(_feature_bundle_checks(root))
 
     if include_adapters:
         checks.extend(_adapter_availability_checks(root, adapter_probe=adapter_probe))

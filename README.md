@@ -23,6 +23,7 @@ This repository is an early project skeleton. It includes:
 
 - A zero-dependency Python CLI.
 - A workspace initializer: `specspine init`.
+- A native feature bundle creator: `specspine feature new`.
 - A fusion initializer: `specspine fuse`.
 - A compact workspace status packet: `specspine status --json`.
 - An executable validation layer: `specspine validate --json`.
@@ -62,6 +63,12 @@ Create a SpecSpine workspace in an existing product repository:
 
 ```bash
 specspine init .
+```
+
+Create a traceable feature bundle:
+
+```bash
+specspine feature new add-dark-mode . --title "Add dark mode" --why "Reduce eye strain"
 ```
 
 Create the full OpenSpec + Spec Kit + Superpowers fusion layer:
@@ -117,6 +124,8 @@ quality/
   review.md
   superpowers.md
 ```
+
+A native feature bundle adds matching files under `specs/features/`, `execution/features/`, and `quality/features/`. Each file carries the same `Feature ID: <slug>` and starts at `Status: proposed`.
 
 ## Upstream Integration
 
@@ -188,16 +197,28 @@ specspine doctor [path]
 Checks whether a directory contains the expected SpecSpine files.
 
 ```bash
+specspine feature new <slug> [path] [--title TITLE] [--why WHY] [--force]
+```
+
+Creates a native feature bundle:
+
+- `specs/features/<slug>.md`
+- `execution/features/<slug>.md`
+- `quality/features/<slug>.md`
+
+The slug may contain lowercase letters, numbers, and hyphens, and must start and end with a letter or number. Existing feature files are not overwritten unless `--force` is passed.
+
+```bash
 specspine status [path] [--json] [--adapters]
 ```
 
-Summarizes workspace completeness, fusion completeness, core artifact status, enabled upstreams, and recommended next actions. `--json` emits a stable compact context packet for agents and scripts. `--adapters` also checks external OpenSpec, Spec Kit, and Superpowers availability.
+Summarizes workspace completeness, fusion completeness, core artifact status, native feature files, enabled upstreams, and recommended next actions. `--json` emits a stable compact context packet for agents and scripts. `--adapters` also checks external OpenSpec, Spec Kit, and Superpowers availability.
 
 ```bash
-specspine validate [path] [--fusion] [--adapters] [--json]
+specspine validate [path] [--fusion] [--features] [--adapters] [--json]
 ```
 
-Runs executable local checks over SpecSpine contracts. By default it validates required workspace files. `--fusion` also requires fusion files, verifies `integration_mode: adapter`, verifies `vendored_upstream_code: false`, and checks enabled upstream adapter docs. `--adapters` probes only enabled external upstream adapters. `--json` emits stable JSON with `root`, `ok`, `checks`, and `summary`; any `fail` check returns a non-zero exit code.
+Runs executable local checks over SpecSpine contracts. By default it validates required workspace files. `--fusion` also requires fusion files, verifies `integration_mode: adapter`, verifies `vendored_upstream_code: false`, and checks enabled upstream adapter docs. `--features` checks native feature bundle consistency across spec, execution, and quality files. `--adapters` probes only enabled external upstream adapters. `--json` emits stable JSON with `root`, `ok`, `checks`, and `summary`; any `fail` check returns a non-zero exit code.
 
 ```bash
 specspine fuse [path] --agent codex
@@ -234,7 +255,7 @@ Prints upstream install instructions and project links.
 
 ## Roadmap
 
-- Feature spec lifecycle commands.
+- Feature lifecycle expansion beyond bundle creation.
 - Task decomposition from specs.
 - Quality gate definitions.
 - Agent handoff packets.

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .adapters import ADAPTER_SPECS, AdapterStatus, probe_adapters
+from .features import list_feature_bundles
 from .fusion import FUSION_REQUIRED_FILES
 from .workspace import BASE_WORKSPACE_FILES, check_workspace
 
@@ -93,6 +94,18 @@ def _artifact_status(root: Path) -> dict[str, dict[str, Any]]:
         entry["exists"] = (root / relative_path).exists()
         if "fusion" not in entry["required_for"]:
             entry["required_for"].append("fusion")
+
+    for feature in list_feature_bundles(root):
+        slug = str(feature["slug"])
+        files = feature["files"]
+        if not isinstance(files, dict):
+            continue
+
+        for relative_path in sorted(str(path) for path in files.values()):
+            artifacts[relative_path] = {
+                "exists": True,
+                "required_for": ["feature", f"feature:{slug}"],
+            }
 
     return artifacts
 
@@ -205,6 +218,7 @@ def build_status(
     workspace_missing = _relative_paths(workspace_missing_paths, root)
     fusion_missing = _relative_paths(fusion_missing_paths, root)
     upstreams = _upstream_status(root)
+    features = list_feature_bundles(root)
 
     adapters = None
     if include_adapters:
@@ -223,6 +237,7 @@ def build_status(
             "missing": fusion_missing,
         },
         "artifacts": _artifact_status(root),
+        "features": features,
         "upstreams": upstreams,
         "recommendations": _build_recommendations(
             root=root,
@@ -261,6 +276,14 @@ def render_status_text(status: dict[str, Any]) -> str:
 
     for relative_path, artifact in status["artifacts"].items():
         lines.append(f"  [{_marker(artifact['exists'])}] {relative_path}")
+
+    lines.append("Features:")
+    if status["features"]:
+        for feature in status["features"]:
+            marker = "complete" if feature["complete"] else "incomplete"
+            lines.append(f"  [{marker}] {feature['slug']}")
+    else:
+        lines.append("  none")
 
     lines.append("Enabled upstreams:")
     enabled = [

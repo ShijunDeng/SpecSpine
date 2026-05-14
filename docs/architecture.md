@@ -18,6 +18,7 @@ The backbone is represented by `.specspine/spine.yaml`. It records where the cur
 The CLI is intentionally thin:
 
 - `specspine init` creates the default workspace structure.
+- `specspine feature new` creates a traceable native feature bundle.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
 - `specspine status` emits a compact status packet for humans, agents, and scripts.
@@ -43,6 +44,16 @@ Future commands should remain thin orchestration layers over explicit files so t
 - summary counts for `pass`, `fail`, `warn`, and `skip`.
 
 Validation is local-first and zero-dependency. The default mode validates base workspace files only. `--fusion` requires the fusion layer and enforces adapter-mode/no-vendored-code boundaries. `--adapters` probes external upstream adapters only when explicitly requested.
+
+`specspine feature new <slug> [path]` is the first native feature lifecycle command. It creates three peer files:
+
+- `specs/features/<slug>.md` for intent, users, scope, non-goals, and acceptance criteria.
+- `execution/features/<slug>.md` for milestones, tasks, dependencies, and open questions.
+- `quality/features/<slug>.md` for required checks, test plan, review notes, and release readiness.
+
+Each file records the same `Feature ID: <slug>` and starts at `Status: proposed`. The command refuses to overwrite existing feature files unless `--force` is passed.
+
+`specspine validate --features` checks that discovered native feature bundles have valid slugs, all three peer files, matching feature ids, and proposed status markers.
 
 ## Adapter Direction
 
@@ -70,6 +81,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 ## Modules
 
 - `specspine.workspace`: local file templates and workspace checks.
+- `specspine.features`: native feature slug validation, bundle templates, file creation, and discovery.
 - `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, and recommendation summaries.
