@@ -10,13 +10,14 @@
 - [x] Implement `specspine feature status` native lifecycle state query/update.
 - [x] Implement opt-in `specspine feature status --enforce-transition` lifecycle transition policy.
 - [x] Implement `specspine feature tasks` execution checklist export.
+- [x] Implement `specspine feature task-issues` task-level issue draft packages.
 - [x] Implement `specspine feature trace` traceability handoff export.
 - [x] Implement `specspine feature ready` per-feature readiness gate.
 - [x] Implement `specspine feature handoff` compact agent handoff packet export.
 - [x] Implement `specspine feature tests` acceptance-test packet export.
 - [x] Implement explicit local `## Test Coverage` links for `specspine feature tests`.
 - [x] Implement `specspine feature pr` offline Pull Request draft export.
-- [x] Refresh `specspine feature new` templates for focused handoff, tests, PR, ready, and validation workflows.
+- [x] Refresh `specspine feature new` templates for focused handoff, task issue drafts, tests, PR, ready, and validation workflows.
 - [x] Implement `specspine fuse` adapter-mode fusion generation.
 - [x] Implement `specspine status . --json`.
 - [x] Implement `specspine status . --json --validate` validation summaries.
@@ -37,11 +38,13 @@
 - [x] Dogfood offline Pull Request draft export with `feature-pr-draft`.
 - [x] Dogfood acceptance-test packet export with `feature-test-packet`.
 - [x] Dogfood explicit test coverage links with `feature-test-coverage-links`.
+- [x] Dogfood task issue draft packages with `feature-task-issue-drafts`.
 
 ## Next
 
 - [ ] Observe whether implementation, acceptance, and review agents use `feature handoff --json` as their default feature packet.
 - [ ] Observe whether implementation agents still need focused `feature tasks --json` after reading the handoff packet.
+- [ ] Observe whether implementation agents use `feature task-issues --json` before creating remote GitHub task issues.
 - [ ] Observe whether reviewers prefer `feature trace --json` as the default traceability packet.
 - [ ] Observe whether reviewers and CI jobs prefer `feature ready --json` for per-feature release gates.
 - [ ] Observe whether QA and testing agents prefer `feature tests --json` as their focused acceptance-test context.

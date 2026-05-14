@@ -54,6 +54,7 @@ class AgentsTests(TestCase):
             "specspine feature trace <slug> . --json",
             "specspine feature ready <slug> . --json",
             "specspine feature tasks <slug> . --json",
+            "specspine feature task-issues <slug> . --json",
             "specspine feature tests <slug> . --json",
             "specspine feature issue <slug> . --json",
             "specspine feature pr <slug> . --json",
@@ -64,7 +65,7 @@ class AgentsTests(TestCase):
             "prefer `--enforce-transition` when advancing lifecycle state",
             "Before archiving, run `specspine feature ready <slug> . --json`",
             "specspine feature status <slug> . --set archived --enforce-transition",
-            "focused handoff, tests, PR, readiness, and validation guidance",
+            "focused handoff, task issue drafts, tests, PR, readiness, and validation guidance",
             "Use `--run-upstream` only when the user explicitly asks",
         ):
             with self.subTest(expected=expected):

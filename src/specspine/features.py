@@ -401,6 +401,63 @@ class FeatureTasksReport:
 
 
 @dataclass(frozen=True)
+class FeatureTaskIssueDraft:
+    title: str
+    body: str
+    feature_id: str
+    task_id: str
+    task_text: str
+    task_done: bool
+    source_file: str
+    line: int
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "body": self.body,
+            "feature_id": self.feature_id,
+            "line": self.line,
+            "source_file": self.source_file,
+            "task_done": self.task_done,
+            "task_id": self.task_id,
+            "task_text": self.task_text,
+            "title": self.title,
+        }
+
+
+@dataclass(frozen=True)
+class FeatureTaskIssuesReport:
+    feature_id: str
+    status: str
+    source_file: str
+    source_missing: bool
+    missing_files: tuple[str, ...]
+    issues: tuple[FeatureTaskIssueDraft, ...]
+    task_summary: dict[str, int]
+    recommended_commands: tuple[str, ...]
+
+    @property
+    def summary(self) -> dict[str, int]:
+        return {
+            "done": self.task_summary["done"],
+            "issue_total": len(self.issues),
+            "open": self.task_summary["open"],
+            "total": self.task_summary["total"],
+        }
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "feature_id": self.feature_id,
+            "issues": [issue.as_dict() for issue in self.issues],
+            "missing_files": list(self.missing_files),
+            "recommended_commands": list(self.recommended_commands),
+            "source_file": self.source_file,
+            "source_missing": self.source_missing,
+            "status": self.status,
+            "summary": self.summary,
+        }
+
+
+@dataclass(frozen=True)
 class FeatureHandoffReport:
     feature_id: str
     status: str
@@ -657,6 +714,7 @@ def build_feature_files(
 
             - Run `specspine feature handoff {slug} . --json` before implementation or review handoff.
             - Run `specspine feature tasks {slug} . --json` for the focused implementation checklist.
+            - Run `specspine feature task-issues {slug} . --json` to draft one local GitHub issue per execution task.
             - Run `specspine feature trace {slug} . --json` to inspect acceptance, tasks, quality checks, test plan, and gaps.
             - Run `specspine feature tests {slug} . --json` to build the acceptance-test packet.
             - Run `specspine feature ready {slug} . --json` after implementation evidence is complete.
@@ -2006,6 +2064,7 @@ def _recommended_handoff_commands(slug: str) -> tuple[str, ...]:
     return (
         f"specspine feature handoff {slug} . --json",
         f"specspine feature tasks {slug} . --json",
+        f"specspine feature task-issues {slug} . --json",
         f"specspine feature trace {slug} . --json",
         f"specspine feature tests {slug} . --json",
         f"specspine feature ready {slug} . --json",
@@ -2211,6 +2270,177 @@ def render_feature_handoff_text(report: FeatureHandoffReport) -> str:
         lines.append("- None.")
 
     lines.extend(["", "Key commands:"])
+    lines.extend(f"- {command}" for command in report.recommended_commands)
+
+    return "\n".join(lines) + "\n"
+
+
+def _recommended_task_issue_commands(slug: str) -> tuple[str, ...]:
+    return (
+        f"specspine feature task-issues {slug} . --json",
+        f"specspine feature tasks {slug} . --json",
+        f"specspine feature trace {slug} . --json",
+        f"specspine feature handoff {slug} . --json",
+        "specspine validate . --fusion --features",
+    )
+
+
+def _truncate_issue_title_text(text: str, *, limit: int = 80) -> str:
+    normalized = " ".join(text.split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 3].rstrip() + "..."
+
+
+def _feature_task_issue_title(slug: str, task: FeatureTask) -> str:
+    return f"[{slug}] {task.id}: {_truncate_issue_title_text(task.text)}"
+
+
+def _render_task_issue_acceptance_criteria(
+    acceptance_criteria: tuple[FeatureTraceChecklistItem, ...],
+) -> list[str]:
+    if not acceptance_criteria:
+        return ["- [ ] Add acceptance criteria checklist items before opening this issue."]
+
+    lines: list[str] = []
+    for item in acceptance_criteria:
+        marker = "x" if item.done else " "
+        lines.append(
+            f"- [{marker}] {item.id} {item.source_file}:{item.line} {item.text}"
+        )
+    return lines
+
+
+def _render_task_issue_commands(commands: tuple[str, ...]) -> list[str]:
+    return [f"- `{command}`" for command in commands]
+
+
+def _render_task_issue_body(
+    *,
+    feature_id: str,
+    status: str,
+    task: FeatureTask,
+    acceptance_criteria: tuple[FeatureTraceChecklistItem, ...],
+    recommended_commands: tuple[str, ...],
+) -> str:
+    marker = "x" if task.done else " "
+    lines = [
+        "## Feature",
+        "",
+        f"- Feature ID: `{feature_id}`",
+        f"- Status: {status}",
+        "",
+        "## Task",
+        "",
+        f"- [{marker}] {task.id}: {task.text}",
+        "",
+        "## Status / Done",
+        "",
+        f"- Done: {'yes' if task.done else 'no'}",
+        "",
+        "## Source",
+        "",
+        f"- {task.source_file}:{task.line}",
+        "",
+        "## Acceptance Criteria",
+        "",
+    ]
+    lines.extend(_render_task_issue_acceptance_criteria(acceptance_criteria))
+    lines.extend(["", "## Key Commands", ""])
+    lines.extend(_render_task_issue_commands(recommended_commands))
+    return "\n".join(lines).strip() + "\n"
+
+
+def build_feature_task_issues_report(root: Path, slug: str) -> FeatureTaskIssuesReport:
+    slug = validate_feature_slug(slug)
+    resolved_root = root.expanduser().resolve()
+    tasks_report = build_feature_tasks_report(resolved_root, slug)
+    try:
+        trace_report = build_feature_trace_report(resolved_root, slug)
+        acceptance_criteria = trace_report.acceptance_criteria
+    except FeatureBundleNotFoundError:
+        acceptance_criteria = ()
+
+    recommended_commands = _recommended_task_issue_commands(slug)
+    issues = tuple(
+        FeatureTaskIssueDraft(
+            title=_feature_task_issue_title(slug, task),
+            body=_render_task_issue_body(
+                feature_id=slug,
+                status=tasks_report.status,
+                task=task,
+                acceptance_criteria=acceptance_criteria,
+                recommended_commands=recommended_commands,
+            ),
+            feature_id=slug,
+            task_id=task.id,
+            task_text=task.text,
+            task_done=task.done,
+            source_file=task.source_file,
+            line=task.line,
+        )
+        for task in tasks_report.tasks
+    )
+
+    return FeatureTaskIssuesReport(
+        feature_id=slug,
+        status=tasks_report.status,
+        source_file=tasks_report.source_file,
+        source_missing=tasks_report.source_missing,
+        missing_files=tasks_report.missing_files,
+        issues=issues,
+        task_summary=tasks_report.summary,
+        recommended_commands=recommended_commands,
+    )
+
+
+def render_feature_task_issues_json(report: FeatureTaskIssuesReport) -> str:
+    return json.dumps(report.as_dict(), indent=2, sort_keys=True) + "\n"
+
+
+def render_feature_task_issues_text(report: FeatureTaskIssuesReport) -> str:
+    summary = report.summary
+    lines = [
+        f"Feature task issue drafts: {report.feature_id}",
+        f"Status: {report.status}",
+        f"Source: {report.source_file}",
+        (
+            "Summary: "
+            f"tasks={summary['total']} "
+            f"done={summary['done']} "
+            f"open={summary['open']} "
+            f"issues={summary['issue_total']}"
+        ),
+        "",
+        "Issues:",
+    ]
+
+    if report.issues:
+        for index, issue in enumerate(report.issues, start=1):
+            if index > 1:
+                lines.append("")
+            lines.extend(
+                [
+                    f"### Issue {index}: {issue.task_id}",
+                    "",
+                    f"Title: {issue.title}",
+                    "",
+                    issue.body.rstrip(),
+                ]
+            )
+    elif report.source_missing:
+        lines.append(
+            "No issue drafts generated because source file is missing: "
+            f"{report.source_file}"
+        )
+    else:
+        lines.append(f"No checklist tasks found in {report.source_file}.")
+
+    if report.missing_files:
+        lines.extend(["", "Missing feature files:"])
+        lines.extend(f"- {relative_path}" for relative_path in report.missing_files)
+
+    lines.extend(["", "Key Commands:"])
     lines.extend(f"- {command}" for command in report.recommended_commands)
 
     return "\n".join(lines) + "\n"

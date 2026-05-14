@@ -35,6 +35,7 @@ class DogfoodArtifactsTests(TestCase):
             "feature-template-refresh",
             "feature-summary-filters",
             "feature-test-coverage-links",
+            "feature-task-issue-drafts",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -68,6 +69,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:feature-test-packet", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-summary-filters", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-test-coverage-links", "pass"), checks)
+        self.assertIn(("feature.status_consistency:feature-task-issue-drafts", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -84,6 +86,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine feature status <slug> . --set planned --enforce-transition --json",
             "PYTHONPATH=src python3 -m specspine feature handoff <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature tasks <slug> . --json",
+            "PYTHONPATH=src python3 -m specspine feature task-issues <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature tests <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature pr <slug> . --json",
             "Keep feature specs, implementation tasks, and quality checks traceable",
@@ -91,7 +94,7 @@ class DogfoodArtifactsTests(TestCase):
             "Do not vendor upstream source code.",
             "Do not read or write GitHub tokens",
             "Use `--run-upstream` only when the user explicitly asks",
-            "generated peer files include focused handoff, tests, PR, ready, and validation guidance",
+            "generated peer files include focused handoff, task issue drafts, tests, PR, ready, and validation guidance",
         ]
         for snippet in required_snippets:
             self.assertIn(snippet, content)
@@ -196,6 +199,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/feature-test-coverage-links.md",
             "execution/features/feature-test-coverage-links.md",
             "quality/features/feature-test-coverage-links.md",
+            "specs/features/feature-task-issue-drafts.md",
+            "execution/features/feature-task-issue-drafts.md",
+            "quality/features/feature-task-issue-drafts.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")

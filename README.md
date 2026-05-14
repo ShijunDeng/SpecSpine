@@ -27,6 +27,7 @@ This repository is an early project skeleton. It includes:
 - A native feature bundle creator: `specspine feature new`.
 - A native feature lifecycle status command: `specspine feature status`.
 - A native feature task exporter: `specspine feature tasks`.
+- A native feature task issue draft exporter: `specspine feature task-issues`.
 - A native feature traceability exporter: `specspine feature trace`.
 - A native feature readiness gate: `specspine feature ready`.
 - A native feature handoff packet exporter: `specspine feature handoff`.
@@ -100,6 +101,13 @@ Export implementation tasks from the feature execution file:
 ```bash
 specspine feature tasks add-dark-mode .
 specspine feature tasks add-dark-mode . --json
+```
+
+Draft one local GitHub issue per execution task:
+
+```bash
+specspine feature task-issues add-dark-mode .
+specspine feature task-issues add-dark-mode . --json
 ```
 
 Export a full traceability handoff from the feature bundle:
@@ -330,7 +338,7 @@ specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]
 
 Exports a compact feature-level handoff packet for implementation, acceptance, and review agents. It composes existing local evidence from feature status, trace, ready, tasks, and release readiness reports. It does not call GitHub APIs, read tokens, invoke upstream CLIs, use network access, or add third-party dependencies.
 
-JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Summary includes trace total/done/open, ready pass/fail/total, task total/done/open, gap count, and blocking check count. Text output is brief and includes feature/status/ready, counts, sources, next actions, open tasks, blocking checks, and key commands. The generated `feature new` execution template mirrors these focused commands for `handoff`, `tasks`, `trace`, `tests`, `ready`, `pr`, and `validate . --fusion --features`.
+JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Summary includes trace total/done/open, ready pass/fail/total, task total/done/open, gap count, and blocking check count. Text output is brief and includes feature/status/ready, counts, sources, next actions, open tasks, blocking checks, and key commands. The generated `feature new` execution template mirrors these focused commands for `handoff`, `tasks`, `task-issues`, `trace`, `tests`, `ready`, `pr`, and `validate . --fusion --features`.
 
 Missing bundles return `1` with create-or-restore guidance. Invalid slugs return `2`. Partial bundles return `0` and include missing files, trace gaps, and next actions. `--output` writes the text handoff and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
 
@@ -345,6 +353,16 @@ Add coverage links with GitHub Markdown checklists such as `- [x] AC001 -> tests
 JSON output includes `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `acceptance_criteria`, `test_plan`, `test_coverage`, `test_cases`, `quality_checks`, `summary`, and `recommended_commands`. Each `test_cases` record maps deterministically from one acceptance criterion: `TC001` maps `AC001`, includes the AC text, source file, line, associated coverage links, and a behavior-to-test statement. Test case status is `covered` when any linked coverage item is checked, `planned` when only unchecked coverage exists, and `pending` when no coverage is linked.
 
 Text output includes feature/status/ready, sources, summary, GitHub Markdown checklist test cases with linked targets, a Test Coverage section, existing test plan, quality checks, gaps, blocking checks, and key commands. Partial bundles return `0` with missing files and gaps recorded. Missing bundles return `1`; invalid slugs return `2`. `--output` writes the text packet and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
+
+```bash
+specspine feature task-issues <slug> [path] [--json] [--output FILE] [--force]
+```
+
+Creates a local GitHub issue draft package from execution checklist tasks without creating remote issues, calling GitHub APIs, reading tokens, requiring `gh`, using network access, invoking upstream CLIs, or adding dependencies. It composes existing local task and trace evidence; one execution checklist task becomes one issue draft.
+
+JSON output includes `feature_id`, `status`, `source_file`, `source_missing`, `missing_files`, `issues`, `summary`, and `recommended_commands`. Each issue includes `title`, `body`, `feature_id`, `task_id`, `task_text`, `task_done`, `source_file`, and `line`. Text output is a local issue draft package containing each issue title and GitHub Markdown body with Feature, Task, Status / Done, Source, Acceptance Criteria, and Key Commands.
+
+Partial bundles return `0` when spec or quality files exist but execution is missing, with empty issues and `source_missing=true`. If no native feature files exist, the command returns `1`; invalid slugs return `2`; output file conflicts return `1` unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains the text package.
 
 ```bash
 specspine feature issue <slug> [path] [--json] [--output FILE] [--force]

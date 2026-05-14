@@ -11,6 +11,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Native feature lifecycle status can now be queried, updated, listed in status JSON, and validated across peer files.
 - `specspine status --validate` now reports workspace, fusion, and feature validation summaries without becoming a failing gate command.
 - `specspine feature tasks` now exports execution checklist items into stable text and JSON task lists for implementation agents.
+- `specspine feature task-issues` now exports one local GitHub issue draft per execution task without GitHub API calls, token reads, `gh`, subprocesses, or network access.
 - `specspine feature trace` now exports a local traceability handoff that connects acceptance criteria, tasks, required checks, test plan entries, sources, and gaps.
 - `specspine feature ready` now evaluates a local per-feature readiness gate with blocking checks and failing exit codes.
 - `specspine feature handoff` now exports a compact feature packet that composes status, tasks, trace, readiness, release readiness, next actions, and key commands.
@@ -18,7 +19,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
 - `specspine feature pr` now exports offline Pull Request drafts that compose local feature evidence without GitHub API calls, token reads, `gh`, or network access.
 - `specspine feature tests` now exports acceptance-test packets that map acceptance criteria to test cases, attach explicit local `## Test Coverage` links, and surface existing test plan, quality checks, gaps, and blockers without running tests or generating code.
-- `specspine feature new` now generates native feature bundles with focused spec, execution, quality, handoff, tests, PR, ready, and validation guidance instead of broad generic placeholders.
+- `specspine feature new` now generates native feature bundles with focused spec, execution, quality, handoff, task issue draft, tests, PR, ready, and validation guidance instead of broad generic placeholders.
 - No upstream code should be copied into this repository as part of fusion work.
 
 ## Decisions
@@ -28,12 +29,13 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Use `specspine status . --json --validate --feature-summaries` only when agents need to choose or compare multiple native features, and add `--feature-status`, `--feature-ready`, or `--feature-sort` when the workspace has enough features to need local triage.
 - Treat `specspine feature handoff <slug> . --json` as the default local feature packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` as the focused execution checklist view when an agent only needs tasks.
+- Use `specspine feature task-issues <slug> . --json` when a maintainer or agent needs local task-level issue drafts before any remote GitHub issue exists.
 - Treat `specspine feature trace <slug> . --json` as the local traceability handoff when reviewers need a complete feature packet.
 - Treat `specspine feature ready <slug> . --json` as the local per-feature acceptance and release gate after implementation evidence is complete.
 - Treat `specspine feature tests <slug> . --json` as the focused local packet for QA and testing agents, and use `## Test Coverage` links in quality files to point AC ids at existing local tests.
 - Treat `specspine feature pr <slug> . --json` as the local Pull Request draft bridge after readiness and trace evidence are available.
 - Treat `specspine validate . --fusion --features` plus the unit test suite as the local completion gate.
-- Treat generated feature templates as the starting workflow contract for new requirements: keep acceptance criteria testable, tasks traceable, quality gates unchecked until evidence exists, and handoff/tests/pr/ready commands visible.
+- Treat generated feature templates as the starting workflow contract for new requirements: keep acceptance criteria testable, tasks traceable, quality gates unchecked until evidence exists, and handoff/task-issues/tests/pr/ready commands visible.
 - Keep GitHub issue and Pull Request draft generation offline and token-free by default.
 - Keep native feature peer files on a consistent allowed lifecycle status.
 - Prefer `specspine feature status <slug> . --set STATUS --enforce-transition` when lifecycle order matters; run `specspine feature ready <slug> . --json` before archiving.

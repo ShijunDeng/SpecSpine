@@ -8,12 +8,13 @@
 - Native feature bundle creation and offline GitHub issue draft export.
 - Native feature status lifecycle query/update through `specspine feature status`.
 - Native feature execution checklist export through `specspine feature tasks`.
+- Native feature task issue draft package export through `specspine feature task-issues`.
 - Native feature traceability export through `specspine feature trace`.
 - Native feature readiness gates through `specspine feature ready`.
 - Opt-in native feature transition enforcement through `specspine feature status --enforce-transition`.
 - Offline Pull Request draft export through `specspine feature pr`.
 - Native acceptance-test packet export through `specspine feature tests`.
-- Refreshed native feature bundle templates with focused handoff, tests, PR, readiness, and validation guidance.
+- Refreshed native feature bundle templates with focused handoff, task issue draft, tests, PR, readiness, and validation guidance.
 - Fusion layer generation for OpenSpec, Spec Kit, and Superpowers.
 - Status JSON, validation JSON/text, adapter doctor, and install hints.
 - Optional validation summaries in `specspine status --json --validate`.
@@ -31,12 +32,13 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine status . --json --validate --feature-summaries` when an agent needs to choose or compare multiple native features; add filters such as `--feature-status validated --feature-ready yes --feature-sort slug` when a multi-feature workspace needs focused triage; keep the default startup packet compact otherwise.
 - Use `specspine feature handoff <slug> . --json` as the default feature-level packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
+- Use `specspine feature task-issues <slug> . --json` when an agent needs one local GitHub issue draft per execution task.
 - Use `specspine feature trace <slug> . --json` when an agent or reviewer needs acceptance criteria, tasks, checks, test plan, and gaps in one packet.
 - Use `specspine feature ready <slug> . --json` when a reviewer, agent, or CI step needs a failing per-feature release gate.
 - Use `specspine feature tests <slug> . --json` when QA or testing agents need acceptance criteria mapped to pending test cases plus existing test plan, gaps, and blockers.
 - Use `specspine feature pr <slug> . --json` when a reviewer or release agent needs a local Pull Request draft without touching GitHub.
 - Use `specspine validate . --fusion --features` as the project-level gate.
-- Let `specspine feature new <slug> . --title "..." --why "..."` seed the feature's spec, execution, quality, handoff, tests, PR, ready, and validation workflow before implementation begins.
+- Let `specspine feature new <slug> . --title "..." --why "..."` seed the feature's spec, execution, quality, handoff, task issue draft, tests, PR, ready, and validation workflow before implementation begins.
 - Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`; prefer `--enforce-transition` for ordered lifecycle advancement while keeping manual updates available by default.
 - Run `specspine feature ready <slug> . --json` before enforced archive updates so readiness blockers are resolved separately from transition rules.
 - Continue dogfooding generated templates and tighten them when repeated manual edits appear.

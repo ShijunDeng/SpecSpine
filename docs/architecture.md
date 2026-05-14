@@ -22,6 +22,7 @@ The CLI is intentionally thin:
 - `specspine feature new` creates a traceable native feature bundle.
 - `specspine feature status` reads or updates native feature lifecycle state.
 - `specspine feature tasks` exports execution checklist items as stable agent tasks.
+- `specspine feature task-issues` exports one local GitHub issue draft per execution task.
 - `specspine feature trace` exports a feature bundle traceability handoff.
 - `specspine feature ready` evaluates a feature bundle as a local pass/fail readiness gate.
 - `specspine feature handoff` exports a compact feature packet for implementation, acceptance, and review agents.
@@ -111,7 +112,7 @@ The trace report includes `feature_id`, `status`, `sources`, `missing_files`, or
 
 The readiness report includes `feature_id`, `ready`, `status`, stable `checks`, `blocking_checks`, `summary`, `missing_files`, and `gaps`. It is local and deterministic, and does not execute the test plan or call external services. Ready returns `0`; not-ready and missing bundles return `1`; invalid slugs return `2`.
 
-`specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]` composes the existing local feature status, trace, tasks, readiness, and release readiness evidence into one minimal packet for agents. JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Its recommended commands match the generated execution template's focused `handoff`, `tasks`, `trace`, `tests`, `ready`, `pr`, and `validate . --fusion --features` workflow.
+`specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]` composes the existing local feature status, trace, tasks, readiness, and release readiness evidence into one minimal packet for agents. JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Its recommended commands match the generated execution template's focused `handoff`, `tasks`, `task-issues`, `trace`, `tests`, `ready`, `pr`, and `validate . --fusion --features` workflow.
 
 The handoff summary preserves the focused report counts: trace total/done/open, ready pass/fail/total, tasks total/done/open, gap count, and blocking check count. Next actions are deterministic and ordered: create or restore missing bundles, add missing peer files or sections, complete open tasks, resolve blocking checks, then review/merge/archive ready bundles. Missing bundles return `1` with a packet; invalid slugs return `2`; partial bundles return `0`. Output behavior matches other feature exporters: `--output` writes text with overwrite protection, and `--json --output` prints JSON while writing text to the file.
 
@@ -122,6 +123,10 @@ The tests report includes `feature_id`, `status`, `ready`, `source_files`, `miss
 `specspine status <path> --feature-summaries` is an opt-in workspace view for comparing native features. The default status payload intentionally stays compact for agent startup and does not include per-feature task or readiness detail. With the flag, `status` reuses `list_feature_bundles` and the existing feature handoff report to add `feature_summaries` with lifecycle status, completeness, readiness, missing files, task summary counts, ready summary counts, gap count, blocking check count, next actions, and recommended local commands. Text status adds only a short Feature summaries section. Invalid feature filenames produce not-ready summary records instead of crashing workspace status.
 
 Feature summary triage stays local to the already-built summaries. `--feature-status` filters by lifecycle status and can be repeated, including abnormal `invalid` and `unknown` buckets. `--feature-ready` filters by readiness aliases, and `--feature-sort` orders by `slug`, `status`, `ready`, `gaps`, `blocking`, or `tasks-open`, with `--feature-sort-desc` reversing the selected order. These options are rejected with code `2` unless `--feature-summaries` is present, so callers do not accidentally think the compact default status was filtered.
+
+`specspine feature task-issues <slug> [path] [--json] [--output FILE] [--force]` composes the existing local task and trace evidence into a GitHub Markdown issue draft package without creating remote issues. One execution checklist item becomes one issue draft with a stable title, task metadata, source line, acceptance criteria context, and key local commands.
+
+The report includes `feature_id`, `status`, `source_file`, `source_missing`, `missing_files`, `issues`, `summary`, and `recommended_commands`. Each issue includes `title`, `body`, `feature_id`, `task_id`, `task_text`, `task_done`, `source_file`, and `line`. The command is extractive and deterministic: it does not call GitHub APIs, require `gh`, read tokens, use network access, invoke upstream CLIs, vendor code, or add dependencies. Partial bundles with missing execution files return zero when another peer file exists; all-files-missing returns non-zero; invalid slugs return `2`; output semantics match the other feature exporters.
 
 `specspine feature issue <slug> [path]` is the local bridge from native feature bundles to GitHub issue workflows. It reads the spec, execution, and quality peer files and builds a structured issue draft with:
 
@@ -169,7 +174,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 
 - `specspine.workspace`: local file templates and workspace checks.
 - `specspine.agents`: project-local `AGENTS.md` generation for AI coding agents.
-- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, trace export, readiness gate evaluation, handoff packet export, issue draft export, and PR draft export.
+- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, task issue draft export, trace export, readiness gate evaluation, handoff packet export, issue draft export, and PR draft export.
 - `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, optional validation summary, and optional feature summary rendering.
