@@ -23,6 +23,7 @@ This repository is an early project skeleton. It includes:
 
 - A zero-dependency Python CLI.
 - A workspace initializer: `specspine init`.
+- A project-local agent instruction initializer: `specspine agents init`.
 - A native feature bundle creator: `specspine feature new`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
 - A fusion initializer: `specspine fuse`.
@@ -64,6 +65,12 @@ Create a SpecSpine workspace in an existing product repository:
 
 ```bash
 specspine init .
+```
+
+Create project-local instructions for AI coding agents:
+
+```bash
+specspine agents init .
 ```
 
 Create a traceable feature bundle:
@@ -197,6 +204,12 @@ specspine init [path]
 ```
 
 Initializes the SpecSpine workspace structure.
+
+```bash
+specspine agents init [path] [--force]
+```
+
+Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json`, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
 
 ```bash
 specspine doctor [path]

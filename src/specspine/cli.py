@@ -13,6 +13,7 @@ from .adapters import (
     probe_adapters,
     run_upstream_initializers,
 )
+from .agents import AgentsFileExistsError, init_agents_file
 from .features import (
     FeatureBundleExistsError,
     FeatureBundleNotFoundError,
@@ -64,6 +65,15 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser = subcommands.add_parser("init", help="initialize a SpecSpine workspace")
     init_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     init_parser.add_argument("--force", action="store_true", help="overwrite existing SpecSpine files")
+
+    agents_parser = subcommands.add_parser("agents", help="manage AI coding agent instructions")
+    agents_subcommands = agents_parser.add_subparsers(dest="agents_command", required=True)
+    agents_init_parser = agents_subcommands.add_parser(
+        "init",
+        help="create project-local AGENTS.md instructions",
+    )
+    agents_init_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    agents_init_parser.add_argument("--force", action="store_true", help="overwrite AGENTS.md")
 
     fuse_parser = subcommands.add_parser(
         "fuse",
@@ -191,6 +201,19 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(f"SpecSpine workspace already exists at {root}")
         return 0
+
+    if args.command == "agents":
+        if args.agents_command == "init":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                written = init_agents_file(root, force=args.force)
+            except AgentsFileExistsError as error:
+                print(str(error), file=sys.stderr)
+                return 1
+
+            print(f"Initialized SpecSpine agent instructions at {root}")
+            print(f"  created {written.relative_to(root)}")
+            return 0
 
     if args.command == "fuse":
         root = Path(args.path).expanduser().resolve()

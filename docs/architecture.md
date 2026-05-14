@@ -18,6 +18,7 @@ The backbone is represented by `.specspine/spine.yaml`. It records where the cur
 The CLI is intentionally thin:
 
 - `specspine init` creates the default workspace structure.
+- `specspine agents init` creates project-local `AGENTS.md` instructions for AI coding agents.
 - `specspine feature new` creates a traceable native feature bundle.
 - `specspine feature issue` exports a local GitHub issue draft from a native feature bundle.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
@@ -65,6 +66,8 @@ The command is intentionally offline. It does not call GitHub APIs, does not req
 
 `specspine validate --features` checks that discovered native feature bundles have valid slugs, all three peer files, matching feature ids, and proposed status markers.
 
+`specspine agents init [path]` writes a short `AGENTS.md` file for Codex, Claude, Gemini, and similar coding agents. The file is a human-readable entry point, not a new source of truth. It points agents back to `specspine status . --json`, `specspine validate .`, native feature bundles, and the external-adapter boundary for OpenSpec, Spec Kit, and Superpowers. The command refuses to overwrite an existing `AGENTS.md` unless `--force` is passed.
+
 ## Adapter Direction
 
 Adapters should be optional. SpecSpine should be usable as plain files first, then integrate with tools such as OpenSpec, Spec Kit, Superpowers, GitHub issues, and pull requests.
@@ -91,6 +94,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 ## Modules
 
 - `specspine.workspace`: local file templates and workspace checks.
+- `specspine.agents`: project-local `AGENTS.md` generation for AI coding agents.
 - `specspine.features`: native feature slug validation, bundle templates, file creation, discovery, and issue draft export.
 - `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
