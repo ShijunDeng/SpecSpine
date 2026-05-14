@@ -45,6 +45,7 @@ class DogfoodArtifactsTests(TestCase):
             "adapter-feature-handoff",
             "status-coverage-readiness-summaries",
             "adapter-handoff-artifacts",
+            "workspace-readiness-policy",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -88,6 +89,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:adapter-feature-handoff", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-coverage-readiness-summaries", "pass"), checks)
         self.assertIn(("feature.status_consistency:adapter-handoff-artifacts", "pass"), checks)
+        self.assertIn(("feature.status_consistency:workspace-readiness-policy", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -100,6 +102,8 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries",
             "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug",
             "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries --feature-require-coverage --feature-ready yes --feature-sort priority",
+            "PYTHONPATH=src python3 -m specspine policy . --json",
+            "PYTHONPATH=src python3 -m specspine status . --json --feature-summaries --feature-policy --feature-ready yes",
             "PYTHONPATH=src python3 -m specspine gates . --json",
             "PYTHONPATH=src python3 -m specspine adapters lifecycle . --json",
             "PYTHONPATH=src python3 -m specspine validate . --fusion --features",
@@ -111,6 +115,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine feature task-issues <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature ready <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature ready <slug> . --json --require-coverage",
+            "PYTHONPATH=src python3 -m specspine feature ready <slug> . --json --policy",
             "PYTHONPATH=src python3 -m specspine feature tests <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature pr <slug> . --json",
             "Keep feature specs, implementation tasks, and quality checks traceable",
@@ -255,6 +260,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/adapter-handoff-artifacts.md",
             "execution/features/adapter-handoff-artifacts.md",
             "quality/features/adapter-handoff-artifacts.md",
+            "specs/features/workspace-readiness-policy.md",
+            "execution/features/workspace-readiness-policy.md",
+            "quality/features/workspace-readiness-policy.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -425,6 +433,45 @@ class DogfoodArtifactsTests(TestCase):
         self.assertEqual(coverage_report.status, "validated")
         self.assertTrue(coverage_report.coverage_required)
         self.assertEqual(coverage_report.summary["fail"], 0)
+
+    def test_workspace_readiness_policy_artifacts_are_present(self) -> None:
+        self.assertTrue((REPO_ROOT / ".specspine" / "policy.yaml").exists())
+        for relative_path in (
+            "specs/features/workspace-readiness-policy.md",
+            "execution/features/workspace-readiness-policy.md",
+            "quality/features/workspace-readiness-policy.md",
+        ):
+            self.assertTrue((REPO_ROOT / relative_path).exists())
+
+    def test_workspace_readiness_policy_dogfood_bundle_passes_default_coverage_and_policy_gates(self) -> None:
+        default_report = build_feature_ready_report(
+            REPO_ROOT,
+            "workspace-readiness-policy",
+        )
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "workspace-readiness-policy",
+            require_coverage=True,
+        )
+        policy_report = build_feature_ready_report(
+            REPO_ROOT,
+            "workspace-readiness-policy",
+            require_coverage=True,
+            policy_applied=True,
+            coverage_required_by_policy=True,
+            policy_source=str(REPO_ROOT / ".specspine" / "policy.yaml"),
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+        self.assertTrue(policy_report.ready)
+        self.assertTrue(policy_report.policy_applied)
+        self.assertTrue(policy_report.coverage_required_by_policy)
+        self.assertEqual(policy_report.summary["fail"], 0)
 
     def test_feature_test_packet_dogfood_exports_test_cases(self) -> None:
         report = build_feature_tests_report(REPO_ROOT, "feature-test-packet")

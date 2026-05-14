@@ -19,6 +19,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine feature handoff` now exports a compact feature packet that composes status, tasks, trace, readiness, release readiness, next actions, and key commands.
 - `specspine status --feature-summaries` now adds optional compact per-feature progress, readiness, gaps, blocking counts, next actions, and local status/readiness/sort controls without changing default status output.
 - `specspine status --feature-summaries --feature-require-coverage` now lets summary readiness, blockers, next actions, and `--feature-ready` filters use the same coverage gate as `feature ready --require-coverage`.
+- `specspine policy`, `feature ready --policy`, and `status --feature-summaries --feature-policy` now encode optional workspace readiness coverage rules in local machine-readable context.
 - `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
 - `specspine feature pr` now exports offline Pull Request drafts that compose local feature evidence without GitHub API calls, token reads, `gh`, or network access.
 - `specspine feature sync-plan` now exports reviewable GitHub CLI argv plans and optional local artifact directories for feature issues, task issues, and draft PRs without executing `gh`, reading tokens, calling APIs, invoking subprocesses, or using network access.
@@ -35,12 +36,13 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Treat `specspine status . --json` as the first context packet for future agents.
 - Use `specspine status . --json --validate` when agents need context and failed quality checks together.
 - Add `--validation-warnings` only when agents need warning check details for unchanged scaffold placeholders.
-- Use `specspine status . --json --validate --feature-summaries` only when agents need to choose or compare multiple native features, and add `--feature-status`, `--feature-ready`, `--feature-priority`, `--feature-owner`, or `--feature-sort` when the workspace has enough features to need local triage; add `--feature-require-coverage` when candidate readiness must include checked local AC coverage.
+- Use `specspine status . --json --validate --feature-summaries` only when agents need to choose or compare multiple native features, and add `--feature-status`, `--feature-ready`, `--feature-priority`, `--feature-owner`, or `--feature-sort` when the workspace has enough features to need local triage; add `--feature-require-coverage` when all candidates must include checked local AC coverage, or `--feature-policy` when the workspace policy should decide per feature.
 - Treat `specspine feature handoff <slug> . --json` as the default local feature packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` as the focused execution checklist view when an agent only needs tasks.
 - Use `specspine feature task-issues <slug> . --json` when a maintainer or agent needs local task-level issue drafts before any remote GitHub issue exists.
 - Treat `specspine feature trace <slug> . --json` as the local traceability handoff when reviewers need a complete feature packet.
-- Treat `specspine feature ready <slug> . --json` as the local per-feature acceptance and release gate after implementation evidence is complete; add `--require-coverage` for high-risk or pre-release reviews that require completed local AC coverage links.
+- Treat `specspine feature ready <slug> . --json` as the local per-feature acceptance and release gate after implementation evidence is complete; add `--require-coverage` for high-risk or pre-release reviews that require completed local AC coverage links, and add `--policy` when `.specspine/policy.yaml` should decide.
+- Treat `specspine policy . --json` as the workspace readiness governance packet; missing files mean defaults, not a validation failure.
 - Treat `specspine feature tests <slug> . --json` as the focused local packet for QA and testing agents, and use `## Test Coverage` links in quality files to point AC ids at existing local tests.
 - Treat `specspine feature pr <slug> . --json` as the local Pull Request draft bridge after readiness and trace evidence are available.
 - Treat `specspine feature sync-plan <slug> . --json` as the local review packet for GitHub CLI sync intent, and `specspine feature sync-plan <slug> . --output-dir .specspine/sync-plan/<slug>` as the local body-file and manifest materialization step before a human runs any remote command.
@@ -65,6 +67,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Status packets can now opt into compact feature summaries for multi-feature triage while omitting them by default.
 - Feature summary packets can now be filtered by lifecycle status, readiness, priority, and owner, sorted by local summary fields including priority, and rejected with code `2` when summary-only options are used without `--feature-summaries`.
 - Feature summary readiness can now opt into coverage-required gating without changing default summary fields or text output.
+- Workspace readiness policy can now select which features require coverage-required readiness by default, feature id, priority, or status while preserving default command compatibility.
 - Feature execution checklists can now be exported without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be exported as deterministic traceability packets without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be checked with deterministic readiness gates that fail on missing files, inconsistent statuses, trace gaps, incomplete checklist evidence, missing test plans, or open release readiness items.

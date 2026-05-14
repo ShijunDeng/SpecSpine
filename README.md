@@ -30,6 +30,7 @@ This repository is an early project skeleton. It includes:
 - A native feature task issue draft exporter: `specspine feature task-issues`.
 - A native feature traceability exporter: `specspine feature trace`.
 - A native feature readiness gate: `specspine feature ready`.
+- An optional workspace readiness policy exporter: `specspine policy`.
 - A native feature handoff packet exporter: `specspine feature handoff`.
 - A native feature acceptance-test packet exporter: `specspine feature tests`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
@@ -134,6 +135,14 @@ Check whether the feature is ready for review or release:
 specspine feature ready add-dark-mode .
 specspine feature ready add-dark-mode . --json
 specspine feature ready add-dark-mode . --json --require-coverage
+specspine feature ready add-dark-mode . --json --policy
+```
+
+Export the optional local workspace readiness policy:
+
+```bash
+specspine policy .
+specspine policy . --json
 ```
 
 Draft a local GitHub issue from the feature bundle:
@@ -186,6 +195,7 @@ specspine status . --json
 specspine status . --json --validate
 specspine status . --json --validate --validation-warnings
 specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-priority high --feature-sort priority
+specspine status . --json --feature-summaries --feature-policy --feature-ready yes
 ```
 
 Validate workspace and fusion contracts for CI or agents:
@@ -206,6 +216,7 @@ The fusion command creates:
 ```text
 .specspine/
   spine.yaml
+  policy.yaml
   fusion.yaml
   fusion-map.md
   adapters/

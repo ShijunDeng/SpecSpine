@@ -9,12 +9,14 @@ from .features import (
     FEATURE_PRIORITIES,
     FEATURE_STATUSES,
     FeatureBundleNotFoundError,
+    FeatureMetadata,
     InvalidFeatureSlug,
     build_feature_handoff_report,
     list_feature_bundles,
     read_feature_metadata,
 )
 from .fusion import FUSION_REQUIRED_FILES
+from .policy import WorkspacePolicy, load_workspace_policy
 from .workspace import BASE_WORKSPACE_FILES, check_workspace
 
 
@@ -390,6 +392,8 @@ def _invalid_feature_summary(
     *,
     reason: str,
     require_coverage: bool = False,
+    policy: WorkspacePolicy | None = None,
+    policy_coverage_required: bool = False,
 ) -> dict[str, Any]:
     slug = str(feature["slug"])
     missing_files = [
@@ -414,6 +418,9 @@ def _invalid_feature_summary(
     }
     if require_coverage:
         summary["coverage_required"] = True
+    if policy is not None:
+        summary["policy_coverage_required"] = policy_coverage_required
+        summary["policy_source"] = str(policy.source_file)
     return summary
 
 
@@ -421,6 +428,8 @@ def _missing_feature_summary(
     feature: dict[str, object],
     *,
     require_coverage: bool = False,
+    policy: WorkspacePolicy | None = None,
+    policy_coverage_required: bool = False,
 ) -> dict[str, Any]:
     slug = str(feature["slug"])
     missing_files = [
@@ -450,6 +459,9 @@ def _missing_feature_summary(
     }
     if require_coverage:
         summary["coverage_required"] = True
+    if policy is not None:
+        summary["policy_coverage_required"] = policy_coverage_required
+        summary["policy_source"] = str(policy.source_file)
     return summary
 
 
@@ -464,25 +476,42 @@ def build_feature_summaries(
     sort_key: str | None = None,
     sort_desc: bool = False,
     require_coverage: bool = False,
+    use_policy: bool = False,
 ) -> list[dict[str, Any]]:
     resolved_root = root.expanduser().resolve()
     summaries: list[dict[str, Any]] = []
     feature_bundles = features if features is not None else list_feature_bundles(resolved_root)
+    policy = load_workspace_policy(resolved_root) if use_policy else None
 
     for feature in feature_bundles:
         slug = str(feature["slug"])
+        status = str(feature.get("status") or "unknown")
+        try:
+            metadata = read_feature_metadata(resolved_root, slug)
+        except InvalidFeatureSlug:
+            metadata = FeatureMetadata(priority="unknown", owner="unassigned")
+        policy_coverage_required = False
+        if policy is not None:
+            policy_coverage_required = policy.require_coverage.requires_coverage(
+                feature_id=slug,
+                metadata=metadata,
+                status=status,
+            )
+        summary_require_coverage = require_coverage or policy_coverage_required
         try:
             report = build_feature_handoff_report(
                 resolved_root,
                 slug,
-                require_coverage=require_coverage,
+                require_coverage=summary_require_coverage,
             )
         except InvalidFeatureSlug as error:
             summaries.append(
                 _invalid_feature_summary(
                     feature,
                     reason=str(error),
-                    require_coverage=require_coverage,
+                    require_coverage=summary_require_coverage,
+                    policy=policy,
+                    policy_coverage_required=policy_coverage_required,
                 )
             )
             continue
@@ -490,13 +519,14 @@ def build_feature_summaries(
             summaries.append(
                 _missing_feature_summary(
                     feature,
-                    require_coverage=require_coverage,
+                    require_coverage=summary_require_coverage,
+                    policy=policy,
+                    policy_coverage_required=policy_coverage_required,
                 )
             )
             continue
 
         summary = report.summary
-        metadata = read_feature_metadata(resolved_root, report.feature_id)
         feature_summary = {
             "feature_id": report.feature_id,
             "slug": report.feature_id,
@@ -513,8 +543,11 @@ def build_feature_summaries(
             "next_actions": list(report.next_actions),
             "recommended_commands": list(report.recommended_commands),
         }
-        if require_coverage:
+        if summary_require_coverage:
             feature_summary["coverage_required"] = True
+        if policy is not None:
+            feature_summary["policy_coverage_required"] = policy_coverage_required
+            feature_summary["policy_source"] = str(policy.source_file)
         summaries.append(feature_summary)
 
     return filter_and_sort_feature_summaries(
@@ -583,6 +616,7 @@ def build_status(
     feature_summary_sort: str | None = None,
     feature_summary_sort_desc: bool = False,
     feature_summary_require_coverage: bool = False,
+    feature_summary_use_policy: bool = False,
     adapter_probe: AdapterProbe = probe_adapters,
 ) -> dict[str, Any]:
     root = path.expanduser().resolve()
@@ -645,6 +679,7 @@ def build_status(
             sort_key=feature_summary_sort,
             sort_desc=feature_summary_sort_desc,
             require_coverage=feature_summary_require_coverage,
+            use_policy=feature_summary_use_policy,
         )
 
     return status

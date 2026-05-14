@@ -454,6 +454,9 @@ class FeatureReadyReport:
     missing_files: tuple[str, ...]
     gaps: tuple[dict[str, str], ...]
     coverage_required: bool = False
+    policy_applied: bool = False
+    coverage_required_by_policy: bool = False
+    policy_source: str | None = None
 
     @property
     def blocking_checks(self) -> tuple[FeatureReadyCheck, ...]:
@@ -484,6 +487,10 @@ class FeatureReadyReport:
         }
         if self.coverage_required:
             payload["coverage_required"] = True
+        if self.policy_applied:
+            payload["coverage_required_by_policy"] = self.coverage_required_by_policy
+            payload["policy_applied"] = True
+            payload["policy_source"] = self.policy_source
         return payload
 
 
@@ -2071,6 +2078,9 @@ def build_feature_ready_report(
     slug: str,
     *,
     require_coverage: bool = False,
+    policy_applied: bool = False,
+    coverage_required_by_policy: bool = False,
+    policy_source: str | None = None,
 ) -> FeatureReadyReport:
     slug = validate_feature_slug(slug)
     resolved_root = root.expanduser().resolve()
@@ -2214,6 +2224,9 @@ def build_feature_ready_report(
         missing_files=missing_files,
         gaps=gaps,
         coverage_required=require_coverage,
+        policy_applied=policy_applied,
+        coverage_required_by_policy=coverage_required_by_policy,
+        policy_source=policy_source,
     )
 
 

@@ -12,6 +12,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Native feature task issue draft packages with one local GitHub issue draft per execution task.
 - Native feature traceability export across acceptance criteria, tasks, required checks, and test plans.
 - Native feature readiness gate across peer files, lifecycle status, trace gaps, completed checklists, test plan evidence, release readiness, and optional completed local coverage links.
+- Optional workspace readiness policy export from `.specspine/policy.yaml`, including policy-selected coverage-required readiness.
 - Native feature handoff packets that compose status, trace, tasks, readiness, release readiness, next actions, and recommended commands.
 - Native feature acceptance-test packets that map acceptance criteria to deterministic test cases, attach explicit local test coverage links, and surface existing test plans, quality checks, gaps, and blockers.
 - Local GitHub issue draft generation from feature bundles without API calls.
@@ -21,7 +22,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Fusion initialization for OpenSpec, Spec Kit, and Superpowers as external adapters.
 - Adapter lifecycle mapping export for OpenSpec, Spec Kit, and Superpowers without probing upstream tools.
 - Feature-specific adapter handoff export and optional local artifact materialization that combines native feature evidence with OpenSpec, Spec Kit, and Superpowers lifecycle context without executing upstream tools.
-- Status, optional status validation summaries, opt-in validation warning details, optional filterable feature summaries, validation, doctor, and adapter inspection commands suitable for CI and coding agents.
+- Status, optional status validation summaries, opt-in validation warning details, optional filterable and policy-aware feature summaries, validation, doctor, and adapter inspection commands suitable for CI and coding agents.
 
 ## Non-Goals
 
@@ -35,7 +36,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 
 - Initialize a base workspace with `specspine init .` and create agent guidance with `specspine agents init .`.
 - Initialize the full fusion layer with `specspine fuse . --agent codex`, which writes adapter contracts but does not invoke upstream tools.
-- Run `specspine status . --json` before work to understand missing artifacts, enabled upstreams, and next recommendations; add `--validate` when a single packet should also show quality-gate summary and failed check ids; add `--validation-warnings` with `--validate` only when scaffold warning details are needed; add `--feature-summaries` only when choosing or comparing multiple native features; add local summary filters such as `--feature-status validated --feature-ready yes --feature-priority high --feature-sort priority` when a multi-feature workspace needs triage; add `--feature-require-coverage` when candidate readiness must include checked local AC coverage links.
+- Run `specspine status . --json` before work to understand missing artifacts, enabled upstreams, and next recommendations; add `--validate` when a single packet should also show quality-gate summary and failed check ids; add `--validation-warnings` with `--validate` only when scaffold warning details are needed; add `--feature-summaries` only when choosing or comparing multiple native features; add local summary filters such as `--feature-status validated --feature-ready yes --feature-priority high --feature-sort priority` when a multi-feature workspace needs triage; add `--feature-require-coverage` when all candidate readiness must include checked local AC coverage links, or `--feature-policy` when `.specspine/policy.yaml` should decide per feature.
 - Create new requirements with `specspine feature new <slug> . --title "..." --why "..."`; the generated spec starts with `Priority: medium` and `Owner: unassigned`, and the peer files prompt for non-goals, edge cases, constraints, dependencies, open questions, traceability notes, focused handoff/task-issues/tests/pr/ready commands, and local validation gates.
 - Move feature bundles through `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` with `specspine feature status <slug> . --set STATUS`; add `--enforce-transition` when agents or CI should reject out-of-order transitions.
 - Before archiving with `--enforce-transition`, pass `specspine feature ready <slug> . --json` so incomplete bundles cannot be archived by lifecycle status alone.
@@ -43,7 +44,8 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Hand execution checklists to implementation agents with `specspine feature tasks <slug> . --json`.
 - Draft one local GitHub issue per execution task with `specspine feature task-issues <slug> . --json` or `--output`.
 - Hand a full traceability packet to agents or reviewers with `specspine feature trace <slug> . --json`.
-- Fail or pass a per-feature readiness gate with `specspine feature ready <slug> . --json`; add `--require-coverage` for high-risk or pre-release checks that require every AC to have a checked local `## Test Coverage` link.
+- Fail or pass a per-feature readiness gate with `specspine feature ready <slug> . --json`; add `--require-coverage` for high-risk or pre-release checks that require every AC to have a checked local `## Test Coverage` link; add `--policy` when the workspace policy should decide whether that stricter gate applies.
+- Export the optional local governance context with `specspine policy . --json`; missing policy files return defaults with `source_missing: true` and do not make status or validation fail.
 - Hand an acceptance-test packet with explicit local test coverage links to QA or testing agents with `specspine feature tests <slug> . --json`.
 - Generate an offline issue draft with `specspine feature issue <slug> . --json` or `--output`.
 - Generate an offline Pull Request draft with `specspine feature pr <slug> . --json` or `--output`.
@@ -62,6 +64,9 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - `status --json --feature-summaries` reports compact per-feature lifecycle, priority, owner, progress, readiness, gap, blocking, next-action, and recommended-command summaries while default status JSON omits them.
 - `status --feature-summaries` applies optional local `--feature-status`, `--feature-ready`, `--feature-priority`, `--feature-owner`, `--feature-sort`, and `--feature-sort-desc` controls to JSON and text summaries, and returns code `2` when those controls are unsupported or used without `--feature-summaries`.
 - `status --feature-summaries --feature-require-coverage` computes summary readiness, blocking counts, next actions, and `--feature-ready` filters through the same local coverage gate as `feature ready --require-coverage`, adds `coverage_required: true` to those summaries, and leaves default summary fields unchanged when absent.
+- `policy --json` reports `root`, `source_file`, `source_missing`, `readiness.require_coverage`, `summary`, and `recommended_commands`; the optional policy supports `enabled`, `default`, `priorities`, `statuses`, and `feature_ids`, warns on unknown priority/status values without failing, and requires no new dependency.
+- `feature ready <slug> --json --policy` applies workspace policy to decide whether coverage is required, includes stable policy fields in JSON, and preserves explicit `--require-coverage` as an override.
+- `status --feature-summaries --feature-policy` computes each feature summary with policy-selected coverage requirements, adds stable policy fields to those summaries, applies `--feature-ready yes/no` to policy readiness, returns code `2` without `--feature-summaries`, and preserves default status compatibility when absent.
 - `feature tasks <slug> --json` reports stable ordered task records from `execution/features/<slug>.md`.
 - `feature task-issues <slug> --json` reports a local issue draft package with one issue per execution task, including stable titles, bodies, source lines, task metadata, summary counts, and recommended local commands without calling GitHub APIs, `gh`, network services, upstream CLIs, or reading tokens.
 - `feature trace <slug> --json` reports sources, missing files, acceptance criteria, tasks, required checks, test plan entries, summary counts, and trace gaps without calling external services.

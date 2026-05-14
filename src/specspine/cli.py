@@ -41,6 +41,7 @@ from .features import (
     build_pull_request_draft,
     create_feature_bundle,
     get_feature_status,
+    read_feature_metadata,
     render_feature_handoff_json,
     render_feature_handoff_text,
     render_feature_ready_json,
@@ -68,6 +69,7 @@ from .gates import (
     render_quality_gate_json,
     render_quality_gate_text,
 )
+from .policy import load_workspace_policy, render_policy_json, render_policy_text
 from .status import (
     InvalidFeatureSummaryOption,
     build_status,
@@ -352,6 +354,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="require completed local Test Coverage links for every acceptance criterion",
     )
+    feature_ready_parser.add_argument(
+        "--policy",
+        action="store_true",
+        help="apply workspace readiness policy when deciding whether coverage is required",
+    )
 
     feature_status_parser = feature_subcommands.add_parser(
         "status",
@@ -392,6 +399,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="print stable JSON for agents and scripts",
     )
 
+    policy_parser = subcommands.add_parser("policy", help="export workspace readiness policy")
+    policy_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    policy_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+
     status_parser = subcommands.add_parser("status", help="summarize SpecSpine workspace status")
     status_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     status_parser.add_argument(
@@ -423,6 +438,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--feature-require-coverage",
         action="store_true",
         help="require completed local Test Coverage links when computing feature summary readiness",
+    )
+    status_parser.add_argument(
+        "--feature-policy",
+        action="store_true",
+        help="apply workspace readiness policy when computing feature summary readiness",
     )
     status_parser.add_argument(
         "--feature-status",
@@ -975,10 +995,25 @@ def main(argv: list[str] | None = None) -> int:
         if args.feature_command == "ready":
             root = Path(args.path).expanduser().resolve()
             try:
+                policy_required = False
+                policy_source = None
+                if args.policy:
+                    policy = load_workspace_policy(root)
+                    metadata = read_feature_metadata(root, args.slug)
+                    status = get_feature_status(root, args.slug).status or "unknown"
+                    policy_required = policy.require_coverage.requires_coverage(
+                        feature_id=args.slug,
+                        metadata=metadata,
+                        status=status,
+                    )
+                    policy_source = str(policy.source_file)
                 report = build_feature_ready_report(
                     root,
                     args.slug,
-                    require_coverage=args.require_coverage,
+                    require_coverage=args.require_coverage or policy_required,
+                    policy_applied=args.policy,
+                    coverage_required_by_policy=policy_required,
+                    policy_source=policy_source,
                 )
             except InvalidFeatureSlug as error:
                 print(str(error), file=sys.stderr)
@@ -1096,6 +1131,18 @@ def main(argv: list[str] | None = None) -> int:
             print(render_quality_gate_text(report), end="")
         return 1 if report.source_missing else 0
 
+    if args.command == "policy":
+        try:
+            policy = load_workspace_policy(Path(args.path))
+        except OSError as error:
+            print(f"Could not read workspace policy: {error}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(render_policy_json(policy), end="")
+        else:
+            print(render_policy_text(policy), end="")
+        return 0
+
     if args.command == "status":
         if args.validation_warnings and not args.validate:
             print("--validation-warnings requires --validate.", file=sys.stderr)
@@ -1109,12 +1156,13 @@ def main(argv: list[str] | None = None) -> int:
             or args.feature_sort is not None
             or args.feature_sort_desc
             or args.feature_require_coverage
+            or args.feature_policy
         )
         if feature_summary_options_requested and not args.feature_summaries:
             print(
                 "--feature-status, --feature-ready, --feature-priority, "
                 "--feature-owner, --feature-sort, --feature-sort-desc, "
-                "and --feature-require-coverage "
+                "--feature-require-coverage, and --feature-policy "
                 "require --feature-summaries.",
                 file=sys.stderr,
             )
@@ -1144,18 +1192,20 @@ def main(argv: list[str] | None = None) -> int:
                 print(str(error), file=sys.stderr)
                 return 2
 
-        status = build_status(
-            Path(args.path),
-            include_adapters=args.adapters,
-            include_feature_summaries=args.feature_summaries,
-            feature_summary_statuses=feature_summary_statuses,
-            feature_summary_ready=feature_summary_ready,
-            feature_summary_priorities=feature_summary_priorities,
-            feature_summary_owners=feature_summary_owners,
-            feature_summary_sort=feature_summary_sort,
-            feature_summary_sort_desc=args.feature_sort_desc,
-            feature_summary_require_coverage=args.feature_require_coverage,
-        )
+        status_kwargs = {
+            "include_adapters": args.adapters,
+            "include_feature_summaries": args.feature_summaries,
+            "feature_summary_statuses": feature_summary_statuses,
+            "feature_summary_ready": feature_summary_ready,
+            "feature_summary_priorities": feature_summary_priorities,
+            "feature_summary_owners": feature_summary_owners,
+            "feature_summary_sort": feature_summary_sort,
+            "feature_summary_sort_desc": args.feature_sort_desc,
+            "feature_summary_require_coverage": args.feature_require_coverage,
+        }
+        if args.feature_policy:
+            status_kwargs["feature_summary_use_policy"] = True
+        status = build_status(Path(args.path), **status_kwargs)
         if args.validate:
             report = build_validation_report(
                 Path(args.path),

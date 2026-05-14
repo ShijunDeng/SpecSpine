@@ -28,6 +28,7 @@
 - [x] Implement `specspine status . --json --feature-summaries` optional native feature summaries.
 - [x] Implement local feature summary filters and sorting for `specspine status --feature-summaries`.
 - [x] Implement coverage-required readiness summaries for `specspine status --feature-summaries --feature-require-coverage`.
+- [x] Implement optional workspace readiness policy with `specspine policy`, `feature ready --policy`, and `status --feature-summaries --feature-policy`.
 - [x] Implement `specspine adapters lifecycle` static adapter lifecycle mapping export.
 - [x] Implement `specspine adapters handoff` feature-specific adapter handoff export.
 - [x] Implement `specspine adapters handoff --output-dir` local per-adapter artifact materialization.
@@ -55,6 +56,7 @@
 - [x] Dogfood adapter lifecycle mappings with `adapter-lifecycle-mappings`.
 - [x] Dogfood adapter feature handoff with `adapter-feature-handoff`.
 - [x] Dogfood adapter handoff artifacts with `adapter-handoff-artifacts`.
+- [x] Dogfood workspace readiness policy with `workspace-readiness-policy`.
 
 ## Next
 
@@ -71,7 +73,8 @@
 - [ ] Observe whether new feature bundles need less manual template cleanup after the focused workflow guidance.
 - [ ] Monitor whether agents prefer `status --json --validate` as the default startup packet.
 - [ ] Observe whether agents use `status --json --validate --validation-warnings` only when scaffold warning detail is needed.
-- [ ] Observe whether agents use `status --json --validate --feature-summaries` only when comparing multiple features, whether local filters reduce follow-up handoff reads, and whether release triage uses `--feature-require-coverage` for stricter candidates.
+- [ ] Observe whether agents use `status --json --validate --feature-summaries` only when comparing multiple features, whether local filters reduce follow-up handoff reads, and whether release triage uses `--feature-require-coverage` or `--feature-policy` for stricter candidates.
+- [ ] Observe whether maintainers keep `.specspine/policy.yaml` narrow enough to avoid changing historical feature readiness unintentionally.
 - [ ] Observe whether adapter sync work starts from `adapters lifecycle --json` before upstream or remote state is touched.
 - [ ] Observe whether adapter work starts from `adapters handoff <slug> --json` or `adapters handoff <slug> --output-dir .specspine/adapter-handoff/<slug>` when a native feature needs upstream-specific context.
 - [ ] Revisit generated templates after dogfooding this workspace for one or more development cycles.

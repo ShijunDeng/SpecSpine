@@ -24,6 +24,7 @@
 - Optional validation summaries in `specspine status --json --validate`.
 - Opt-in validation warning details in `specspine status --json --validate --validation-warnings`.
 - Optional native feature summaries in `specspine status --json --feature-summaries`, with local status/readiness filters, coverage-required readiness, and deterministic sorting.
+- Optional workspace readiness policy through `.specspine/policy.yaml`, `specspine policy`, `feature ready --policy`, and `status --feature-summaries --feature-policy`.
 - Repository-level quality gate definition export through `specspine gates`, including optional severity, owner, and CI metadata labels.
 - Unit tests and GitHub Actions coverage for the current command surface.
 
@@ -36,12 +37,13 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Keep this repository complete under `specspine status . --json`.
 - Prefer `specspine status . --json --validate` when an agent needs both context and quality-gate summary in one packet.
 - Add `--validation-warnings` only when an agent needs scaffold placeholder warning ids; keep default status validation focused on failed checks.
-- Use `specspine status . --json --validate --feature-summaries` when an agent needs to choose or compare multiple native features; add filters such as `--feature-status validated --feature-ready yes --feature-priority high --feature-sort priority` when a multi-feature workspace needs focused triage; add `--feature-require-coverage` when candidate readiness must include checked local AC coverage links; keep the default startup packet compact otherwise.
+- Use `specspine status . --json --validate --feature-summaries` when an agent needs to choose or compare multiple native features; add filters such as `--feature-status validated --feature-ready yes --feature-priority high --feature-sort priority` when a multi-feature workspace needs focused triage; add `--feature-require-coverage` when every candidate must include checked local AC coverage links; add `--feature-policy` when `.specspine/policy.yaml` should decide stricter readiness per feature; keep the default startup packet compact otherwise.
 - Use `specspine feature handoff <slug> . --json` as the default feature-level packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
 - Use `specspine feature task-issues <slug> . --json` when an agent needs one local GitHub issue draft per execution task.
 - Use `specspine feature trace <slug> . --json` when an agent or reviewer needs acceptance criteria, tasks, checks, test plan, and gaps in one packet.
-- Use `specspine feature ready <slug> . --json` when a reviewer, agent, or CI step needs a failing per-feature release gate; add `--require-coverage` before high-risk release handoffs when every AC must have checked local test coverage evidence.
+- Use `specspine feature ready <slug> . --json` when a reviewer, agent, or CI step needs a failing per-feature release gate; add `--require-coverage` before high-risk release handoffs when every AC must have checked local test coverage evidence; add `--policy` when the workspace policy should make that decision.
+- Use `specspine policy . --json` when an agent needs the local readiness governance packet and warning count.
 - Use `specspine feature tests <slug> . --json` when QA or testing agents need acceptance criteria mapped to pending test cases plus existing test plan, gaps, and blockers.
 - Use `specspine feature pr <slug> . --json` when a reviewer or release agent needs a local Pull Request draft without touching GitHub.
 - Use `specspine feature sync-plan <slug> . --json` when a maintainer needs to review GitHub CLI issue/PR sync intent before any remote execution; add `--output-dir .specspine/sync-plan/<slug>` when the body files, manifest, and review-only command script should be materialized locally.
@@ -68,7 +70,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Should future warning categories beyond scaffold placeholders be exposed through the same opt-in status flag?
 - Should feature summary triage later need richer structured metadata beyond local `Priority:` and `Owner:`, such as milestone, target release, or remote project fields?
 - Should readiness summaries eventually be included in workspace status, or remain an explicit per-feature gate?
-- Should workspaces eventually have a policy file that chooses when `feature ready --require-coverage` is mandatory?
+- Should future policy sections cover lifecycle transitions or adapter handoff gates beyond readiness coverage?
 - Should the refreshed feature bundle template later grow explicit rollout-owner or implementation-file metadata, or stay minimal until a real workflow needs it?
 - Should future remote sync consume quality gate `ci_check` labels for branch-protection required checks, or should SpecSpine continue to export them only as local planning metadata?
 - Should a future remote-sync command consume `feature sync-plan --output-dir` artifacts after explicit confirmation, or should SpecSpine remain plan-only for GitHub writes?

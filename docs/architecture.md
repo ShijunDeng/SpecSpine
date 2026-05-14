@@ -30,6 +30,7 @@ The CLI is intentionally thin:
 - `specspine feature issue` exports a local GitHub issue draft from a native feature bundle.
 - `specspine feature pr` exports a local GitHub Pull Request draft from a native feature bundle.
 - `specspine feature sync-plan` exports a local GitHub CLI synchronization plan and optional review artifacts without executing it.
+- `specspine policy` exports optional workspace readiness policy from `.specspine/policy.yaml`.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
 - `specspine status` emits a compact status packet for humans, agents, and scripts.
@@ -122,6 +123,23 @@ With `--require-coverage`, readiness also appends `feature.test_coverage`. That 
 
 The readiness report includes `feature_id`, `ready`, `status`, stable `checks`, `blocking_checks`, `summary`, `missing_files`, and `gaps`; coverage-required JSON also includes `coverage_required: true`. It is local and deterministic. Ready returns `0`; not-ready and missing bundles return `1`; invalid slugs return `2`.
 
+`specspine policy [path] [--json]` exports optional local governance from `.specspine/policy.yaml`. Missing policy files return `0` with defaults and `source_missing: true`, so old workspaces keep working. The supported YAML subset is intentionally small:
+
+```yaml
+readiness:
+  require_coverage:
+    enabled: true
+    default: false
+    priorities:
+      - high
+    statuses:
+      - implemented
+    feature_ids:
+      - critical-feature
+```
+
+When `enabled=true`, coverage is required if `default=true`, the feature id matches `feature_ids`, the spec `Priority:` matches `priorities`, or the lifecycle status matches `statuses`. Empty lists do not match. Unknown priority or status selectors are reported as policy warnings without failing. `specspine feature ready <slug> --policy` applies this rule and includes `policy_applied`, `coverage_required_by_policy`, and `policy_source` in JSON; explicit `--require-coverage` remains an override.
+
 `specspine adapters handoff <slug> [path] [--json] [--output FILE] [--output-dir DIR] [--force]` composes the existing native feature handoff with the adapter lifecycle mapping selected for the feature's current status. The packet includes feature id, status, readiness, source files, missing files, gaps, blockers, adapter config state, upstream phase, upstream artifacts, agent focus, local commands, notes, and recommended upstream steps. Recommended upstream steps are plan data only: OpenSpec uses argv arrays, Spec Kit and Superpowers use agent instructions, and every step is marked not executed, not safe to auto-run, no remote creation, no network, and no token requirement. Partial bundles return `0`; missing bundles return `1`; invalid slugs return `2`.
 
 `--output-dir` materializes the adapter handoff into local review files: `manifest.json`, `combined.md`, and focused `adapters/openspec.md`, `adapters/speckit.md`, and `adapters/superpowers.md`. The manifest includes artifact paths, feature evidence, summary, gaps, blockers, and explicit false safety flags for execution, network, token, remote creation, and auto-run. Existing managed files require `--force`; unknown files in the directory are preserved. Artifact export writes local files only and does not execute upstream tools, subprocesses, network calls, GitHub operations, or token reads.
@@ -137,6 +155,8 @@ The tests report includes `feature_id`, `status`, `ready`, `source_files`, `miss
 `specspine status <path> --feature-summaries` is an opt-in workspace view for comparing native features. The default status payload intentionally stays compact for agent startup and does not include per-feature task or readiness detail. With the flag, `status` reuses `list_feature_bundles`, reads `Priority:` and `Owner:` from `specs/features/<slug>.md`, and uses the existing feature handoff report to add `feature_summaries` with lifecycle status, priority, owner, completeness, readiness, missing files, task summary counts, ready summary counts, gap count, blocking check count, next actions, and recommended local commands. Missing or invalid priorities are reported as `unknown`; missing or blank owners are reported as `unassigned`. Text status adds only a short Feature summaries section. Invalid feature filenames produce not-ready summary records instead of crashing workspace status.
 
 `--feature-require-coverage` is valid only with `--feature-summaries`. It rebuilds summary readiness through the same `feature.test_coverage` gate as `specspine feature ready --require-coverage`, so `ready`, `ready_summary`, `blocking_checks`, `next_actions`, and `--feature-ready` filters all reflect checked local coverage evidence. Coverage-required JSON summaries add `coverage_required: true`; default summaries omit the field for compatibility. Text rows add a concise `coverage=yes` marker.
+
+`--feature-policy` is also valid only with `--feature-summaries`. It loads the workspace policy once, decides coverage requirement per feature from id, priority, and status, and then computes `ready`, `ready_summary`, `blocking_checks`, `next_actions`, and `--feature-ready` filters from that policy result. Policy-mode summaries add `policy_coverage_required` and `policy_source`; default summaries omit those fields. `--feature-require-coverage` still means every summary requires coverage and takes precedence over policy selection.
 
 Feature summary triage stays local to the already-built summaries. `--feature-status` filters by lifecycle status and can be repeated, including abnormal `invalid` and `unknown` buckets. `--feature-ready` filters by readiness aliases. `--feature-priority` filters by `high`, `medium`, `low`, or `unknown`, and `--feature-owner` performs repeated case-insensitive exact owner matches where `unassigned` includes missing owners. `--feature-sort` orders by `slug`, `status`, `ready`, `gaps`, `blocking`, `tasks-open`, or `priority`; priority sort uses `high -> medium -> low -> unknown`, with `--feature-sort-desc` reversing the selected order. These options and `--feature-require-coverage` are rejected with code `2` unless `--feature-summaries` is present, so callers do not accidentally think the compact default status was filtered.
 
@@ -214,6 +234,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 - `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, task issue draft export, trace export, readiness gate evaluation, handoff packet export, issue draft export, PR draft export, GitHub sync plan export, and sync-plan artifact materialization.
 - `specspine.adapters`: upstream metadata, availability probes, lifecycle mappings, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
+- `specspine.policy`: optional workspace policy parsing, warning generation, rendering, and readiness coverage selector evaluation.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, optional validation summary, and optional feature summary rendering.
 - `specspine.validation`: executable workspace, scaffold-placeholder warning, fusion, feature, optional adapter contract checks, and compact validation summaries.
 - `specspine.cli`: command-line interface.
