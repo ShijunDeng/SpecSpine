@@ -46,7 +46,15 @@ from .features import (
     set_feature_status,
 )
 from .fusion import FUSION_REQUIRED_FILES, init_fusion_workspace
-from .status import build_status, render_status_json, render_status_text
+from .status import (
+    InvalidFeatureSummaryOption,
+    build_status,
+    parse_feature_summary_ready_filter,
+    parse_feature_summary_sort_key,
+    parse_feature_summary_status_filters,
+    render_status_json,
+    render_status_text,
+)
 from .validation import (
     build_validation_report,
     build_validation_summary,
@@ -322,6 +330,28 @@ def build_parser() -> argparse.ArgumentParser:
         "--feature-summaries",
         action="store_true",
         help="include compact per-feature progress summaries and next actions",
+    )
+    status_parser.add_argument(
+        "--feature-status",
+        action="append",
+        default=[],
+        metavar="STATUS",
+        help="filter feature summaries by lifecycle status; repeat to include more than one",
+    )
+    status_parser.add_argument(
+        "--feature-ready",
+        metavar="READY",
+        help="filter feature summaries by readiness: yes, no, true, false, ready, or not-ready",
+    )
+    status_parser.add_argument(
+        "--feature-sort",
+        metavar="KEY",
+        help="sort feature summaries by slug, status, ready, gaps, blocking, or tasks-open",
+    )
+    status_parser.add_argument(
+        "--feature-sort-desc",
+        action="store_true",
+        help="reverse the selected feature summary sort order",
     )
 
     validate_parser = subcommands.add_parser("validate", help="validate SpecSpine workspace contracts")
@@ -808,14 +838,45 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "status":
-        if args.feature_summaries:
-            status = build_status(
-                Path(args.path),
-                include_adapters=args.adapters,
-                include_feature_summaries=True,
+        feature_summary_options_requested = bool(
+            args.feature_status
+            or args.feature_ready is not None
+            or args.feature_sort is not None
+            or args.feature_sort_desc
+        )
+        if feature_summary_options_requested and not args.feature_summaries:
+            print(
+                "--feature-status, --feature-ready, --feature-sort, and "
+                "--feature-sort-desc require --feature-summaries.",
+                file=sys.stderr,
             )
-        else:
-            status = build_status(Path(args.path), include_adapters=args.adapters)
+            return 2
+
+        feature_summary_statuses: tuple[str, ...] = ()
+        feature_summary_ready: bool | None = None
+        feature_summary_sort: str | None = None
+        if args.feature_summaries:
+            try:
+                feature_summary_statuses = parse_feature_summary_status_filters(
+                    args.feature_status
+                )
+                feature_summary_ready = parse_feature_summary_ready_filter(
+                    args.feature_ready
+                )
+                feature_summary_sort = parse_feature_summary_sort_key(args.feature_sort)
+            except InvalidFeatureSummaryOption as error:
+                print(str(error), file=sys.stderr)
+                return 2
+
+        status = build_status(
+            Path(args.path),
+            include_adapters=args.adapters,
+            include_feature_summaries=args.feature_summaries,
+            feature_summary_statuses=feature_summary_statuses,
+            feature_summary_ready=feature_summary_ready,
+            feature_summary_sort=feature_summary_sort,
+            feature_summary_sort_desc=args.feature_sort_desc,
+        )
         if args.validate:
             report = build_validation_report(
                 Path(args.path),

@@ -121,6 +121,8 @@ The tests report includes `feature_id`, `status`, `ready`, `source_files`, `miss
 
 `specspine status <path> --feature-summaries` is an opt-in workspace view for comparing native features. The default status payload intentionally stays compact for agent startup and does not include per-feature task or readiness detail. With the flag, `status` reuses `list_feature_bundles` and the existing feature handoff report to add `feature_summaries` with lifecycle status, completeness, readiness, missing files, task summary counts, ready summary counts, gap count, blocking check count, next actions, and recommended local commands. Text status adds only a short Feature summaries section. Invalid feature filenames produce not-ready summary records instead of crashing workspace status.
 
+Feature summary triage stays local to the already-built summaries. `--feature-status` filters by lifecycle status and can be repeated, including abnormal `invalid` and `unknown` buckets. `--feature-ready` filters by readiness aliases, and `--feature-sort` orders by `slug`, `status`, `ready`, `gaps`, `blocking`, or `tasks-open`, with `--feature-sort-desc` reversing the selected order. These options are rejected with code `2` unless `--feature-summaries` is present, so callers do not accidentally think the compact default status was filtered.
+
 `specspine feature issue <slug> [path]` is the local bridge from native feature bundles to GitHub issue workflows. It reads the spec, execution, and quality peer files and builds a structured issue draft with:
 
 - title from the spec file's first-line H1, falling back to slug title case.

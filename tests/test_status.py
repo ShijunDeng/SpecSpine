@@ -1,5 +1,6 @@
 import json
-from contextlib import redirect_stdout
+import os
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -137,6 +138,24 @@ def fake_available_adapter_probe(keys: list[str]) -> list[AdapterStatus]:
         )
         for key in keys
     ]
+
+
+def write_status_feature_filter_set(root: Path) -> None:
+    write_status_feature_bundle(root, slug="zeta-planned", status="planned")
+    write_status_feature_bundle(root, slug="alpha-validated", status="validated")
+    write_status_feature_bundle(
+        root,
+        slug="middle-implemented",
+        status="implemented",
+        include_quality=False,
+        open_task=True,
+    )
+
+
+def feature_summary_slugs(payload: dict[str, object]) -> list[str]:
+    summaries = payload["feature_summaries"]
+    assert isinstance(summaries, list)
+    return [str(summary["slug"]) for summary in summaries]
 
 
 class StatusTests(TestCase):
@@ -401,6 +420,409 @@ class StatusTests(TestCase):
             self.assertEqual(summary["blocking_checks"], 1)
             self.assertIn("Invalid feature slug", summary["next_actions"][0])
 
+    def test_status_feature_status_filter_accepts_invalid_and_unknown(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            (root / "specs" / "features").mkdir(parents=True, exist_ok=True)
+            (root / "specs" / "features" / "BadSlug.md").write_text(
+                "# Bad slug\n\nFeature ID: BadSlug\nStatus: proposed\n",
+                encoding="utf-8",
+            )
+            (root / "specs" / "features" / "no-status.md").write_text(
+                "# No status\n\nFeature ID: no-status\n\n## Acceptance Criteria\n\n- [x] Exists.\n",
+                encoding="utf-8",
+            )
+
+            for status_filter, expected in (
+                ("invalid", ["BadSlug"]),
+                ("unknown", ["no-status"]),
+            ):
+                with self.subTest(status_filter=status_filter):
+                    output = StringIO()
+                    with redirect_stdout(output):
+                        returncode = main(
+                            [
+                                "status",
+                                str(root),
+                                "--json",
+                                "--feature-summaries",
+                                "--feature-status",
+                                status_filter,
+                            ]
+                        )
+
+                    self.assertEqual(returncode, 0)
+                    self.assertEqual(
+                        feature_summary_slugs(json.loads(output.getvalue())),
+                        expected,
+                    )
+
+    def test_status_feature_status_filter_single_and_multiple_values(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_filter_set(root)
+            single_output = StringIO()
+            multiple_output = StringIO()
+
+            with redirect_stdout(single_output):
+                single_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-status",
+                        "validated",
+                    ]
+                )
+            with redirect_stdout(multiple_output):
+                multiple_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-status",
+                        "validated",
+                        "--feature-status",
+                        "implemented",
+                    ]
+                )
+
+            self.assertEqual(single_returncode, 0)
+            self.assertEqual(multiple_returncode, 0)
+            self.assertEqual(
+                feature_summary_slugs(json.loads(single_output.getvalue())),
+                ["alpha-validated"],
+            )
+            self.assertEqual(
+                feature_summary_slugs(json.loads(multiple_output.getvalue())),
+                ["alpha-validated", "middle-implemented"],
+            )
+
+    def test_status_feature_ready_filter_accepts_aliases(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_filter_set(root)
+
+            for ready_value, expected in (
+                ("yes", ["alpha-validated"]),
+                ("ready", ["alpha-validated"]),
+                ("no", ["middle-implemented", "zeta-planned"]),
+                ("not-ready", ["middle-implemented", "zeta-planned"]),
+                ("true", ["alpha-validated"]),
+                ("false", ["middle-implemented", "zeta-planned"]),
+            ):
+                with self.subTest(ready_value=ready_value):
+                    output = StringIO()
+                    with redirect_stdout(output):
+                        returncode = main(
+                            [
+                                "status",
+                                str(root),
+                                "--json",
+                                "--feature-summaries",
+                                "--feature-ready",
+                                ready_value,
+                            ]
+                        )
+
+                    self.assertEqual(returncode, 0)
+                    self.assertEqual(
+                        feature_summary_slugs(json.loads(output.getvalue())),
+                        expected,
+                    )
+
+    def test_status_feature_sort_keys_and_descending_order(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_filter_set(root)
+
+            expected_by_key = {
+                "slug": [
+                    "alpha-validated",
+                    "middle-implemented",
+                    "zeta-planned",
+                ],
+                "status": [
+                    "zeta-planned",
+                    "middle-implemented",
+                    "alpha-validated",
+                ],
+                "ready": [
+                    "middle-implemented",
+                    "zeta-planned",
+                    "alpha-validated",
+                ],
+                "gaps": [
+                    "alpha-validated",
+                    "zeta-planned",
+                    "middle-implemented",
+                ],
+                "blocking": [
+                    "alpha-validated",
+                    "zeta-planned",
+                    "middle-implemented",
+                ],
+                "tasks-open": [
+                    "alpha-validated",
+                    "zeta-planned",
+                    "middle-implemented",
+                ],
+            }
+            for sort_key, expected in expected_by_key.items():
+                with self.subTest(sort_key=sort_key):
+                    output = StringIO()
+                    with redirect_stdout(output):
+                        returncode = main(
+                            [
+                                "status",
+                                str(root),
+                                "--json",
+                                "--feature-summaries",
+                                "--feature-sort",
+                                sort_key,
+                            ]
+                        )
+
+                    self.assertEqual(returncode, 0)
+                    self.assertEqual(
+                        feature_summary_slugs(json.loads(output.getvalue())),
+                        expected,
+                    )
+
+            desc_output = StringIO()
+            with redirect_stdout(desc_output):
+                desc_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-sort",
+                        "slug",
+                        "--feature-sort-desc",
+                    ]
+                )
+
+            self.assertEqual(desc_returncode, 0)
+            self.assertEqual(
+                feature_summary_slugs(json.loads(desc_output.getvalue())),
+                ["zeta-planned", "middle-implemented", "alpha-validated"],
+            )
+
+    def test_status_text_feature_summaries_apply_filters_and_sorting(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_filter_set(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--feature-summaries",
+                        "--feature-ready",
+                        "no",
+                        "--feature-sort",
+                        "status",
+                    ]
+                )
+
+            text = output.getvalue()
+            self.assertEqual(returncode, 0)
+            self.assertIn("Feature summaries:", text)
+            feature_summary_text = text.split("Feature summaries:", 1)[1]
+            self.assertNotIn("alpha-validated -", feature_summary_text)
+            self.assertLess(
+                feature_summary_text.index("zeta-planned -"),
+                feature_summary_text.index("middle-implemented -"),
+            )
+
+    def test_status_feature_summary_filter_no_matches_text_and_json(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_filter_set(root)
+            json_output = StringIO()
+            text_output = StringIO()
+
+            with redirect_stdout(json_output):
+                json_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-status",
+                        "archived",
+                    ]
+                )
+            with redirect_stdout(text_output):
+                text_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--feature-summaries",
+                        "--feature-status",
+                        "archived",
+                    ]
+                )
+
+            payload = json.loads(json_output.getvalue())
+            self.assertEqual(json_returncode, 0)
+            self.assertEqual(text_returncode, 0)
+            self.assertEqual(payload["feature_summaries"], [])
+            self.assertIn("Feature summaries:\n  none\n", text_output.getvalue())
+
+    def test_status_feature_summaries_do_not_call_gh_network_or_read_tokens(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_filter_set(root)
+            output = StringIO()
+            token_names = {
+                "GH_TOKEN",
+                "GITHUB_API_TOKEN",
+                "GITHUB_PAT",
+                "GITHUB_TOKEN",
+            }
+            environ_type = os.environ.__class__
+            original_get = environ_type.get
+            original_getitem = environ_type.__getitem__
+            original_contains = environ_type.__contains__
+
+            def guarded_get(environ, key, default=None):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_get(environ, key, default)
+
+            def guarded_getitem(environ, key):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_getitem(environ, key)
+
+            def guarded_contains(environ, key):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_contains(environ, key)
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "GH_TOKEN": "secret-gh-token",
+                    "GITHUB_API_TOKEN": "secret-github-api-token",
+                    "GITHUB_PAT": "secret-github-pat",
+                    "GITHUB_TOKEN": "secret-github-token",
+                    "PATH": "",
+                },
+            ):
+                with (
+                    patch.object(environ_type, "get", guarded_get),
+                    patch.object(environ_type, "__getitem__", guarded_getitem),
+                    patch.object(environ_type, "__contains__", guarded_contains),
+                    patch(
+                        "subprocess.run",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_run,
+                    patch(
+                        "subprocess.Popen",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_popen,
+                    patch(
+                        "urllib.request.urlopen",
+                        side_effect=AssertionError("network called"),
+                    ) as urlopen,
+                    patch(
+                        "socket.create_connection",
+                        side_effect=AssertionError("network called"),
+                    ) as create_connection,
+                    patch(
+                        "socket.socket.connect",
+                        side_effect=AssertionError("network called"),
+                    ) as socket_connect,
+                    redirect_stdout(output),
+                ):
+                    returncode = main(
+                        [
+                            "status",
+                            str(root),
+                            "--json",
+                            "--validate",
+                            "--feature-summaries",
+                            "--feature-status",
+                            "validated",
+                            "--feature-ready",
+                            "yes",
+                            "--feature-sort",
+                            "slug",
+                        ]
+                    )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(feature_summary_slugs(payload), ["alpha-validated"])
+            subprocess_run.assert_not_called()
+            subprocess_popen.assert_not_called()
+            urlopen.assert_not_called()
+            create_connection.assert_not_called()
+            socket_connect.assert_not_called()
+            self.assertNotIn("secret-gh-token", output.getvalue())
+            self.assertNotIn("secret-github-api-token", output.getvalue())
+            self.assertNotIn("secret-github-pat", output.getvalue())
+            self.assertNotIn("secret-github-token", output.getvalue())
+
+    def test_status_feature_summary_options_require_feature_summaries(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            cases = (
+                ["--feature-status", "validated"],
+                ["--feature-ready", "yes"],
+                ["--feature-sort", "slug"],
+                ["--feature-sort-desc"],
+            )
+
+            for options in cases:
+                with self.subTest(options=options):
+                    stdout = StringIO()
+                    stderr = StringIO()
+                    with redirect_stdout(stdout), redirect_stderr(stderr):
+                        returncode = main(["status", str(root), *options])
+
+                    self.assertEqual(returncode, 2)
+                    self.assertEqual(stdout.getvalue(), "")
+                    self.assertIn("require --feature-summaries", stderr.getvalue())
+
+    def test_status_feature_summary_invalid_options_return_two(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            cases = (
+                (["--feature-status", "blocked"], "Invalid feature summary status"),
+                (["--feature-ready", "maybe"], "Invalid feature summary readiness"),
+                (["--feature-sort", "priority"], "Invalid feature summary sort key"),
+            )
+
+            for options, expected_error in cases:
+                with self.subTest(options=options):
+                    stdout = StringIO()
+                    stderr = StringIO()
+                    with redirect_stdout(stdout), redirect_stderr(stderr):
+                        returncode = main(
+                            ["status", str(root), "--feature-summaries", *options]
+                        )
+
+                    self.assertEqual(returncode, 2)
+                    self.assertEqual(stdout.getvalue(), "")
+                    self.assertIn(expected_error, stderr.getvalue())
+
     def test_status_validate_reports_failed_checks_but_returns_zero(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -438,10 +860,20 @@ class StatusTests(TestCase):
                 path: Path,
                 *,
                 include_adapters: bool = False,
+                include_feature_summaries: bool = False,
+                feature_summary_statuses: tuple[str, ...] = (),
+                feature_summary_ready: bool | None = None,
+                feature_summary_sort: str | None = None,
+                feature_summary_sort_desc: bool = False,
             ) -> dict[str, object]:
                 return build_status(
                     path,
                     include_adapters=include_adapters,
+                    include_feature_summaries=include_feature_summaries,
+                    feature_summary_statuses=feature_summary_statuses,
+                    feature_summary_ready=feature_summary_ready,
+                    feature_summary_sort=feature_summary_sort,
+                    feature_summary_sort_desc=feature_summary_sort_desc,
                     adapter_probe=fake_available_adapters,
                 )
 
@@ -478,11 +910,19 @@ class StatusTests(TestCase):
                 *,
                 include_adapters: bool = False,
                 include_feature_summaries: bool = False,
+                feature_summary_statuses: tuple[str, ...] = (),
+                feature_summary_ready: bool | None = None,
+                feature_summary_sort: str | None = None,
+                feature_summary_sort_desc: bool = False,
             ) -> dict[str, object]:
                 return build_status(
                     path,
                     include_adapters=include_adapters,
                     include_feature_summaries=include_feature_summaries,
+                    feature_summary_statuses=feature_summary_statuses,
+                    feature_summary_ready=feature_summary_ready,
+                    feature_summary_sort=feature_summary_sort,
+                    feature_summary_sort_desc=feature_summary_sort_desc,
                     adapter_probe=fake_available_adapters,
                 )
 
@@ -526,10 +966,20 @@ class StatusTests(TestCase):
                 path: Path,
                 *,
                 include_adapters: bool = False,
+                include_feature_summaries: bool = False,
+                feature_summary_statuses: tuple[str, ...] = (),
+                feature_summary_ready: bool | None = None,
+                feature_summary_sort: str | None = None,
+                feature_summary_sort_desc: bool = False,
             ) -> dict[str, object]:
                 return build_status(
                     path,
                     include_adapters=include_adapters,
+                    include_feature_summaries=include_feature_summaries,
+                    feature_summary_statuses=feature_summary_statuses,
+                    feature_summary_ready=feature_summary_ready,
+                    feature_summary_sort=feature_summary_sort,
+                    feature_summary_sort_desc=feature_summary_sort_desc,
                     adapter_probe=fake_available_adapters,
                 )
 

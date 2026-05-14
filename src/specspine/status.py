@@ -6,6 +6,7 @@ from typing import Any, Callable
 
 from .adapters import ADAPTER_SPECS, AdapterStatus, probe_adapters
 from .features import (
+    FEATURE_STATUSES,
     FeatureBundleNotFoundError,
     InvalidFeatureSlug,
     build_feature_handoff_report,
@@ -16,6 +17,34 @@ from .workspace import BASE_WORKSPACE_FILES, check_workspace
 
 
 AdapterProbe = Callable[[], list[AdapterStatus]]
+
+FEATURE_SUMMARY_STATUS_FILTERS = (*FEATURE_STATUSES, "invalid", "unknown")
+FEATURE_SUMMARY_READY_VALUES = {
+    "yes": True,
+    "true": True,
+    "ready": True,
+    "no": False,
+    "false": False,
+    "not-ready": False,
+}
+FEATURE_SUMMARY_SORT_KEYS = (
+    "slug",
+    "status",
+    "ready",
+    "gaps",
+    "blocking",
+    "tasks-open",
+)
+_FEATURE_SUMMARY_STATUS_ORDER = {
+    status: index
+    for index, status in enumerate(FEATURE_STATUSES)
+}
+_FEATURE_SUMMARY_STATUS_ORDER["invalid"] = len(_FEATURE_SUMMARY_STATUS_ORDER)
+_FEATURE_SUMMARY_STATUS_ORDER["unknown"] = len(_FEATURE_SUMMARY_STATUS_ORDER)
+
+
+class InvalidFeatureSummaryOption(ValueError):
+    """Raised when a feature summary filter or sort option is unsupported."""
 
 
 def _relative_paths(paths: list[Path], root: Path) -> list[str]:
@@ -166,6 +195,128 @@ def _empty_count_summary() -> dict[str, int]:
     }
 
 
+def parse_feature_summary_status_filters(values: list[str] | None) -> tuple[str, ...]:
+    statuses: list[str] = []
+    for value in values or []:
+        normalized = value.strip().lower()
+        if normalized not in FEATURE_SUMMARY_STATUS_FILTERS:
+            allowed = ", ".join(FEATURE_SUMMARY_STATUS_FILTERS)
+            raise InvalidFeatureSummaryOption(
+                f"Invalid feature summary status '{value}'. Use one of: {allowed}."
+            )
+        if normalized not in statuses:
+            statuses.append(normalized)
+
+    return tuple(statuses)
+
+
+def parse_feature_summary_ready_filter(value: str | None) -> bool | None:
+    if value is None:
+        return None
+
+    normalized = value.strip().lower()
+    if normalized not in FEATURE_SUMMARY_READY_VALUES:
+        allowed = ", ".join(FEATURE_SUMMARY_READY_VALUES)
+        raise InvalidFeatureSummaryOption(
+            f"Invalid feature summary readiness '{value}'. Use one of: {allowed}."
+        )
+
+    return FEATURE_SUMMARY_READY_VALUES[normalized]
+
+
+def parse_feature_summary_sort_key(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    normalized = value.strip().lower()
+    if normalized not in FEATURE_SUMMARY_SORT_KEYS:
+        allowed = ", ".join(FEATURE_SUMMARY_SORT_KEYS)
+        raise InvalidFeatureSummaryOption(
+            f"Invalid feature summary sort key '{value}'. Use one of: {allowed}."
+        )
+
+    return normalized
+
+
+def _feature_summary_status_bucket(summary: dict[str, Any]) -> str:
+    status = str(summary.get("status") or "unknown")
+    if status == "unknown":
+        return "unknown"
+    if status in FEATURE_STATUSES:
+        return status
+    return "invalid"
+
+
+def _feature_summary_matches_status(
+    summary: dict[str, Any],
+    status_filters: tuple[str, ...],
+) -> bool:
+    if not status_filters:
+        return True
+
+    status = str(summary.get("status") or "unknown")
+    status_bucket = _feature_summary_status_bucket(summary)
+    return status in status_filters or status_bucket in status_filters
+
+
+def _feature_summary_tasks_open(summary: dict[str, Any]) -> int:
+    tasks = summary.get("tasks_summary", {})
+    if not isinstance(tasks, dict):
+        return 0
+    value = tasks.get("open", 0)
+    return int(value) if isinstance(value, int) else 0
+
+
+def _feature_summary_sort_value(summary: dict[str, Any], sort_key: str) -> tuple[Any, ...]:
+    slug = str(summary.get("slug") or summary.get("feature_id") or "")
+    if sort_key == "slug":
+        return (slug,)
+    if sort_key == "status":
+        bucket = _feature_summary_status_bucket(summary)
+        status = str(summary.get("status") or "unknown")
+        return (_FEATURE_SUMMARY_STATUS_ORDER[bucket], status, slug)
+    if sort_key == "ready":
+        return (bool(summary.get("ready", False)), slug)
+    if sort_key == "gaps":
+        return (int(summary.get("gaps", 0)), slug)
+    if sort_key == "blocking":
+        return (int(summary.get("blocking_checks", 0)), slug)
+    if sort_key == "tasks-open":
+        return (_feature_summary_tasks_open(summary), slug)
+    return (slug,)
+
+
+def filter_and_sort_feature_summaries(
+    summaries: list[dict[str, Any]],
+    *,
+    status_filters: tuple[str, ...] = (),
+    ready_filter: bool | None = None,
+    sort_key: str | None = None,
+    sort_desc: bool = False,
+) -> list[dict[str, Any]]:
+    filtered = [
+        summary
+        for summary in summaries
+        if _feature_summary_matches_status(summary, status_filters)
+        and (
+            ready_filter is None
+            or bool(summary.get("ready", False)) is ready_filter
+        )
+    ]
+
+    if sort_key is not None:
+        return sorted(
+            filtered,
+            key=lambda summary: _feature_summary_sort_value(summary, sort_key),
+            reverse=sort_desc,
+        )
+
+    if sort_desc:
+        filtered.reverse()
+
+    return filtered
+
+
 def _invalid_feature_summary(
     feature: dict[str, object],
     *,
@@ -222,6 +373,11 @@ def _missing_feature_summary(feature: dict[str, object]) -> dict[str, Any]:
 def build_feature_summaries(
     root: Path,
     features: list[dict[str, object]] | None = None,
+    *,
+    status_filters: tuple[str, ...] = (),
+    ready_filter: bool | None = None,
+    sort_key: str | None = None,
+    sort_desc: bool = False,
 ) -> list[dict[str, Any]]:
     resolved_root = root.expanduser().resolve()
     summaries: list[dict[str, Any]] = []
@@ -261,7 +417,13 @@ def build_feature_summaries(
             }
         )
 
-    return summaries
+    return filter_and_sort_feature_summaries(
+        summaries,
+        status_filters=status_filters,
+        ready_filter=ready_filter,
+        sort_key=sort_key,
+        sort_desc=sort_desc,
+    )
 
 
 def _build_recommendations(
@@ -312,6 +474,10 @@ def build_status(
     *,
     include_adapters: bool = False,
     include_feature_summaries: bool = False,
+    feature_summary_statuses: tuple[str, ...] = (),
+    feature_summary_ready: bool | None = None,
+    feature_summary_sort: str | None = None,
+    feature_summary_sort_desc: bool = False,
     adapter_probe: AdapterProbe = probe_adapters,
 ) -> dict[str, Any]:
     root = path.expanduser().resolve()
@@ -364,7 +530,14 @@ def build_status(
         status["adapters"] = adapters
 
     if include_feature_summaries:
-        status["feature_summaries"] = build_feature_summaries(root, features=features)
+        status["feature_summaries"] = build_feature_summaries(
+            root,
+            features=features,
+            status_filters=feature_summary_statuses,
+            ready_filter=feature_summary_ready,
+            sort_key=feature_summary_sort,
+            sort_desc=feature_summary_sort_desc,
+        )
 
     return status
 

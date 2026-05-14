@@ -33,6 +33,7 @@ class DogfoodArtifactsTests(TestCase):
             "feature-pr-draft",
             "feature-test-packet",
             "feature-template-refresh",
+            "feature-summary-filters",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -64,6 +65,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:feature-transition-policy", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-pr-draft", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-test-packet", "pass"), checks)
+        self.assertIn(("feature.status_consistency:feature-summary-filters", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -73,6 +75,7 @@ class DogfoodArtifactsTests(TestCase):
         required_snippets = [
             "PYTHONPATH=src python3 -m specspine status . --json --validate",
             "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries",
+            "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug",
             "PYTHONPATH=src python3 -m specspine validate . --fusion --features",
             "PYTHONPATH=src python3 -m unittest discover -s tests",
             "PYTHONPATH=src python3 -m specspine feature status <slug> . --json",
@@ -185,6 +188,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/feature-template-refresh.md",
             "execution/features/feature-template-refresh.md",
             "quality/features/feature-template-refresh.md",
+            "specs/features/feature-summary-filters.md",
+            "execution/features/feature-summary-filters.md",
+            "quality/features/feature-summary-filters.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -228,6 +234,13 @@ class DogfoodArtifactsTests(TestCase):
 
     def test_feature_template_refresh_dogfood_bundle_passes_its_gate(self) -> None:
         report = build_feature_ready_report(REPO_ROOT, "feature-template-refresh")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.status, "validated")
+        self.assertEqual(report.summary["fail"], 0)
+
+    def test_feature_summary_filters_dogfood_bundle_passes_its_gate(self) -> None:
+        report = build_feature_ready_report(REPO_ROOT, "feature-summary-filters")
 
         self.assertTrue(report.ready)
         self.assertEqual(report.status, "validated")

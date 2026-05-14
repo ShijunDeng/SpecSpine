@@ -28,6 +28,7 @@ AGENTS_TEMPLATE = """
     ```bash
     specspine status . --json --validate
     specspine status . --json --validate --feature-summaries
+    specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug
     specspine validate .
     specspine validate . --features
     specspine validate . --fusion --features
@@ -47,7 +48,7 @@ AGENTS_TEMPLATE = """
     ## Working Rules
 
     - Read `specspine status . --json --validate` before planning or editing.
-    - Use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features.
+    - Use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features; add local filters such as `--feature-status validated --feature-ready yes --feature-sort slug` for triage.
     - For new requirements, create a feature bundle with `specspine feature new`; the generated peer files include focused handoff, tests, PR, readiness, and validation guidance.
     - Keep feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.
     - Before archiving, run `specspine feature ready <slug> . --json`, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.

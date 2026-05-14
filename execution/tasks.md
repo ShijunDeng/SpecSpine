@@ -20,6 +20,7 @@
 - [x] Implement `specspine status . --json`.
 - [x] Implement `specspine status . --json --validate` validation summaries.
 - [x] Implement `specspine status . --json --feature-summaries` optional native feature summaries.
+- [x] Implement local feature summary filters and sorting for `specspine status --feature-summaries`.
 - [x] Implement `specspine validate . --fusion --features`.
 - [x] Document upstream adapter policy without vendoring upstream code.
 - [x] Initialize this repository as a complete SpecSpine fusion workspace.
@@ -30,6 +31,7 @@
 - [x] Dogfood readiness gate with `feature-readiness-gate`.
 - [x] Dogfood handoff packet export with `feature-handoff-packet`.
 - [x] Dogfood workspace feature summaries with `status-feature-summaries`.
+- [x] Dogfood feature summary filters and sorting with `feature-summary-filters`.
 - [x] Dogfood enforced transition policy with `feature-transition-policy`.
 - [x] Dogfood offline Pull Request draft export with `feature-pr-draft`.
 - [x] Dogfood acceptance-test packet export with `feature-test-packet`.
@@ -44,7 +46,7 @@
 - [ ] Observe whether reviewers use `feature pr --json` as the local bridge from feature evidence into Pull Request review.
 - [ ] Observe whether new feature bundles need less manual template cleanup after the focused workflow guidance.
 - [ ] Monitor whether agents prefer `status --json --validate` as the default startup packet.
-- [ ] Observe whether agents use `status --json --validate --feature-summaries` only when comparing multiple features.
+- [ ] Observe whether agents use `status --json --validate --feature-summaries` only when comparing multiple features, and whether local filters reduce follow-up handoff reads.
 - [ ] Revisit generated templates after dogfooding this workspace for one or more development cycles.
 - [ ] Add tests when template or validation behavior changes.
 - [ ] Keep README/docs aligned with any command surface changes.

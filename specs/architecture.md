@@ -9,7 +9,7 @@ SpecSpine is a small Python package under `src/specspine` with a command-line en
 - `features` creates and reads native feature bundles, updates lifecycle status, exports execution task handoffs, exports traceability handoffs, evaluates readiness gates, exports compact feature handoff packets, exports acceptance-test packets, and exports offline issue and Pull Request drafts.
 - `adapters` describes external upstream tools and probes local availability.
 - `fusion` writes the OpenSpec + Spec Kit + Superpowers adapter layer.
-- `status` builds machine-readable workspace summaries, recommendations, optional validation summaries, and optional native feature summaries.
+- `status` builds machine-readable workspace summaries, recommendations, optional validation summaries, and optional filterable native feature summaries.
 - `validation` turns workspace, fusion, adapter, and feature contracts into checks and compact summary records.
 - `cli` maps command-line arguments to those modules.
 
@@ -21,7 +21,7 @@ SpecSpine is a small Python package under `src/specspine` with a command-line en
 - `specs/`, `execution/`, and `quality/` carry the repository-owned source of truth.
 - Native feature bundles use peer files with matching `Feature ID: <slug>` markers and one allowed lifecycle `Status`.
 - Generated native feature bundles include spec sections for acceptance and review, execution sections for dependencies/open questions and focused handoff commands, and quality sections for tests, PR draft, readiness, and validation gates.
-- The main machine interfaces are `specspine status . --json`, `specspine status . --json --validate`, `specspine status . --json --validate --feature-summaries`, `specspine feature handoff <slug> . --json`, `specspine feature trace <slug> . --json`, `specspine feature ready <slug> . --json`, `specspine feature tests <slug> . --json`, `specspine feature pr <slug> . --json`, and `specspine validate . --fusion --features`.
+- The main machine interfaces are `specspine status . --json`, `specspine status . --json --validate`, `specspine status . --json --validate --feature-summaries`, `specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug`, `specspine feature handoff <slug> . --json`, `specspine feature trace <slug> . --json`, `specspine feature ready <slug> . --json`, `specspine feature tests <slug> . --json`, `specspine feature pr <slug> . --json`, and `specspine validate . --fusion --features`.
 
 ## Decisions
 
@@ -34,7 +34,7 @@ SpecSpine is a small Python package under `src/specspine` with a command-line en
 - Keep feature handoff packets compact by composing existing local status, trace, task, readiness, and release readiness evidence rather than generating new content.
 - Keep acceptance-test packets deterministic and non-generative by mapping acceptance criteria to pending test cases and surfacing existing test plans, quality checks, gaps, and blockers without running tests or creating code.
 - Keep generated feature templates focused on the current handoff/tests/pr/ready workflow so agents start with local commands and unchecked gates instead of generic placeholders.
-- Keep workspace feature summaries opt-in so default status remains a minimal startup context; compose summaries from local feature handoff evidence when multi-feature comparison is needed.
+- Keep workspace feature summaries opt-in so default status remains a minimal startup context; compose summaries from local feature handoff evidence when multi-feature comparison is needed, then apply local status, readiness, and sort controls only after `--feature-summaries` is explicitly requested.
 - Make validation executable and local so agents can detect missing files and broken contracts before and after edits.
 - Keep `status --validate` as a report surface that summarizes failed checks while `validate` remains the failing gate command.
 

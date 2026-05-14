@@ -14,7 +14,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine feature trace` now exports a local traceability handoff that connects acceptance criteria, tasks, required checks, test plan entries, sources, and gaps.
 - `specspine feature ready` now evaluates a local per-feature readiness gate with blocking checks and failing exit codes.
 - `specspine feature handoff` now exports a compact feature packet that composes status, tasks, trace, readiness, release readiness, next actions, and key commands.
-- `specspine status --feature-summaries` now adds optional compact per-feature progress, readiness, gaps, blocking counts, and next actions without changing default status output.
+- `specspine status --feature-summaries` now adds optional compact per-feature progress, readiness, gaps, blocking counts, next actions, and local status/readiness/sort controls without changing default status output.
 - `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
 - `specspine feature pr` now exports offline Pull Request drafts that compose local feature evidence without GitHub API calls, token reads, `gh`, or network access.
 - `specspine feature tests` now exports acceptance-test packets that map acceptance criteria to pending test cases and surface existing test plan, quality checks, gaps, and blockers without running tests or generating code.
@@ -25,7 +25,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 
 - Treat `specspine status . --json` as the first context packet for future agents.
 - Use `specspine status . --json --validate` when agents need context and failed quality checks together.
-- Use `specspine status . --json --validate --feature-summaries` only when agents need to choose or compare multiple native features, so default startup context stays small.
+- Use `specspine status . --json --validate --feature-summaries` only when agents need to choose or compare multiple native features, and add `--feature-status`, `--feature-ready`, or `--feature-sort` when the workspace has enough features to need local triage.
 - Treat `specspine feature handoff <slug> . --json` as the default local feature packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` as the focused execution checklist view when an agent only needs tasks.
 - Treat `specspine feature trace <slug> . --json` as the local traceability handoff when reviewers need a complete feature packet.
@@ -46,6 +46,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Feature bundles support `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` statuses.
 - Status packets can now include compact validation summaries with failed checks only.
 - Status packets can now opt into compact feature summaries for multi-feature triage while omitting them by default.
+- Feature summary packets can now be filtered by lifecycle status and readiness, sorted by local summary fields, and rejected with code `2` when summary-only options are used without `--feature-summaries`.
 - Feature execution checklists can now be exported without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be exported as deterministic traceability packets without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be checked with deterministic readiness gates that fail on missing files, inconsistent statuses, trace gaps, incomplete checklist evidence, missing test plans, or open release readiness items.
