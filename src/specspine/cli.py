@@ -25,6 +25,7 @@ from .features import (
     build_feature_trace_report,
     build_feature_tasks_report,
     build_issue_draft,
+    build_pull_request_draft,
     create_feature_bundle,
     get_feature_status,
     render_feature_handoff_json,
@@ -37,6 +38,8 @@ from .features import (
     render_feature_tasks_text,
     render_issue_json,
     render_issue_text,
+    render_pull_request_json,
+    render_pull_request_text,
     set_feature_status,
 )
 from .fusion import FUSION_REQUIRED_FILES, init_fusion_workspace
@@ -142,6 +145,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the issue body to a file instead of printing the text draft",
     )
     feature_issue_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite an existing output file",
+    )
+
+    feature_pr_parser = feature_subcommands.add_parser(
+        "pr",
+        help="draft a local GitHub Pull Request from a native feature bundle",
+    )
+    feature_pr_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    feature_pr_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    feature_pr_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    feature_pr_parser.add_argument(
+        "--output",
+        help="write the PR body to a file instead of printing the text draft",
+    )
+    feature_pr_parser.add_argument(
         "--force",
         action="store_true",
         help="overwrite an existing output file",
@@ -446,6 +470,47 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Wrote GitHub issue draft body to {output_path}")
             else:
                 print(render_issue_text(draft), end="")
+            return 0
+
+        if args.feature_command == "pr":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                draft = build_pull_request_draft(root, args.slug)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not read feature PR draft: {error}", file=sys.stderr)
+                return 1
+
+            if args.output:
+                output_path = Path(args.output).expanduser().resolve()
+                if output_path.exists() and not args.force:
+                    print(
+                        f"Output file already exists: {output_path}. "
+                        "Use --force to overwrite it.",
+                        file=sys.stderr,
+                    )
+                    return 1
+
+                try:
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(draft.body, encoding="utf-8")
+                except OSError as error:
+                    print(f"Could not write PR draft: {error}", file=sys.stderr)
+                    return 1
+
+            if args.json:
+                print(render_pull_request_json(draft), end="")
+            elif args.output:
+                print(f"Wrote GitHub Pull Request draft body to {output_path}")
+            else:
+                print(render_pull_request_text(draft), end="")
             return 0
 
         if args.feature_command == "tasks":

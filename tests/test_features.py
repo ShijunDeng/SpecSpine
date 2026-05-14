@@ -17,6 +17,7 @@ from specspine.features import (
     build_feature_ready_report,
     build_feature_trace_report,
     build_issue_draft,
+    build_pull_request_draft,
     build_feature_tasks_report,
     create_feature_bundle,
     parse_acceptance_criteria,
@@ -2379,6 +2380,16 @@ class FeatureBundleTests(TestCase):
         self.assertEqual(report.gaps, ())
         self.assertEqual(report.summary["fail"], 0)
 
+    def test_dogfood_feature_pr_draft_is_validated_and_ready(self) -> None:
+        draft = build_pull_request_draft(REPO_ROOT, "feature-pr-draft")
+
+        self.assertEqual(draft.status, "validated")
+        self.assertTrue(draft.ready)
+        self.assertEqual(draft.missing_files, ())
+        self.assertEqual(draft.gaps, ())
+        self.assertEqual(draft.blocking_checks, ())
+        self.assertIn("specspine feature pr feature-pr-draft . --json", draft.body)
+
     def test_validate_cli_can_check_feature_bundles(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -2920,3 +2931,322 @@ class FeatureBundleTests(TestCase):
                 "TODO: Add a `## Test Plan` section to `quality/features/add-dark-mode.md`.",
                 draft.body,
             )
+
+    def test_feature_pr_cli_generates_text_for_ready_bundle(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["feature", "pr", "add-dark-mode", str(root)])
+
+            text = output.getvalue()
+            self.assertEqual(returncode, 0)
+            self.assertIn("Title: Implement Add dark mode", text)
+            self.assertIn("## Summary", text)
+            self.assertIn("- Feature ID: `add-dark-mode`", text)
+            self.assertIn("- Status: validated", text)
+            self.assertIn("- Ready: yes", text)
+            self.assertIn("## Feature", text)
+            self.assertIn("## Why", text)
+            self.assertIn("## Acceptance Criteria", text)
+            self.assertIn("- [x] AC001", text)
+            self.assertIn("## Tasks", text)
+            self.assertIn("- [x] T001", text)
+            self.assertIn("## Test Plan", text)
+            self.assertIn("## Release Readiness", text)
+            self.assertIn("## Readiness / Blocking Checks", text)
+            self.assertIn("- [x] feature.bundle_files", text)
+            self.assertIn("## Source Files", text)
+            self.assertIn("specs/features/add-dark-mode.md", text)
+            self.assertIn("## Missing Files\n\n- [x] None.", text)
+            self.assertIn("## Key Commands", text)
+            self.assertIn("specspine feature pr add-dark-mode . --json", text)
+
+    def test_feature_pr_cli_json_output_is_parseable(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "pr", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["title"], "Implement Add dark mode")
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertEqual(payload["status"], "validated")
+            self.assertTrue(payload["ready"])
+            self.assertEqual(payload["missing_files"], [])
+            self.assertEqual(payload["gaps"], [])
+            self.assertEqual(payload["blocking_checks"], [])
+            self.assertEqual(
+                payload["source_files"],
+                [
+                    "specs/features/add-dark-mode.md",
+                    "execution/features/add-dark-mode.md",
+                    "quality/features/add-dark-mode.md",
+                ],
+            )
+            self.assertIn("summary", payload)
+            self.assertIn("recommended_commands", payload)
+            self.assertIn(
+                "specspine feature ready add-dark-mode . --json",
+                payload["recommended_commands"],
+            )
+            self.assertIn("## Release Readiness", payload["body"])
+
+    def test_feature_pr_partial_bundle_marks_missing_files(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            (root / "quality" / "features" / "add-dark-mode.md").unlink()
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "pr", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertFalse(payload["ready"])
+            self.assertEqual(
+                payload["missing_files"],
+                ["quality/features/add-dark-mode.md"],
+            )
+            self.assertIn(
+                "quality/features/add-dark-mode.md",
+                payload["body"],
+            )
+            self.assertTrue(payload["blocking_checks"])
+            self.assertTrue(
+                any(gap["id"] == "missing_file" for gap in payload["gaps"])
+            )
+
+    def test_feature_pr_all_files_missing_returns_nonzero(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            stdout = StringIO()
+            stderr = StringIO()
+
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                returncode = main(["feature", "pr", "add-dark-mode", str(root)])
+
+            self.assertEqual(returncode, 1)
+            self.assertEqual(stdout.getvalue(), "")
+            self.assertIn("No feature files found", stderr.getvalue())
+            self.assertIn("missing specs/features/add-dark-mode.md", stderr.getvalue())
+            self.assertIn(
+                "missing execution/features/add-dark-mode.md",
+                stderr.getvalue(),
+            )
+            self.assertIn(
+                "missing quality/features/add-dark-mode.md",
+                stderr.getvalue(),
+            )
+
+    def test_feature_pr_invalid_slug_returns_two(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(["feature", "pr", "bad_slug", str(root)])
+
+            self.assertEqual(returncode, 2)
+            self.assertIn("Invalid feature slug", stderr.getvalue())
+
+    def test_feature_pr_output_file_overwrite_force_and_json_output(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            target = root / "drafts" / "pull-request.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("existing draft\n", encoding="utf-8")
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(
+                    [
+                        "feature",
+                        "pr",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(target),
+                    ]
+                )
+
+            self.assertEqual(returncode, 1)
+            self.assertIn("Output file already exists", stderr.getvalue())
+            self.assertEqual(target.read_text(encoding="utf-8"), "existing draft\n")
+
+            stdout = StringIO()
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "feature",
+                        "pr",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(target),
+                        "--force",
+                        "--json",
+                    ]
+                )
+
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["title"], "Implement Add dark mode")
+            self.assertEqual(target.read_text(encoding="utf-8"), payload["body"])
+            self.assertNotIn("Wrote GitHub Pull Request draft body", stdout.getvalue())
+
+    def test_feature_pr_does_not_need_gh_api_or_token(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            output = StringIO()
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "GH_TOKEN": "secret-gh-token",
+                    "GITHUB_TOKEN": "secret-github-token",
+                    "PATH": "",
+                },
+            ):
+                with patch("subprocess.run") as subprocess_run:
+                    with redirect_stdout(output):
+                        returncode = main(
+                            ["feature", "pr", "add-dark-mode", str(root), "--json"]
+                        )
+
+            self.assertEqual(returncode, 0)
+            subprocess_run.assert_not_called()
+            self.assertNotIn("secret-gh-token", output.getvalue())
+            self.assertNotIn("secret-github-token", output.getvalue())
+            payload = json.loads(output.getvalue())
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+
+    def test_feature_pr_does_not_read_tokens_or_call_network(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            output = StringIO()
+            token_names = {
+                "GH_TOKEN",
+                "GITHUB_API_TOKEN",
+                "GITHUB_PAT",
+                "GITHUB_TOKEN",
+            }
+            environ_type = os.environ.__class__
+            original_get = environ_type.get
+            original_getitem = environ_type.__getitem__
+            original_contains = environ_type.__contains__
+
+            def guarded_get(environ, key, default=None):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_get(environ, key, default)
+
+            def guarded_getitem(environ, key):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_getitem(environ, key)
+
+            def guarded_contains(environ, key):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_contains(environ, key)
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "GH_TOKEN": "secret-gh-token",
+                    "GITHUB_API_TOKEN": "secret-github-api-token",
+                    "GITHUB_PAT": "secret-github-pat",
+                    "GITHUB_TOKEN": "secret-github-token",
+                    "PATH": "",
+                },
+            ):
+                with (
+                    patch.object(environ_type, "get", guarded_get),
+                    patch.object(environ_type, "__getitem__", guarded_getitem),
+                    patch.object(environ_type, "__contains__", guarded_contains),
+                    patch(
+                        "subprocess.run",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_run,
+                    patch(
+                        "subprocess.Popen",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_popen,
+                    patch(
+                        "socket.create_connection",
+                        side_effect=AssertionError("network called"),
+                    ) as create_connection,
+                    patch(
+                        "socket.socket.connect",
+                        side_effect=AssertionError("network called"),
+                    ) as socket_connect,
+                    patch(
+                        "urllib.request.urlopen",
+                        side_effect=AssertionError("network called"),
+                    ) as urlopen,
+                    redirect_stdout(output),
+                ):
+                    returncode = main(
+                        ["feature", "pr", "add-dark-mode", str(root), "--json"]
+                    )
+
+            self.assertEqual(returncode, 0)
+            subprocess_run.assert_not_called()
+            subprocess_popen.assert_not_called()
+            create_connection.assert_not_called()
+            socket_connect.assert_not_called()
+            urlopen.assert_not_called()
+            payload = json.loads(output.getvalue())
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+
+    def test_build_pull_request_draft_uses_slug_title_without_spec_h1(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            (root / "specs" / "features" / "add-dark-mode.md").write_text(
+                "\n".join(
+                    [
+                        "Feature ID: add-dark-mode",
+                        "Status: implemented",
+                        "",
+                        "## Why",
+                        "",
+                        "Make evening use comfortable.",
+                        "",
+                        "## Acceptance Criteria",
+                        "",
+                        "- [x] Users can switch to a dark color scheme.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            draft = build_pull_request_draft(root, "add-dark-mode")
+
+            self.assertEqual(draft.title, "Implement Add Dark Mode")
+            self.assertIn("Make evening use comfortable.", draft.body)

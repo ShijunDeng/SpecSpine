@@ -16,6 +16,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine feature handoff` now exports a compact feature packet that composes status, tasks, trace, readiness, release readiness, next actions, and key commands.
 - `specspine status --feature-summaries` now adds optional compact per-feature progress, readiness, gaps, blocking counts, and next actions without changing default status output.
 - `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
+- `specspine feature pr` now exports offline Pull Request drafts that compose local feature evidence without GitHub API calls, token reads, `gh`, or network access.
 - No upstream code should be copied into this repository as part of fusion work.
 
 ## Decisions
@@ -27,8 +28,9 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Use `specspine feature tasks <slug> . --json` as the focused execution checklist view when an agent only needs tasks.
 - Treat `specspine feature trace <slug> . --json` as the local traceability handoff when reviewers need a complete feature packet.
 - Treat `specspine feature ready <slug> . --json` as the local per-feature acceptance and release gate after implementation evidence is complete.
+- Treat `specspine feature pr <slug> . --json` as the local Pull Request draft bridge after readiness and trace evidence are available.
 - Treat `specspine validate . --fusion --features` plus the unit test suite as the local completion gate.
-- Keep GitHub issue generation offline and token-free by default.
+- Keep GitHub issue and Pull Request draft generation offline and token-free by default.
 - Keep native feature peer files on a consistent allowed lifecycle status.
 - Prefer `specspine feature status <slug> . --set STATUS --enforce-transition` when lifecycle order matters; run `specspine feature ready <slug> . --json` before archiving.
 - Use `--run-upstream` only after explicit user instruction.
@@ -45,3 +47,4 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Feature bundles can now be checked with deterministic readiness gates that fail on missing files, inconsistent statuses, trace gaps, incomplete checklist evidence, missing test plans, or open release readiness items.
 - Feature bundles can now be exported as compact handoff packets without generation, GitHub credentials, token reads, network calls, upstream CLIs, or new dependencies.
 - Feature lifecycle updates can now opt into transition enforcement and archive readiness guards without changing default manual status updates.
+- Feature bundles can now be exported as offline Pull Request drafts with GitHub Markdown checklist evidence and key local commands.

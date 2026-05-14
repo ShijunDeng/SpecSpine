@@ -13,6 +13,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Native feature readiness gate across peer files, lifecycle status, trace gaps, completed checklists, test plan evidence, and release readiness.
 - Native feature handoff packets that compose status, trace, tasks, readiness, release readiness, next actions, and recommended commands.
 - Local GitHub issue draft generation from feature bundles without API calls.
+- Local GitHub Pull Request draft generation from feature bundles without API calls.
 - Fusion initialization for OpenSpec, Spec Kit, and Superpowers as external adapters.
 - Status, optional status validation summaries, optional feature summaries, validation, doctor, and adapter inspection commands suitable for CI and coding agents.
 
@@ -21,7 +22,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Hosting a server, database, or background daemon.
 - Vendoring OpenSpec, Spec Kit, Superpowers, or any upstream source tree.
 - Owning upstream lifecycle files after an external tool generates them.
-- Reading GitHub tokens, writing GitHub tokens, or creating remote GitHub issues by default.
+- Reading GitHub tokens, writing GitHub tokens, or creating remote GitHub issues or pull requests by default.
 - Replacing OpenSpec proposals, Spec Kit plans, or Superpowers skills with private reimplementations.
 
 ## User Workflows
@@ -37,6 +38,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Hand a full traceability packet to agents or reviewers with `specspine feature trace <slug> . --json`.
 - Fail or pass a per-feature readiness gate with `specspine feature ready <slug> . --json`.
 - Generate an offline issue draft with `specspine feature issue <slug> . --json` or `--output`.
+- Generate an offline Pull Request draft with `specspine feature pr <slug> . --json` or `--output`.
 - Verify readiness with `specspine validate . --fusion --features` and the unit test suite.
 
 ## Acceptance Criteria
@@ -50,6 +52,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - `feature ready <slug> --json` reports stable checks, blocking checks, summary counts, missing files, and gaps, returning non-zero until the feature is implemented or validated and all required evidence is complete.
 - `feature status <slug> --set STATUS --enforce-transition --json` reports stable transition success or failure payloads, preserves default manual status updates when the flag is absent, blocks writes for invalid transition edges or inconsistent current peer status, and requires readiness before enforced archive writes.
 - `feature handoff <slug> --json` reports a compact feature packet with status, readiness, sources, gaps, blocking checks, trace sections, release readiness, recommended commands, deterministic next actions, and summary counts without calling external services.
+- `feature pr <slug> --json` reports an offline Pull Request draft with title, body, status, readiness, sources, missing files, gaps, blocking checks, summary counts, and recommended commands without calling GitHub APIs, `gh`, network services, or reading tokens.
 - Enabled upstream metadata reports OpenSpec, Spec Kit, and Superpowers as enabled when their adapter files are present.
 - Validation passes for complete workspace, fusion artifacts, and native feature bundles with consistent allowed lifecycle status.
 - Fusion config preserves `integration_mode: adapter` and `vendored_upstream_code: false`.

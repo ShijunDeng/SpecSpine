@@ -31,6 +31,7 @@ This repository is an early project skeleton. It includes:
 - A native feature readiness gate: `specspine feature ready`.
 - A native feature handoff packet exporter: `specspine feature handoff`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
+- A local GitHub Pull Request draft exporter: `specspine feature pr`.
 - A fusion initializer: `specspine fuse`.
 - A compact workspace status packet with optional validation and feature summaries: `specspine status --json --validate --feature-summaries`.
 - An executable validation layer: `specspine validate --json`.
@@ -117,6 +118,13 @@ Draft a local GitHub issue from the feature bundle:
 ```bash
 specspine feature issue add-dark-mode .
 specspine feature issue add-dark-mode . --json
+```
+
+Draft a local GitHub Pull Request from the feature bundle:
+
+```bash
+specspine feature pr add-dark-mode .
+specspine feature pr add-dark-mode . --json
 ```
 
 Advance the feature lifecycle when the bundle moves forward:
@@ -322,6 +330,16 @@ specspine feature issue <slug> [path] [--json] [--output FILE] [--force]
 Creates a local GitHub issue draft from a native feature bundle without calling the GitHub API, reading tokens, or requiring `gh`. Text output includes the issue title and body. `--json` emits stable JSON with `title`, `body`, `feature_id`, `source_files`, `missing_files`, and `status`. `--output` writes the issue body to a file and refuses to overwrite an existing file unless `--force` is passed.
 
 ```bash
+specspine feature pr <slug> [path] [--json] [--output FILE] [--force]
+```
+
+Creates a local GitHub Pull Request draft from a native feature bundle without creating a remote PR, calling the GitHub API, reading tokens, requiring `gh`, using network access, or vendoring upstream code. The draft composes existing local evidence from feature status, handoff, trace, readiness, release readiness, and source files.
+
+JSON output includes `title`, `body`, `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `summary`, and `recommended_commands`. Text output includes the title and a GitHub Markdown body with Summary, Feature, Why, Acceptance Criteria, Tasks, Test Plan, Release Readiness, Readiness / Blocking Checks, Source Files, Missing Files, and Key Commands. Acceptance criteria, tasks, release readiness, gaps, and readiness checks use checklist syntax suitable for PR review.
+
+Partial bundles return `0` while marking missing files, gaps, and blocking checks in the draft. If no native feature files exist for the slug, the command returns non-zero. Invalid slugs return `2`. `--output` writes the PR body to a file and refuses to overwrite an existing file unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains the text body.
+
+```bash
 specspine status [path] [--json] [--adapters] [--validate] [--feature-summaries]
 ```
 
@@ -372,12 +390,11 @@ Prints upstream install instructions and project links.
 
 ## Roadmap
 
-- Feature lifecycle transition policy and adapter mappings.
+- Adapter lifecycle mappings.
 - Task decomposition from specs and richer task summaries.
 - Quality gate definitions.
-- Agent handoff packets.
 - Richer adapter sync for OpenSpec, Spec Kit, Superpowers, and other workflow engines.
-- GitHub issue and pull request synchronization.
+- Remote GitHub issue and pull request synchronization beyond offline drafts.
 
 ## Development
 

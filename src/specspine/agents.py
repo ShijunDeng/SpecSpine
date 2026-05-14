@@ -38,6 +38,7 @@ AGENTS_TEMPLATE = """
     specspine feature trace <slug> . --json
     specspine feature ready <slug> . --json
     specspine feature issue <slug> . --json
+    specspine feature pr <slug> . --json
     PYTHONPATH=src python3 -m unittest discover -s tests
     ```
 
@@ -50,6 +51,7 @@ AGENTS_TEMPLATE = """
     - Before archiving, run `specspine feature ready <slug> . --json`, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.
     - Start feature implementation, review, and acceptance handoffs with `specspine feature handoff <slug> . --json`.
     - Use `specspine feature tasks`, `specspine feature trace`, and `specspine feature ready` for focused task, trace, and gate views.
+    - Use `specspine feature pr <slug> . --json` to prepare an offline Pull Request draft from local evidence without reading tokens or calling GitHub.
     - Run `specspine validate .` before and after edits; add `--features` when feature bundles are involved.
     - Keep OpenSpec, Spec Kit, and Superpowers as external adapters. Do not vendor upstream code.
     - By default, do not read or write GitHub tokens and do not call the GitHub API.

@@ -53,6 +53,7 @@ class AgentsTests(TestCase):
             "specspine feature ready <slug> . --json",
             "specspine feature tasks <slug> . --json",
             "specspine feature issue <slug> . --json",
+            "specspine feature pr <slug> . --json",
             "PYTHONPATH=src python3 -m unittest discover -s tests",
             "Do not vendor upstream code.",
             "do not read or write GitHub tokens",

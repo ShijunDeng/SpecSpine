@@ -26,6 +26,7 @@ The CLI is intentionally thin:
 - `specspine feature ready` evaluates a feature bundle as a local pass/fail readiness gate.
 - `specspine feature handoff` exports a compact feature packet for implementation, acceptance, and review agents.
 - `specspine feature issue` exports a local GitHub issue draft from a native feature bundle.
+- `specspine feature pr` exports a local GitHub Pull Request draft from a native feature bundle.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
 - `specspine status` emits a compact status packet for humans, agents, and scripts.
@@ -124,6 +125,12 @@ The handoff summary preserves the focused report counts: trace total/done/open, 
 
 The command is intentionally offline. It does not call GitHub APIs, does not require `gh`, and does not read tokens. Missing peer files are reported in the draft; if all three feature files are missing, the command fails clearly.
 
+`specspine feature pr <slug> [path] [--json] [--output FILE] [--force]` is the local bridge from native feature bundles to GitHub Pull Request workflows and Spec Kit PR Bridge-style review artifacts. It composes the existing local status, handoff, trace, readiness, release readiness, and source-file evidence into a PR title plus body without creating a remote PR.
+
+JSON output includes `title`, `body`, `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `summary`, and `recommended_commands`. Text output includes Summary, Feature, Why, Acceptance Criteria, Tasks, Test Plan, Release Readiness, Readiness / Blocking Checks, Source Files, Missing Files, and Key Commands. Reviewable evidence uses GitHub Markdown checklist syntax where the source evidence is a checklist. Partial bundles return `0` with missing files and blockers recorded; all-files-missing returns non-zero; invalid slugs return `2`. Output behavior matches the other local exporters.
+
+The command is intentionally offline. It does not call GitHub APIs, does not require `gh`, does not read tokens, does not use network access, and does not vendor upstream project code.
+
 `specspine validate --features` checks that discovered native feature bundles have valid slugs, all three peer files, matching feature ids, allowed status markers, and consistent peer-file status.
 
 `specspine agents init [path]` writes a short `AGENTS.md` file for Codex, Claude, Gemini, and similar coding agents. The file is a human-readable entry point, not a new source of truth. It points agents back to `specspine status . --json`, `specspine validate .`, native feature bundles, and the external-adapter boundary for OpenSpec, Spec Kit, and Superpowers. The command refuses to overwrite an existing `AGENTS.md` unless `--force` is passed.
@@ -155,7 +162,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 
 - `specspine.workspace`: local file templates and workspace checks.
 - `specspine.agents`: project-local `AGENTS.md` generation for AI coding agents.
-- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, trace export, readiness gate evaluation, handoff packet export, and issue draft export.
+- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, trace export, readiness gate evaluation, handoff packet export, issue draft export, and PR draft export.
 - `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, optional validation summary, and optional feature summary rendering.
