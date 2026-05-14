@@ -13,6 +13,7 @@ from .adapters import (
     run_upstream_initializers,
 )
 from .fusion import FUSION_REQUIRED_FILES, init_fusion_workspace
+from .status import build_status, render_status_json, render_status_text
 from .workspace import BASE_WORKSPACE_FILES, check_workspace, init_workspace
 
 
@@ -77,6 +78,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="also require SpecSpine fusion files",
     )
     doctor_parser.add_argument(
+        "--adapters",
+        action="store_true",
+        help="also check external adapter availability",
+    )
+
+    status_parser = subcommands.add_parser("status", help="summarize SpecSpine workspace status")
+    status_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    status_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    status_parser.add_argument(
         "--adapters",
         action="store_true",
         help="also check external adapter availability",
@@ -173,6 +187,14 @@ def main(argv: list[str] | None = None) -> int:
             statuses = probe_adapters()
             _print_adapter_statuses(statuses)
             return 0 if all(status.available for status in statuses) else 1
+        return 0
+
+    if args.command == "status":
+        status = build_status(Path(args.path), include_adapters=args.adapters)
+        if args.json:
+            print(render_status_json(status), end="")
+        else:
+            print(render_status_text(status), end="")
         return 0
 
     if args.command == "adapters":

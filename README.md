@@ -24,11 +24,20 @@ This repository is an early project skeleton. It includes:
 - A zero-dependency Python CLI.
 - A workspace initializer: `specspine init`.
 - A fusion initializer: `specspine fuse`.
+- A compact workspace status packet: `specspine status --json`.
 - Adapter metadata for OpenSpec, Spec Kit, and Superpowers.
 - Default spec templates for intent, product, architecture, features, quality, and execution.
 - A lightweight test suite and GitHub Actions CI.
 
 ## Install Locally
+
+Use a virtual environment for a reproducible development install:
+
+```bash
+python3 -m venv .venv && . .venv/bin/activate && python -m pip install -e . && specspine --help
+```
+
+If you are already inside a disposable Python environment, install directly:
 
 ```bash
 python3 -m pip install -e .
@@ -64,6 +73,13 @@ This writes SpecSpine's own backbone and adapter contracts without running exter
 
 ```bash
 specspine fuse . --agent codex --run-upstream
+```
+
+Summarize the workspace for humans or downstream agents:
+
+```bash
+specspine status .
+specspine status . --json
 ```
 
 Or create one in a new directory:
@@ -162,6 +178,12 @@ specspine doctor [path]
 ```
 
 Checks whether a directory contains the expected SpecSpine files.
+
+```bash
+specspine status [path] [--json] [--adapters]
+```
+
+Summarizes workspace completeness, fusion completeness, core artifact status, enabled upstreams, and recommended next actions. `--json` emits a stable compact context packet for agents and scripts. `--adapters` also checks external OpenSpec, Spec Kit, and Superpowers availability.
 
 ```bash
 specspine fuse [path] --agent codex

@@ -20,10 +20,19 @@ The CLI is intentionally thin:
 - `specspine init` creates the default workspace structure.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
+- `specspine status` emits a compact status packet for humans, agents, and scripts.
 - `specspine adapters doctor` checks whether external tools are installed.
 - `specspine adapters install-hints` prints upstream install guidance.
 
 Future commands should remain thin orchestration layers over explicit files so the workspace stays understandable without a server.
+
+`specspine status --json` is the preferred machine-readable context boundary. It reports:
+
+- workspace and fusion completeness.
+- core artifact existence.
+- enabled upstream adapters.
+- recommended next actions.
+- optional external adapter availability when `--adapters` is passed.
 
 ## Adapter Direction
 
@@ -53,4 +62,5 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 - `specspine.workspace`: local file templates and workspace checks.
 - `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
+- `specspine.status`: compact workspace, fusion, artifact, upstream, and recommendation summaries.
 - `specspine.cli`: command-line interface.
