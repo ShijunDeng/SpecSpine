@@ -17,11 +17,14 @@ from .agents import AgentsFileExistsError, init_agents_file
 from .features import (
     FeatureBundleExistsError,
     FeatureBundleNotFoundError,
+    InvalidFeatureStatus,
     InvalidFeatureSlug,
     build_issue_draft,
     create_feature_bundle,
+    get_feature_status,
     render_issue_json,
     render_issue_text,
+    set_feature_status,
 )
 from .fusion import FUSION_REQUIRED_FILES, init_fusion_workspace
 from .status import build_status, render_status_json, render_status_text
@@ -128,6 +131,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="overwrite an existing output file",
+    )
+
+    feature_status_parser = feature_subcommands.add_parser(
+        "status",
+        help="read or advance a native feature lifecycle status",
+    )
+    feature_status_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    feature_status_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    feature_status_parser.add_argument("--set", dest="set_status", help="set the feature lifecycle status")
+    feature_status_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
     )
 
     doctor_parser = subcommands.add_parser("doctor", help="check SpecSpine workspace files")
@@ -327,6 +343,48 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(render_issue_text(draft), end="")
             return 0
+
+        if args.feature_command == "status":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                if args.set_status:
+                    report = set_feature_status(root, args.slug, args.set_status)
+                    include_updated = True
+                else:
+                    report = get_feature_status(root, args.slug)
+                    include_updated = False
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except InvalidFeatureStatus as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not update feature status: {error}", file=sys.stderr)
+                return 1
+
+            payload = report.as_dict(include_updated=include_updated)
+            has_files = any(bool(file["exists"]) for file in report.files.values())
+            if args.json:
+                print(render_status_json(payload), end="")
+            else:
+                if report.consistent:
+                    print(f"Feature {report.feature_id} status: {report.status}")
+                else:
+                    print(
+                        f"Feature {report.feature_id} status: "
+                        f"{report.status or 'unknown'} (mixed/inconsistent)"
+                    )
+                for kind, file in report.files.items():
+                    marker = "ok" if file["exists"] else "missing"
+                    status = file["status"] or "unknown"
+                    print(f"  [{marker}] {kind}: {file['path']} ({status})")
+            return 0 if has_files else 1
 
     if args.command == "doctor":
         required_files = dict(BASE_WORKSPACE_FILES)

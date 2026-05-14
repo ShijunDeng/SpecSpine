@@ -15,7 +15,7 @@
 ## Definition Of Done
 
 - Status reports both `workspace.complete=true` and `fusion.complete=true`.
-- Validation passes with `--fusion --features`; no native feature bundle is acceptable and should be reported as a skip, not a failure.
+- Validation passes with `--fusion --features`; native feature bundles use allowed statuses consistently across peer files.
 - Unit tests pass.
 - Agent-facing docs describe the current project and do not leave placeholder template prompts.
 - Upstream integrations remain external adapters unless a future spec explicitly changes the policy.

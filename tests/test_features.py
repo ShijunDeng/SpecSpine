@@ -8,10 +8,12 @@ from unittest.mock import patch
 
 from specspine.cli import main
 from specspine.features import (
+    FEATURE_STATUSES,
     FeatureBundleExistsError,
     InvalidFeatureSlug,
     build_issue_draft,
     create_feature_bundle,
+    set_feature_status,
 )
 from specspine.status import build_status
 from specspine.validation import build_validation_report, validation_exit_code
@@ -250,9 +252,270 @@ class FeatureBundleTests(TestCase):
 
             self.assertEqual(status["features"][0]["slug"], "add-dark-mode")
             self.assertTrue(status["features"][0]["complete"])
+            self.assertEqual(status["features"][0]["status"], "proposed")
+            self.assertTrue(status["features"][0]["status_consistent"])
             self.assertTrue(
                 status["artifacts"]["specs/features/add-dark-mode.md"]["exists"]
             )
+
+    def test_feature_status_cli_json_query_reports_consistent_status(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "status", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertEqual(payload["status"], "proposed")
+            self.assertTrue(payload["consistent"])
+            self.assertEqual(payload["missing_files"], [])
+            self.assertEqual(payload["files"]["spec"]["status"], "proposed")
+
+    def test_feature_status_cli_json_query_all_files_missing_returns_nonzero(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            output = StringIO()
+            stderr = StringIO()
+
+            with redirect_stdout(output), redirect_stderr(stderr):
+                returncode = main(
+                    ["feature", "status", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 1)
+            self.assertEqual(stderr.getvalue(), "")
+            self.assertIsNone(payload["status"])
+            self.assertFalse(payload["consistent"])
+            self.assertEqual(
+                payload["missing_files"],
+                [
+                    "specs/features/add-dark-mode.md",
+                    "execution/features/add-dark-mode.md",
+                    "quality/features/add-dark-mode.md",
+                ],
+            )
+            self.assertFalse(any(file["exists"] for file in payload["files"].values()))
+
+    def test_feature_status_cli_text_query_all_files_missing_returns_nonzero(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            output = StringIO()
+            stderr = StringIO()
+
+            with redirect_stdout(output), redirect_stderr(stderr):
+                returncode = main(["feature", "status", "add-dark-mode", str(root)])
+
+            text = output.getvalue()
+            self.assertEqual(returncode, 1)
+            self.assertEqual(stderr.getvalue(), "")
+            self.assertIn("Feature add-dark-mode status: unknown (mixed/inconsistent)", text)
+            self.assertIn("[missing] spec: specs/features/add-dark-mode.md (unknown)", text)
+
+    def test_feature_status_cli_text_reports_mixed_status(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            execution = root / "execution" / "features" / "add-dark-mode.md"
+            execution.write_text(
+                execution.read_text(encoding="utf-8").replace(
+                    "Status: proposed",
+                    "Status: planned",
+                ),
+                encoding="utf-8",
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["feature", "status", "add-dark-mode", str(root)])
+
+            self.assertEqual(returncode, 0)
+            self.assertIn("mixed/inconsistent", output.getvalue())
+            self.assertIn("execution/features/add-dark-mode.md (planned)", output.getvalue())
+
+    def test_feature_status_cli_set_updates_existing_peer_files(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "implemented",
+                        "--json",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["status"], "implemented")
+            self.assertTrue(payload["consistent"])
+            self.assertEqual(
+                payload["updated_files"],
+                [
+                    "specs/features/add-dark-mode.md",
+                    "execution/features/add-dark-mode.md",
+                    "quality/features/add-dark-mode.md",
+                ],
+            )
+            for relative_path in EXPECTED_FEATURE_FILES:
+                content = (root / relative_path).read_text(encoding="utf-8")
+                self.assertIn("Status: implemented", content)
+                self.assertNotIn("Status: proposed", content)
+
+    def test_feature_status_cli_set_inserts_missing_status_line(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            spec = root / "specs" / "features" / "add-dark-mode.md"
+            spec.write_text(
+                spec.read_text(encoding="utf-8").replace("Status: proposed\n", ""),
+                encoding="utf-8",
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "validated",
+                        "--json",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["status"], "validated")
+            self.assertTrue(payload["consistent"])
+            lines = spec.read_text(encoding="utf-8").splitlines()
+            feature_id_index = lines.index("Feature ID: add-dark-mode")
+            self.assertEqual(lines[feature_id_index + 1], "Status: validated")
+
+    def test_feature_status_cli_rejects_invalid_status_and_slug(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+
+            stderr = StringIO()
+            with redirect_stderr(stderr):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "done",
+                    ]
+                )
+            self.assertEqual(returncode, 2)
+            self.assertIn("Invalid feature status", stderr.getvalue())
+
+            stderr = StringIO()
+            with redirect_stderr(stderr):
+                returncode = main(["feature", "status", "BadSlug", str(root)])
+            self.assertEqual(returncode, 2)
+            self.assertIn("Invalid feature slug", stderr.getvalue())
+
+    def test_feature_status_cli_set_updates_partial_bundle_only(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            (root / "quality" / "features" / "add-dark-mode.md").unlink()
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "planned",
+                        "--json",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["status"], "planned")
+            self.assertTrue(payload["consistent"])
+            self.assertEqual(
+                payload["missing_files"],
+                ["quality/features/add-dark-mode.md"],
+            )
+            self.assertEqual(
+                payload["updated_files"],
+                [
+                    "specs/features/add-dark-mode.md",
+                    "execution/features/add-dark-mode.md",
+                ],
+            )
+
+    def test_feature_status_cli_set_all_files_missing_returns_nonzero(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(
+                    [
+                        "feature",
+                        "status",
+                        "add-dark-mode",
+                        str(root),
+                        "--set",
+                        "planned",
+                    ]
+                )
+
+            self.assertEqual(returncode, 1)
+            self.assertIn("No feature files found", stderr.getvalue())
+
+    def test_feature_status_cli_text_reports_lifecycle_value_for_consistent_status(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            set_feature_status(root, "add-dark-mode", "in-progress")
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["feature", "status", "add-dark-mode", str(root)])
+
+            text = output.getvalue()
+            self.assertEqual(returncode, 0)
+            self.assertIn("Feature add-dark-mode status: in-progress", text)
+            self.assertNotIn("mixed/inconsistent", text)
+            self.assertIn("specs/features/add-dark-mode.md (in-progress)", text)
+            self.assertIn("execution/features/add-dark-mode.md (in-progress)", text)
+            self.assertIn("quality/features/add-dark-mode.md (in-progress)", text)
 
     def test_validate_cli_can_check_feature_bundles(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -272,6 +535,94 @@ class FeatureBundleTests(TestCase):
                     check["id"] == "feature.id:add-dark-mode:spec"
                     and check["status"] == "pass"
                     for check in payload["checks"]
+                )
+            )
+            self.assertTrue(
+                any(
+                    check["id"] == "feature.status_consistency:add-dark-mode"
+                    and check["status"] == "pass"
+                    for check in payload["checks"]
+                )
+            )
+
+    def test_validate_features_accepts_all_allowed_statuses(self) -> None:
+        for status in FEATURE_STATUSES:
+            with self.subTest(status=status):
+                with TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    init_workspace(root)
+                    create_feature_bundle(root, "add-dark-mode")
+                    set_feature_status(root, "add-dark-mode", status)
+
+                    report = build_validation_report(root, include_features=True)
+
+                    self.assertTrue(report["ok"])
+
+    def test_validate_features_rejects_illegal_status(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            spec = root / "specs" / "features" / "add-dark-mode.md"
+            spec.write_text(
+                spec.read_text(encoding="utf-8").replace(
+                    "Status: proposed",
+                    "Status: done",
+                ),
+                encoding="utf-8",
+            )
+
+            report = build_validation_report(root, include_features=True)
+
+            self.assertFalse(report["ok"])
+            self.assertTrue(
+                any(
+                    check["id"] == "feature.status:add-dark-mode:spec"
+                    and check["status"] == "fail"
+                    for check in report["checks"]
+                )
+            )
+
+    def test_validate_features_rejects_missing_status(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            spec = root / "specs" / "features" / "add-dark-mode.md"
+            spec.write_text(
+                spec.read_text(encoding="utf-8").replace("Status: proposed\n", ""),
+                encoding="utf-8",
+            )
+
+            report = build_validation_report(root, include_features=True)
+
+            self.assertFalse(report["ok"])
+            checks = {(check["id"], check["status"]) for check in report["checks"]}
+            self.assertIn(("feature.status:add-dark-mode:spec", "fail"), checks)
+            self.assertIn(("feature.status_consistency:add-dark-mode", "fail"), checks)
+
+    def test_validate_features_rejects_mixed_status(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            execution = root / "execution" / "features" / "add-dark-mode.md"
+            execution.write_text(
+                execution.read_text(encoding="utf-8").replace(
+                    "Status: proposed",
+                    "Status: planned",
+                ),
+                encoding="utf-8",
+            )
+
+            report = build_validation_report(root, include_features=True)
+
+            self.assertFalse(report["ok"])
+            self.assertTrue(
+                any(
+                    check["id"] == "feature.status_consistency:add-dark-mode"
+                    and check["status"] == "fail"
+                    for check in report["checks"]
                 )
             )
 
@@ -372,6 +723,24 @@ class FeatureBundleTests(TestCase):
             self.assertIn("execution/features/add-dark-mode.md", text)
             self.assertIn("quality/features/add-dark-mode.md", text)
             self.assertIn("## Missing Files\n\nNone.", text)
+
+    def test_feature_issue_cli_reflects_current_non_proposed_status(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            set_feature_status(root, "add-dark-mode", "validated")
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "issue", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertIn("- Status: validated", payload["body"])
+            self.assertNotIn("- Status: proposed", payload["body"])
 
     def test_feature_issue_cli_json_output_is_parseable(self) -> None:
         with TemporaryDirectory() as tmp:

@@ -16,6 +16,12 @@ class DogfoodArtifactsTests(TestCase):
         self.assertTrue(status["fusion"]["complete"])
         self.assertEqual(status["workspace"]["missing"], [])
         self.assertEqual(status["fusion"]["missing"], [])
+        dogfood = {
+            feature["slug"]: feature
+            for feature in status["features"]
+        }["feature-status-lifecycle"]
+        self.assertEqual(dogfood["status"], "validated")
+        self.assertTrue(dogfood["status_consistent"])
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertTrue(status["upstreams"][upstream]["enabled"])
             self.assertTrue(status["upstreams"][upstream]["config_exists"])
@@ -32,7 +38,7 @@ class DogfoodArtifactsTests(TestCase):
         checks = {(check["id"], check["status"]) for check in report["checks"]}
         self.assertIn(("fusion.integration_mode", "pass"), checks)
         self.assertIn(("fusion.vendored_upstream_code", "pass"), checks)
-        self.assertIn(("feature.discovery", "skip"), checks)
+        self.assertIn(("feature.status_consistency:feature-status-lifecycle", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -43,6 +49,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine status . --json",
             "PYTHONPATH=src python3 -m specspine validate . --fusion --features",
             "PYTHONPATH=src python3 -m unittest discover -s tests",
+            "PYTHONPATH=src python3 -m specspine feature status <slug> . --json",
             "Keep feature specs, implementation tasks, and quality checks traceable",
             "Do not vendor upstream source code.",
             "Do not read or write GitHub tokens",
@@ -112,3 +119,16 @@ class DogfoodArtifactsTests(TestCase):
 
         for phrase in generated_placeholder_phrases:
             self.assertNotIn(phrase, combined)
+
+    def test_feature_status_lifecycle_bundle_has_no_todo_placeholders(self) -> None:
+        artifact_paths = [
+            "specs/features/feature-status-lifecycle.md",
+            "execution/features/feature-status-lifecycle.md",
+            "quality/features/feature-status-lifecycle.md",
+        ]
+        combined = "\n".join(
+            (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+            for relative_path in artifact_paths
+        )
+
+        self.assertNotIn("TODO", combined)

@@ -45,6 +45,7 @@ class AgentsTests(TestCase):
             "specspine validate .",
             "specspine validate . --features",
             'specspine feature new <slug> . --title "..." --why "..."',
+            "specspine feature status <slug> . --json",
             "specspine feature issue <slug> . --json",
             "PYTHONPATH=src python3 -m unittest discover -s tests",
             "Do not vendor upstream code.",

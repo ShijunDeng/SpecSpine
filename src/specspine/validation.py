@@ -8,6 +8,7 @@ from typing import Any, Callable, Iterable
 from .adapters import ADAPTER_SPECS, AdapterStatus, probe_adapters
 from .features import (
     FEATURE_FILE_PATHS,
+    FEATURE_STATUSES,
     InvalidFeatureSlug,
     list_feature_bundles,
     validate_feature_slug,
@@ -320,6 +321,11 @@ def _adapter_availability_checks(
 
 
 def _content_has_scalar(content: str, key: str, expected_value: str) -> bool:
+    value = _content_scalar(content, key)
+    return bool(value and value.lower() == expected_value.lower())
+
+
+def _content_scalar(content: str, key: str) -> str | None:
     for raw_line in content.splitlines():
         stripped = raw_line.strip()
         if not stripped or stripped.startswith("#") or ":" not in stripped:
@@ -328,10 +334,11 @@ def _content_has_scalar(content: str, key: str, expected_value: str) -> bool:
         current_key, current_value = stripped.split(":", 1)
         if current_key.strip().lower() != key.lower():
             continue
-        if current_value.strip().lower() == expected_value.lower():
-            return True
+        value = current_value.strip()
+        if value:
+            return value
 
-    return False
+    return None
 
 
 def _content_has_feature_id(content: str, slug: str) -> bool:
@@ -379,6 +386,8 @@ def _feature_bundle_checks(root: Path) -> list[ValidationCheck]:
             )
             continue
 
+        statuses_by_kind: dict[str, str] = {}
+        status_missing = False
         for kind, pattern in FEATURE_FILE_PATHS.items():
             relative_path = pattern.format(slug=slug)
             target = root / relative_path
@@ -423,16 +432,44 @@ def _feature_bundle_checks(root: Path) -> list[ValidationCheck]:
                 )
             )
 
-            has_proposed_status = _content_has_scalar(content, "Status", "proposed")
+            current_status = _content_scalar(content, "Status")
+            has_allowed_status = current_status in FEATURE_STATUSES
+            if current_status:
+                statuses_by_kind[kind] = current_status
+            else:
+                status_missing = True
             checks.append(
                 _check(
                     f"feature.status:{slug}:{kind}",
-                    "pass" if has_proposed_status else "fail",
-                    f"Feature {slug} {kind} file declares Status: proposed."
-                    if has_proposed_status
-                    else f"Feature {slug} {kind} file must declare Status: proposed.",
+                    "pass" if has_allowed_status else "fail",
+                    f"Feature {slug} {kind} file declares allowed Status: {current_status}."
+                    if has_allowed_status
+                    else (
+                        f"Feature {slug} {kind} file must declare an allowed Status: "
+                        f"{', '.join(FEATURE_STATUSES)}."
+                    ),
                 )
             )
+
+        unique_statuses = sorted(set(statuses_by_kind.values()))
+        all_statuses_allowed = all(
+            status in FEATURE_STATUSES for status in statuses_by_kind.values()
+        )
+        statuses_consistent = (
+            not status_missing
+            and len(statuses_by_kind) == len(FEATURE_FILE_PATHS)
+            and len(unique_statuses) == 1
+            and all_statuses_allowed
+        )
+        checks.append(
+            _check(
+                f"feature.status_consistency:{slug}",
+                "pass" if statuses_consistent else "fail",
+                f"Feature {slug} peer files consistently declare Status: {unique_statuses[0]}."
+                if statuses_consistent
+                else f"Feature {slug} peer files must declare the same allowed Status.",
+            )
+        )
 
     return checks
 

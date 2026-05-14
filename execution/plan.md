@@ -6,6 +6,7 @@
 - Workspace initialization for specs, execution, quality, and `.specspine/spine.yaml`.
 - Agent instruction initialization through `specspine agents init`.
 - Native feature bundle creation and offline GitHub issue draft export.
+- Native feature status lifecycle query/update through `specspine feature status`.
 - Fusion layer generation for OpenSpec, Spec Kit, and Superpowers.
 - Status JSON, validation JSON/text, adapter doctor, and install hints.
 - Unit tests and GitHub Actions coverage for the current command surface.
@@ -18,7 +19,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 
 - Keep this repository complete under `specspine status . --json`.
 - Use `specspine validate . --fusion --features` as the project-level gate.
-- Expand native feature lifecycle only through traceable bundles.
+- Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`.
 - Improve templates when dogfooding reveals repeated manual edits.
 - Keep upstream integrations adapter-based and avoid vendored code.
 
@@ -30,6 +31,6 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 
 ## Open Questions
 
-- Which native feature lifecycle state changes should come after `proposed`?
+- Should future lifecycle updates enforce transition ordering, or remain manual file-native state changes?
 - Should status JSON expose richer validation summaries without requiring a separate validate call?
 - Which generated templates should be tightened based on this dogfood workspace?

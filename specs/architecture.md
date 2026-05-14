@@ -6,7 +6,7 @@ SpecSpine is a small Python package under `src/specspine` with a command-line en
 
 - `workspace` owns base workspace templates and required artifact checks.
 - `agents` writes project-local `AGENTS.md` instructions.
-- `features` creates and reads native feature bundles and offline issue drafts.
+- `features` creates and reads native feature bundles, updates lifecycle status, and exports offline issue drafts.
 - `adapters` describes external upstream tools and probes local availability.
 - `fusion` writes the OpenSpec + Spec Kit + Superpowers adapter layer.
 - `status` builds machine-readable workspace summaries and recommendations.
@@ -19,7 +19,7 @@ SpecSpine is a small Python package under `src/specspine` with a command-line en
 - `.specspine/fusion.yaml` records enabled upstreams, the selected agent profile, and the adapter/no-vendor boundary.
 - `.specspine/fusion-map.md` and `.specspine/adapters/*.md` document the human-facing integration contract.
 - `specs/`, `execution/`, and `quality/` carry the repository-owned source of truth.
-- Native feature bundles use peer files with matching `Feature ID: <slug>` and `Status: proposed` markers.
+- Native feature bundles use peer files with matching `Feature ID: <slug>` markers and one allowed lifecycle `Status`.
 - The main machine interfaces are `specspine status . --json` and `specspine validate . --fusion --features`.
 
 ## Decisions
@@ -33,5 +33,5 @@ SpecSpine is a small Python package under `src/specspine` with a command-line en
 
 - Template drift can make generated artifacts too generic. Dogfood this repository and update templates when repeated manual corrections appear.
 - Upstream command surfaces may change. Keep adapter docs explicit and probe availability separately from core validation.
-- Feature bundles can diverge across spec, execution, and quality files. Validate matching IDs and keep task lists traceable.
+- Feature bundles can diverge across spec, execution, and quality files. Validate matching IDs, allowed statuses, and peer-file status consistency.
 - Agent instructions can become stale. Prefer short rules that point back to status, validation, and repository specs.

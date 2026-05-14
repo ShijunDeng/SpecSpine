@@ -25,6 +25,7 @@ This repository is an early project skeleton. It includes:
 - A workspace initializer: `specspine init`.
 - A project-local agent instruction initializer: `specspine agents init`.
 - A native feature bundle creator: `specspine feature new`.
+- A native feature lifecycle status command: `specspine feature status`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
 - A fusion initializer: `specspine fuse`.
 - A compact workspace status packet: `specspine status --json`.
@@ -86,6 +87,13 @@ specspine feature issue add-dark-mode .
 specspine feature issue add-dark-mode . --json
 ```
 
+Advance the feature lifecycle when the bundle moves forward:
+
+```bash
+specspine feature status add-dark-mode . --set planned
+specspine feature status add-dark-mode . --json
+```
+
 Create the full OpenSpec + Spec Kit + Superpowers fusion layer:
 
 ```bash
@@ -140,7 +148,7 @@ quality/
   superpowers.md
 ```
 
-A native feature bundle adds matching files under `specs/features/`, `execution/features/`, and `quality/features/`. Each file carries the same `Feature ID: <slug>` and starts at `Status: proposed`.
+A native feature bundle adds matching files under `specs/features/`, `execution/features/`, and `quality/features/`. Each file carries the same `Feature ID: <slug>` and starts at `Status: proposed`. Supported lifecycle statuses are `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived`.
 
 ## Upstream Integration
 
@@ -230,6 +238,12 @@ Creates a native feature bundle:
 The slug may contain lowercase letters, numbers, and hyphens, and must start and end with a letter or number. Existing feature files are not overwritten unless `--force` is passed.
 
 ```bash
+specspine feature status <slug> [path] [--set STATUS] [--json]
+```
+
+Reads or updates the lifecycle status for a native feature bundle. Without `--set`, the command reports the current peer-file status and clearly marks mixed or inconsistent files. With `--set`, it updates existing peer files to an allowed status and returns non-zero if no feature files exist. Invalid slugs and invalid statuses return code `2`. `--json` emits stable JSON with `feature_id`, `status`, `consistent`, `files`, and `missing_files`; status updates also include `updated_files`.
+
+```bash
 specspine feature issue <slug> [path] [--json] [--output FILE] [--force]
 ```
 
@@ -239,13 +253,13 @@ Creates a local GitHub issue draft from a native feature bundle without calling 
 specspine status [path] [--json] [--adapters]
 ```
 
-Summarizes workspace completeness, fusion completeness, core artifact status, native feature files, enabled upstreams, and recommended next actions. `--json` emits a stable compact context packet for agents and scripts. `--adapters` also checks external OpenSpec, Spec Kit, and Superpowers availability.
+Summarizes workspace completeness, fusion completeness, core artifact status, native feature files, feature lifecycle status, enabled upstreams, and recommended next actions. `--json` emits a stable compact context packet for agents and scripts. `--adapters` also checks external OpenSpec, Spec Kit, and Superpowers availability.
 
 ```bash
 specspine validate [path] [--fusion] [--features] [--adapters] [--json]
 ```
 
-Runs executable local checks over SpecSpine contracts. By default it validates required workspace files. `--fusion` also requires fusion files, verifies `integration_mode: adapter`, verifies `vendored_upstream_code: false`, and checks enabled upstream adapter docs. `--features` checks native feature bundle consistency across spec, execution, and quality files. `--adapters` probes only enabled external upstream adapters. `--json` emits stable JSON with `root`, `ok`, `checks`, and `summary`; any `fail` check returns a non-zero exit code.
+Runs executable local checks over SpecSpine contracts. By default it validates required workspace files. `--fusion` also requires fusion files, verifies `integration_mode: adapter`, verifies `vendored_upstream_code: false`, and checks enabled upstream adapter docs. `--features` checks native feature bundle consistency across spec, execution, and quality files, including allowed lifecycle status and peer-file status consistency. `--adapters` probes only enabled external upstream adapters. `--json` emits stable JSON with `root`, `ok`, `checks`, and `summary`; any `fail` check returns a non-zero exit code.
 
 ```bash
 specspine fuse [path] --agent codex
@@ -282,7 +296,7 @@ Prints upstream install instructions and project links.
 
 ## Roadmap
 
-- Feature lifecycle expansion beyond bundle creation.
+- Feature lifecycle transition policy and adapter mappings.
 - Task decomposition from specs.
 - Quality gate definitions.
 - Agent handoff packets.

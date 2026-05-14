@@ -14,6 +14,14 @@ FEATURE_FILE_PATHS = {
     "execution": "execution/features/{slug}.md",
     "quality": "quality/features/{slug}.md",
 }
+FEATURE_STATUSES = (
+    "proposed",
+    "planned",
+    "in-progress",
+    "implemented",
+    "validated",
+    "archived",
+)
 FEATURE_DIRECTORIES = {
     kind: str(Path(pattern.format(slug="__feature__")).parent)
     for kind, pattern in FEATURE_FILE_PATHS.items()
@@ -22,6 +30,10 @@ FEATURE_DIRECTORIES = {
 
 class InvalidFeatureSlug(ValueError):
     """Raised when a feature slug cannot be used as a feature id."""
+
+
+class InvalidFeatureStatus(ValueError):
+    """Raised when a feature lifecycle status is not supported."""
 
 
 @dataclass(frozen=True)
@@ -69,6 +81,28 @@ class IssueDraft:
         }
 
 
+@dataclass(frozen=True)
+class FeatureStatusReport:
+    feature_id: str
+    status: str | None
+    consistent: bool
+    files: dict[str, dict[str, object]]
+    missing_files: tuple[str, ...]
+    updated_files: tuple[str, ...] = ()
+
+    def as_dict(self, *, include_updated: bool = False) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "consistent": self.consistent,
+            "feature_id": self.feature_id,
+            "files": self.files,
+            "missing_files": list(self.missing_files),
+            "status": self.status,
+        }
+        if include_updated:
+            payload["updated_files"] = list(self.updated_files)
+        return payload
+
+
 def validate_feature_slug(slug: str) -> str:
     if FEATURE_SLUG_RE.fullmatch(slug):
         return slug
@@ -76,6 +110,16 @@ def validate_feature_slug(slug: str) -> str:
     raise InvalidFeatureSlug(
         f"Invalid feature slug '{slug}'. Use lowercase letters, numbers, and "
         "hyphens only; start and end with a letter or number."
+    )
+
+
+def validate_feature_status(status: str) -> str:
+    if status in FEATURE_STATUSES:
+        return status
+
+    allowed = ", ".join(FEATURE_STATUSES)
+    raise InvalidFeatureStatus(
+        f"Invalid feature status '{status}'. Use one of: {allowed}."
     )
 
 
@@ -218,6 +262,126 @@ def create_feature_bundle(
     return written
 
 
+def _relative_feature_paths(slug: str) -> dict[str, str]:
+    return {
+        kind: relative_path.format(slug=slug)
+        for kind, relative_path in FEATURE_FILE_PATHS.items()
+    }
+
+
+def _replace_or_insert_status_line(content: str, status: str) -> str:
+    lines = content.splitlines(keepends=True)
+    for index, raw_line in enumerate(lines):
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#") or ":" not in stripped:
+            continue
+
+        current_key, _value = stripped.split(":", 1)
+        if current_key.strip().lower() == "status":
+            newline = "\n" if raw_line.endswith("\n") else ""
+            lines[index] = f"Status: {status}{newline}"
+            return "".join(lines)
+
+    insert_at = 0
+    for index, raw_line in enumerate(lines):
+        stripped = raw_line.strip()
+        if not stripped or ":" not in stripped:
+            continue
+
+        current_key, _value = stripped.split(":", 1)
+        if current_key.strip().lower() == "feature id":
+            insert_at = index + 1
+            break
+
+    lines.insert(insert_at, f"Status: {status}\n")
+    return "".join(lines)
+
+
+def get_feature_status(root: Path, slug: str) -> FeatureStatusReport:
+    slug = validate_feature_slug(slug)
+    resolved_root = root.expanduser().resolve()
+    paths = feature_bundle_paths(resolved_root, slug)
+    relative_paths = _relative_feature_paths(slug)
+
+    files: dict[str, dict[str, object]] = {}
+    missing_files: list[str] = []
+    statuses: list[str] = []
+    status_missing = False
+
+    for kind in FEATURE_FILE_PATHS:
+        path = paths[kind]
+        relative_path = relative_paths[kind]
+        entry: dict[str, object] = {
+            "exists": path.exists(),
+            "path": relative_path,
+            "status": None,
+        }
+        if path.exists():
+            content = path.read_text(encoding="utf-8")
+            status = _extract_scalar(content, "Status")
+            entry["status"] = status
+            if status:
+                statuses.append(status)
+            else:
+                status_missing = True
+        else:
+            missing_files.append(relative_path)
+
+        files[kind] = entry
+
+    unique_statuses = sorted(set(statuses))
+    current_status = unique_statuses[0] if len(unique_statuses) == 1 else None
+    if len(unique_statuses) > 1:
+        current_status = "mixed"
+
+    existing_count = len(FEATURE_FILE_PATHS) - len(missing_files)
+    consistent = existing_count > 0 and not status_missing and len(unique_statuses) == 1
+
+    return FeatureStatusReport(
+        feature_id=slug,
+        status=current_status,
+        consistent=consistent,
+        files=files,
+        missing_files=tuple(missing_files),
+    )
+
+
+def set_feature_status(root: Path, slug: str, status: str) -> FeatureStatusReport:
+    slug = validate_feature_slug(slug)
+    status = validate_feature_status(status)
+    resolved_root = root.expanduser().resolve()
+    paths = feature_bundle_paths(resolved_root, slug)
+    relative_paths = _relative_feature_paths(slug)
+
+    existing_paths = [path for path in paths.values() if path.exists()]
+    if not existing_paths:
+        raise FeatureBundleNotFoundError(
+            slug=slug,
+            root=resolved_root,
+            missing_paths=tuple(paths.values()),
+        )
+
+    updated_files: list[str] = []
+    for kind in FEATURE_FILE_PATHS:
+        path = paths[kind]
+        if not path.exists():
+            continue
+
+        content = path.read_text(encoding="utf-8")
+        path.write_text(_replace_or_insert_status_line(content, status), encoding="utf-8")
+        updated_files.append(relative_paths[kind])
+
+    report = get_feature_status(resolved_root, slug)
+    return FeatureStatusReport(
+        feature_id=report.feature_id,
+        status=report.status,
+        consistent=report.consistent,
+        files=report.files,
+        missing_files=report.missing_files,
+        updated_files=tuple(updated_files),
+    )
+
+
 def list_feature_bundles(root: Path) -> list[dict[str, object]]:
     resolved_root = root.expanduser().resolve()
     by_slug: dict[str, dict[str, str]] = {}
@@ -236,11 +400,27 @@ def list_feature_bundles(root: Path) -> list[dict[str, object]]:
     required_kinds = set(FEATURE_FILE_PATHS)
     for slug in sorted(by_slug):
         files = by_slug[slug]
+        try:
+            status_report = get_feature_status(resolved_root, slug)
+            status = status_report.status
+            status_consistent = status_report.consistent
+            missing_files = list(status_report.missing_files)
+        except InvalidFeatureSlug:
+            status = None
+            status_consistent = False
+            missing_files = [
+                relative_path.format(slug=slug)
+                for kind, relative_path in FEATURE_FILE_PATHS.items()
+                if kind not in files
+            ]
         features.append(
             {
                 "slug": slug,
                 "complete": set(files) == required_kinds,
                 "files": dict(sorted(files.items())),
+                "status": status,
+                "status_consistent": status_consistent,
+                "missing_files": missing_files,
             }
         )
 

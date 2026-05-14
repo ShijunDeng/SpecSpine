@@ -8,6 +8,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 
 - No current blocking defects recorded in project-level artifacts.
 - The generated workspace templates were too generic for dogfooding and have been replaced with repository-specific intent, product, architecture, execution, and quality content.
+- Native feature lifecycle status can now be queried, updated, listed in status JSON, and validated across peer files.
 - No upstream code should be copied into this repository as part of fusion work.
 
 ## Decisions
@@ -15,9 +16,11 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Treat `specspine status . --json` as the first context packet for future agents.
 - Treat `specspine validate . --fusion --features` plus the unit test suite as the local completion gate.
 - Keep GitHub issue generation offline and token-free by default.
+- Keep native feature peer files on a consistent allowed lifecycle status.
 - Use `--run-upstream` only after explicit user instruction.
 
 ## Release Notes
 
 - The repository itself now contains a complete SpecSpine fusion workspace.
 - Future feature work should start with native feature bundles under `specs/features/`, `execution/features/`, and `quality/features/`.
+- Feature bundles support `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` statuses.

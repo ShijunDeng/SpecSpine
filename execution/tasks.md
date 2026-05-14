@@ -7,15 +7,17 @@
 - [x] Implement `specspine agents init` project-local agent instructions.
 - [x] Implement `specspine feature new` native feature bundles.
 - [x] Implement `specspine feature issue` offline GitHub issue drafts.
+- [x] Implement `specspine feature status` native lifecycle state query/update.
 - [x] Implement `specspine fuse` adapter-mode fusion generation.
 - [x] Implement `specspine status . --json`.
 - [x] Implement `specspine validate . --fusion --features`.
 - [x] Document upstream adapter policy without vendoring upstream code.
 - [x] Initialize this repository as a complete SpecSpine fusion workspace.
+- [x] Dogfood the feature lifecycle with `feature-status-lifecycle`.
 
 ## Next
 
-- [ ] Create feature bundles for the next substantive CLI behavior change.
+- [ ] Use feature bundles for the next substantive CLI behavior change.
 - [ ] Revisit generated templates after dogfooding this workspace for one or more development cycles.
 - [ ] Add tests when template or validation behavior changes.
 - [ ] Keep README/docs aligned with any command surface changes.

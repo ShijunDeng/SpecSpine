@@ -281,7 +281,11 @@ def render_status_text(status: dict[str, Any]) -> str:
     if status["features"]:
         for feature in status["features"]:
             marker = "complete" if feature["complete"] else "incomplete"
-            lines.append(f"  [{marker}] {feature['slug']}")
+            lifecycle = feature.get("status") or "unknown"
+            consistency = "consistent" if feature.get("status_consistent") else "mixed"
+            lines.append(
+                f"  [{marker}] {feature['slug']} - {lifecycle} ({consistency})"
+            )
     else:
         lines.append("  none")
 

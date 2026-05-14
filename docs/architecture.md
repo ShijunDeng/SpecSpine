@@ -20,6 +20,7 @@ The CLI is intentionally thin:
 - `specspine init` creates the default workspace structure.
 - `specspine agents init` creates project-local `AGENTS.md` instructions for AI coding agents.
 - `specspine feature new` creates a traceable native feature bundle.
+- `specspine feature status` reads or updates native feature lifecycle state.
 - `specspine feature issue` exports a local GitHub issue draft from a native feature bundle.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
@@ -34,6 +35,7 @@ Future commands should remain thin orchestration layers over explicit files so t
 
 - workspace and fusion completeness.
 - core artifact existence.
+- native feature status and peer-file consistency.
 - enabled upstream adapters.
 - recommended next actions.
 - optional external adapter availability when `--adapters` is passed.
@@ -47,13 +49,24 @@ Future commands should remain thin orchestration layers over explicit files so t
 
 Validation is local-first and zero-dependency. The default mode validates base workspace files only. `--fusion` requires the fusion layer and enforces adapter-mode/no-vendored-code boundaries. `--adapters` probes external upstream adapters only when explicitly requested.
 
-`specspine feature new <slug> [path]` is the first native feature lifecycle command. It creates three peer files:
+`specspine feature new <slug> [path]` creates three peer files:
 
 - `specs/features/<slug>.md` for intent, users, scope, non-goals, and acceptance criteria.
 - `execution/features/<slug>.md` for milestones, tasks, dependencies, and open questions.
 - `quality/features/<slug>.md` for required checks, test plan, review notes, and release readiness.
 
 Each file records the same `Feature ID: <slug>` and starts at `Status: proposed`. The command refuses to overwrite existing feature files unless `--force` is passed.
+
+Native feature lifecycle states are:
+
+- `proposed`
+- `planned`
+- `in-progress`
+- `implemented`
+- `validated`
+- `archived`
+
+`specspine feature status <slug> [path] [--set STATUS] [--json]` reads or updates those peer-file status lines. Without `--set`, it reports the current status and marks mixed peer files as inconsistent. With `--set`, it updates the existing peer files and fails clearly if no feature files exist. JSON output includes `feature_id`, `status`, `consistent`, `files`, and `missing_files`; update JSON also includes `updated_files`.
 
 `specspine feature issue <slug> [path]` is the local bridge from native feature bundles to GitHub issue workflows. It reads the spec, execution, and quality peer files and builds a structured issue draft with:
 
@@ -64,7 +77,7 @@ Each file records the same `Feature ID: <slug>` and starts at `Status: proposed`
 
 The command is intentionally offline. It does not call GitHub APIs, does not require `gh`, and does not read tokens. Missing peer files are reported in the draft; if all three feature files are missing, the command fails clearly.
 
-`specspine validate --features` checks that discovered native feature bundles have valid slugs, all three peer files, matching feature ids, and proposed status markers.
+`specspine validate --features` checks that discovered native feature bundles have valid slugs, all three peer files, matching feature ids, allowed status markers, and consistent peer-file status.
 
 `specspine agents init [path]` writes a short `AGENTS.md` file for Codex, Claude, Gemini, and similar coding agents. The file is a human-readable entry point, not a new source of truth. It points agents back to `specspine status . --json`, `specspine validate .`, native feature bundles, and the external-adapter boundary for OpenSpec, Spec Kit, and Superpowers. The command refuses to overwrite an existing `AGENTS.md` unless `--force` is passed.
 
@@ -95,7 +108,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 
 - `specspine.workspace`: local file templates and workspace checks.
 - `specspine.agents`: project-local `AGENTS.md` generation for AI coding agents.
-- `specspine.features`: native feature slug validation, bundle templates, file creation, discovery, and issue draft export.
+- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, and issue draft export.
 - `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, and recommendation summaries.
