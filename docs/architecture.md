@@ -56,6 +56,8 @@ Future commands should remain thin orchestration layers over explicit files so t
 
 Status validation checks workspace, fusion, and native feature bundles by default. It runs external adapter availability probes only when `--adapters` is also passed. The command is still a report command and returns `0`; CI gates should continue to use `specspine validate`.
 
+`specspine status --json --validate --validation-warnings` adds `validation.warning_checks` with warning check dictionaries. Text status with the same flag lists warning ids under `Warning checks:`. The warning flag is rejected with code `2` unless `--validate` is also present, and the default `status --json --validate` payload omits warning details to stay compact.
+
 `specspine validate --json` is the preferred machine-readable quality gate. It reports:
 
 - the resolved workspace root.
@@ -64,6 +66,8 @@ Status validation checks workspace, fusion, and native feature bundles by defaul
 - summary counts for `pass`, `fail`, `warn`, and `skip`.
 
 Validation is local-first and zero-dependency. The default mode validates base workspace files only. `--fusion` requires the fusion layer and enforces adapter-mode/no-vendored-code boundaries. `--adapters` probes external upstream adapters only when explicitly requested.
+
+Workspace validation also checks base Markdown workspace files for scaffold placeholders from `specspine init`, such as product scope prompts, execution task prompts, quality gate prompts, and review-note prompts. These checks use stable `workspace.placeholder:<path>` ids with `status=warn` and `severity=warning`; they do not affect `ok` or exit code unless another check fails.
 
 `specspine feature new <slug> [path]` creates three peer files that start the spec -> execution -> quality workflow:
 
@@ -178,5 +182,5 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 - `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, optional validation summary, and optional feature summary rendering.
-- `specspine.validation`: executable workspace, fusion, feature, optional adapter contract checks, and compact validation summaries.
+- `specspine.validation`: executable workspace, scaffold-placeholder warning, fusion, feature, optional adapter contract checks, and compact validation summaries.
 - `specspine.cli`: command-line interface.

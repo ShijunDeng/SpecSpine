@@ -295,6 +295,7 @@ class StatusTests(TestCase):
             self.assertTrue(validation["ok"])
             self.assertIn("summary", validation)
             self.assertIn("failed_checks", validation)
+            self.assertNotIn("warning_checks", validation)
             self.assertEqual(validation["failed_checks"], [])
             self.assertEqual(
                 validation["included"],
@@ -330,6 +331,89 @@ class StatusTests(TestCase):
             self.assertIn("feature_summaries", payload)
             self.assertEqual(payload["feature_summaries"][0]["slug"], "add-dark-mode")
 
+    def test_status_json_cli_validate_can_include_warning_checks(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            output = StringIO()
+
+            def fail_probe(keys: list[str]) -> list[AdapterStatus]:
+                raise AssertionError("adapter probe should not run")
+
+            with patch("specspine.cli.probe_adapters", side_effect=fail_probe):
+                with redirect_stdout(output):
+                    returncode = main(
+                        [
+                            "status",
+                            str(root),
+                            "--json",
+                            "--validate",
+                            "--validation-warnings",
+                        ]
+                    )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            warning_checks = payload["validation"]["warning_checks"]
+            self.assertTrue(warning_checks)
+            self.assertIn(
+                "workspace.placeholder:specs/product.md",
+                {check["id"] for check in warning_checks},
+            )
+            self.assertTrue(
+                all(check["status"] == "warn" for check in warning_checks)
+            )
+
+    def test_status_json_validation_warnings_empty_when_no_warnings(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            replacements = {
+                "specs/intent.md": "# Intent\n\nRepository-specific intent is documented.\n",
+                "specs/product.md": "# Product Spec\n\nRepository-specific scope is documented.\n",
+                "specs/architecture.md": "# Architecture\n\nRepository-specific design is documented.\n",
+                "execution/plan.md": "# Execution Plan\n\nRepository-specific plan is documented.\n",
+                "execution/tasks.md": "# Tasks\n\n- [x] Repository-specific task is complete.\n",
+                "quality/checklist.md": "# Quality Checklist\n\n- [x] Repository-specific gate is complete.\n",
+                "quality/review.md": "# Review Notes\n\nRepository-specific review is documented.\n",
+            }
+            for relative_path, content in replacements.items():
+                (root / relative_path).write_text(content, encoding="utf-8")
+            output = StringIO()
+
+            def fail_probe(keys: list[str]) -> list[AdapterStatus]:
+                raise AssertionError("adapter probe should not run")
+
+            with patch("specspine.cli.probe_adapters", side_effect=fail_probe):
+                with redirect_stdout(output):
+                    returncode = main(
+                        [
+                            "status",
+                            str(root),
+                            "--json",
+                            "--validate",
+                            "--validation-warnings",
+                        ]
+                    )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["validation"]["warning_checks"], [])
+
+    def test_status_validation_warnings_requires_validate(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            output = StringIO()
+            errors = StringIO()
+
+            with redirect_stdout(output), redirect_stderr(errors):
+                returncode = main(["status", str(root), "--validation-warnings"])
+
+            self.assertEqual(returncode, 2)
+            self.assertEqual(output.getvalue(), "")
+            self.assertIn("--validation-warnings requires --validate.", errors.getvalue())
+
     def test_status_text_cli_validate_includes_brief_summary(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -347,6 +431,28 @@ class StatusTests(TestCase):
             self.assertIn("fusion.required_file:.specspine/fusion.yaml", text)
             self.assertNotIn("workspace.required_file:.specspine/spine.yaml", text)
             self.assertNotIn("fusion.integration_mode", text)
+            self.assertNotIn("Warning checks:", text)
+
+    def test_status_text_validation_warnings_show_warning_ids_only_with_flag(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            default_output = StringIO()
+            warnings_output = StringIO()
+
+            with redirect_stdout(default_output):
+                default_returncode = main(["status", str(root), "--validate"])
+            with redirect_stdout(warnings_output):
+                warnings_returncode = main(
+                    ["status", str(root), "--validate", "--validation-warnings"]
+                )
+
+            self.assertEqual(default_returncode, 0)
+            self.assertEqual(warnings_returncode, 0)
+            self.assertNotIn("Warning checks:", default_output.getvalue())
+            text = warnings_output.getvalue()
+            self.assertIn("Warning checks:", text)
+            self.assertIn("workspace.placeholder:specs/product.md", text)
 
     def test_status_text_feature_summaries_are_opt_in(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -755,6 +861,7 @@ class StatusTests(TestCase):
                             str(root),
                             "--json",
                             "--validate",
+                            "--validation-warnings",
                             "--feature-summaries",
                             "--feature-status",
                             "validated",
@@ -768,6 +875,7 @@ class StatusTests(TestCase):
             payload = json.loads(output.getvalue())
             self.assertEqual(returncode, 0)
             self.assertEqual(feature_summary_slugs(payload), ["alpha-validated"])
+            self.assertIn("warning_checks", payload["validation"])
             subprocess_run.assert_not_called()
             subprocess_popen.assert_not_called()
             urlopen.assert_not_called()

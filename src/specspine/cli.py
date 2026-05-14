@@ -351,6 +351,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="include a validation summary in the status output",
     )
     status_parser.add_argument(
+        "--validation-warnings",
+        action="store_true",
+        help="include validation warning check details; requires --validate",
+    )
+    status_parser.add_argument(
         "--feature-summaries",
         action="store_true",
         help="include compact per-feature progress summaries and next actions",
@@ -904,6 +909,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "status":
+        if args.validation_warnings and not args.validate:
+            print("--validation-warnings requires --validate.", file=sys.stderr)
+            return 2
+
         feature_summary_options_requested = bool(
             args.feature_status
             or args.feature_ready is not None
@@ -959,6 +968,7 @@ def main(argv: list[str] | None = None) -> int:
                     "features": True,
                     "adapters": bool(args.adapters),
                 },
+                include_warning_checks=args.validation_warnings,
             )
         if args.json:
             print(render_status_json(status), end="")

@@ -35,7 +35,7 @@ This repository is an early project skeleton. It includes:
 - A local GitHub issue draft exporter: `specspine feature issue`.
 - A local GitHub Pull Request draft exporter: `specspine feature pr`.
 - A fusion initializer: `specspine fuse`.
-- A compact workspace status packet with optional validation and filterable feature summaries: `specspine status --json --validate --feature-summaries`.
+- A compact workspace status packet with optional validation, opt-in validation warning details, and filterable feature summaries: `specspine status --json --validate --validation-warnings --feature-summaries`.
 - An executable validation layer: `specspine validate --json`.
 - Adapter metadata for OpenSpec, Spec Kit, and Superpowers.
 - Default templates for intent, product, architecture, feature workflow bundles, quality, and execution.
@@ -171,6 +171,7 @@ Summarize the workspace for humans or downstream agents:
 specspine status .
 specspine status . --json
 specspine status . --json --validate
+specspine status . --json --validate --validation-warnings
 specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug
 ```
 
@@ -278,7 +279,7 @@ Initializes the SpecSpine workspace structure.
 specspine agents init [path] [--force]
 ```
 
-Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
+Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
 
 ```bash
 specspine doctor [path]
@@ -381,12 +382,14 @@ JSON output includes `title`, `body`, `feature_id`, `status`, `ready`, `source_f
 Partial bundles return `0` while marking missing files, gaps, and blocking checks in the draft. If no native feature files exist for the slug, the command returns non-zero. Invalid slugs return `2`. `--output` writes the PR body to a file and refuses to overwrite an existing file unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains the text body.
 
 ```bash
-specspine status [path] [--json] [--adapters] [--validate] [--feature-summaries] [--feature-status STATUS] [--feature-ready READY] [--feature-sort KEY] [--feature-sort-desc]
+specspine status [path] [--json] [--adapters] [--validate] [--validation-warnings] [--feature-summaries] [--feature-status STATUS] [--feature-ready READY] [--feature-sort KEY] [--feature-sort-desc]
 ```
 
 Summarizes workspace completeness, fusion completeness, core artifact status, native feature files, feature lifecycle status, enabled upstreams, and recommended next actions. `--json` emits a stable compact context packet for agents and scripts. `--adapters` also checks external OpenSpec, Spec Kit, and Superpowers availability.
 
 `--validate` appends a compact `validation` summary to the status payload with `ok`, `summary`, `failed_checks`, and `included`. It checks workspace, fusion, and native feature bundles by default. External adapter availability checks are included only when `--adapters` is also passed. Text output adds a short Validation section with result, summary counts, and failed check ids only. `status` remains a report command and returns `0` even when the validation summary reports failures.
+
+`--validation-warnings` is valid only with `--validate`; using it alone returns code `2`. With the flag, JSON status also includes `validation.warning_checks`, and text status lists warning check ids under `Warning checks:`. Default `status --json --validate` omits warning details so startup packets stay compact. Validation warning checks currently include unchanged base workspace Markdown scaffold prompts such as product scope, execution tasks, quality gates, and review-note placeholders.
 
 `--feature-summaries` appends an optional `feature_summaries` list to JSON status and a short Feature summaries section to text status. Each entry is derived from local native feature bundle discovery and the existing feature handoff report, with `feature_id`, `slug`, `status`, `complete`, `ready`, `missing_files`, `tasks_summary`, `ready_summary`, gap count, blocking check count, deterministic `next_actions`, and `recommended_commands`. The flag is not enabled by default because startup status should stay small; use it when an agent or maintainer needs to choose or compare multiple native features before opening a focused `feature handoff` packet.
 
@@ -396,7 +399,7 @@ Feature summary filters and sorting are local and deterministic. `--feature-stat
 specspine validate [path] [--fusion] [--features] [--adapters] [--json]
 ```
 
-Runs executable local checks over SpecSpine contracts. By default it validates required workspace files. `--fusion` also requires fusion files, verifies `integration_mode: adapter`, verifies `vendored_upstream_code: false`, and checks enabled upstream adapter docs. `--features` checks native feature bundle consistency across spec, execution, and quality files, including allowed lifecycle status and peer-file status consistency. `--adapters` probes only enabled external upstream adapters. `--json` emits stable JSON with `root`, `ok`, `checks`, and `summary`; any `fail` check returns a non-zero exit code.
+Runs executable local checks over SpecSpine contracts. By default it validates required workspace files and warns when base Markdown workspace files still contain generated scaffold placeholders. `--fusion` also requires fusion files, verifies `integration_mode: adapter`, verifies `vendored_upstream_code: false`, and checks enabled upstream adapter docs. `--features` checks native feature bundle consistency across spec, execution, and quality files, including allowed lifecycle status and peer-file status consistency. `--adapters` probes only enabled external upstream adapters. `--json` emits stable JSON with `root`, `ok`, `checks`, and `summary`; only `fail` checks affect `ok` and exit code.
 
 ```bash
 specspine fuse [path] --agent codex

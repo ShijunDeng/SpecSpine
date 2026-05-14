@@ -6,6 +6,7 @@ SpecSpine is a zero-dependency Python CLI for spec-driven AI development. Treat 
 
 ```bash
 PYTHONPATH=src python3 -m specspine status . --json --validate
+PYTHONPATH=src python3 -m specspine status . --json --validate --validation-warnings
 PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries
 PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug
 PYTHONPATH=src python3 -m specspine validate . --fusion --features
@@ -29,7 +30,7 @@ PYTHONPATH=src python3 -m specspine feature pr <slug> . --json
 
 ## Rules
 
-- Start by reading `specspine status . --json --validate`; use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features, and add local filters such as `--feature-status validated --feature-ready yes --feature-sort slug` for triage; finish with `specspine validate . --fusion --features` and the unit test command above.
+- Start by reading `specspine status . --json --validate`; add `--validation-warnings` only when scaffold warning check ids are needed; use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features, and add local filters such as `--feature-status validated --feature-ready yes --feature-sort slug` for triage; finish with `specspine validate . --fusion --features` and the unit test command above.
 - Keep feature specs, implementation tasks, and quality checks traceable by `Feature ID`.
 - Use `specspine feature new` as the starting workflow for new requirements; the generated peer files include focused handoff, task issue drafts, tests, PR, ready, and validation guidance.
 - Keep native feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.

@@ -18,6 +18,7 @@
 - Fusion layer generation for OpenSpec, Spec Kit, and Superpowers.
 - Status JSON, validation JSON/text, adapter doctor, and install hints.
 - Optional validation summaries in `specspine status --json --validate`.
+- Opt-in validation warning details in `specspine status --json --validate --validation-warnings`.
 - Optional native feature summaries in `specspine status --json --feature-summaries`, with local status/readiness filters and deterministic sorting.
 - Unit tests and GitHub Actions coverage for the current command surface.
 
@@ -29,6 +30,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 
 - Keep this repository complete under `specspine status . --json`.
 - Prefer `specspine status . --json --validate` when an agent needs both context and quality-gate summary in one packet.
+- Add `--validation-warnings` only when an agent needs scaffold placeholder warning ids; keep default status validation focused on failed checks.
 - Use `specspine status . --json --validate --feature-summaries` when an agent needs to choose or compare multiple native features; add filters such as `--feature-status validated --feature-ready yes --feature-sort slug` when a multi-feature workspace needs focused triage; keep the default startup packet compact otherwise.
 - Use `specspine feature handoff <slug> . --json` as the default feature-level packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
@@ -43,6 +45,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Run `specspine feature ready <slug> . --json` before enforced archive updates so readiness blockers are resolved separately from transition rules.
 - Continue dogfooding generated templates and tighten them when repeated manual edits appear.
 - Keep upstream integrations adapter-based and avoid vendored code.
+- Keep validation warnings local and non-blocking; only failed checks should determine `validate` exit code.
 
 ## Dependencies
 
@@ -53,7 +56,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 ## Open Questions
 
 - Should enforced lifecycle transitions eventually become the default, or remain opt-in for compatibility?
-- Should status JSON eventually include warning details, or keep the validation summary focused on failed checks?
+- Should future warning categories beyond scaffold placeholders be exposed through the same opt-in status flag?
 - Should feature summary triage eventually need explicit user-owned priority metadata, or are lifecycle/readiness/count filters enough?
 - Should readiness summaries eventually be included in workspace status, or remain an explicit per-feature gate?
 - Should acceptance-test packets later include explicit user-supplied AC-to-test-file links, or remain implementation-file agnostic until that metadata exists?

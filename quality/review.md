@@ -10,6 +10,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - The generated workspace templates were too generic for dogfooding and have been replaced with repository-specific intent, product, architecture, execution, and quality content.
 - Native feature lifecycle status can now be queried, updated, listed in status JSON, and validated across peer files.
 - `specspine status --validate` now reports workspace, fusion, and feature validation summaries without becoming a failing gate command.
+- `specspine status --validate --validation-warnings` now exposes warning check ids when scaffold placeholder details are needed, while default status validation remains compact.
 - `specspine feature tasks` now exports execution checklist items into stable text and JSON task lists for implementation agents.
 - `specspine feature task-issues` now exports one local GitHub issue draft per execution task without GitHub API calls, token reads, `gh`, subprocesses, or network access.
 - `specspine feature trace` now exports a local traceability handoff that connects acceptance criteria, tasks, required checks, test plan entries, sources, and gaps.
@@ -26,6 +27,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 
 - Treat `specspine status . --json` as the first context packet for future agents.
 - Use `specspine status . --json --validate` when agents need context and failed quality checks together.
+- Add `--validation-warnings` only when agents need warning check details for unchanged scaffold placeholders.
 - Use `specspine status . --json --validate --feature-summaries` only when agents need to choose or compare multiple native features, and add `--feature-status`, `--feature-ready`, or `--feature-sort` when the workspace has enough features to need local triage.
 - Treat `specspine feature handoff <slug> . --json` as the default local feature packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` as the focused execution checklist view when an agent only needs tasks.
@@ -46,7 +48,8 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - The repository itself now contains a complete SpecSpine fusion workspace.
 - Future feature work should start with native feature bundles under `specs/features/`, `execution/features/`, and `quality/features/`.
 - Feature bundles support `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` statuses.
-- Status packets can now include compact validation summaries with failed checks only.
+- Status packets can now include compact validation summaries with failed checks only by default, plus opt-in warning checks through `--validation-warnings`.
+- Validation can now warn on unchanged base workspace Markdown scaffold placeholders without failing warning-only workspaces.
 - Status packets can now opt into compact feature summaries for multi-feature triage while omitting them by default.
 - Feature summary packets can now be filtered by lifecycle status and readiness, sorted by local summary fields, and rejected with code `2` when summary-only options are used without `--feature-summaries`.
 - Feature execution checklists can now be exported without generation, GitHub credentials, or upstream tool calls.

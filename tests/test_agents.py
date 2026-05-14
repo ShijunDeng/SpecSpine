@@ -42,6 +42,7 @@ class AgentsTests(TestCase):
 
         for expected in (
             "specspine status . --json",
+            "specspine status . --json --validate --validation-warnings",
             "specspine status . --json --validate --feature-summaries",
             "specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug",
             "specspine validate .",

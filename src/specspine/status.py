@@ -619,6 +619,14 @@ def render_status_text(status: dict[str, Any]) -> str:
             lines.append("  Failed checks:")
             for check in failed_checks:
                 lines.append(f"    - {check['id']}")
+        warning_checks = validation.get("warning_checks")
+        if warning_checks is not None:
+            lines.append("  Warning checks:")
+            if warning_checks:
+                for check in warning_checks:
+                    lines.append(f"    - {check['id']}")
+            else:
+                lines.append("    none")
 
     feature_summaries = status.get("feature_summaries")
     if feature_summaries is not None:

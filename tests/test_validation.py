@@ -53,6 +53,65 @@ class ValidationTests(TestCase):
                 any(check["id"].startswith("fusion.") for check in report["checks"])
             )
 
+    def test_fresh_workspace_placeholders_warn_without_failing_validation(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["validate", str(root), "--json"])
+
+            payload = json.loads(output.getvalue())
+            warning_checks = [
+                check
+                for check in payload["checks"]
+                if check["status"] == "warn"
+            ]
+            self.assertEqual(returncode, 0)
+            self.assertTrue(payload["ok"])
+            self.assertEqual(payload["summary"]["fail"], 0)
+            self.assertGreater(payload["summary"]["warn"], 0)
+            self.assertIn(
+                "workspace.placeholder:specs/product.md",
+                {check["id"] for check in warning_checks},
+            )
+            self.assertTrue(
+                all(check["severity"] == "warning" for check in warning_checks)
+            )
+
+    def test_rewritten_workspace_with_project_todo_does_not_warn(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            for relative_path in (
+                "specs/intent.md",
+                "specs/product.md",
+                "specs/architecture.md",
+                "execution/plan.md",
+                "execution/tasks.md",
+                "quality/checklist.md",
+                "quality/review.md",
+            ):
+                (root / relative_path).write_text(
+                    "# Rewritten\n\nProject-specific content.\n",
+                    encoding="utf-8",
+                )
+            (root / "execution" / "tasks.md").write_text(
+                "# Tasks\n\n- [ ] TODO: Replace this task.\n",
+                encoding="utf-8",
+            )
+
+            report = build_validation_report(root)
+
+            self.assertTrue(report["ok"])
+            self.assertEqual(validation_exit_code(report), 0)
+            self.assertEqual(report["summary"]["fail"], 0)
+            self.assertEqual(report["summary"]["warn"], 0)
+            self.assertFalse(
+                any(check["id"].startswith("workspace.placeholder:") for check in report["checks"])
+            )
+
     def test_missing_workspace_file_fails_validation(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -285,4 +344,4 @@ class ValidationTests(TestCase):
             payload = json.loads(render_validation_json(build_validation_report(root)))
 
             self.assertTrue(payload["ok"])
-            self.assertEqual(payload["summary"]["warn"], 0)
+            self.assertGreater(payload["summary"]["warn"], 0)

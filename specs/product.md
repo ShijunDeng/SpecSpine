@@ -17,7 +17,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Local GitHub issue draft generation from feature bundles without API calls.
 - Local GitHub Pull Request draft generation from feature bundles without API calls.
 - Fusion initialization for OpenSpec, Spec Kit, and Superpowers as external adapters.
-- Status, optional status validation summaries, optional filterable feature summaries, validation, doctor, and adapter inspection commands suitable for CI and coding agents.
+- Status, optional status validation summaries, opt-in validation warning details, optional filterable feature summaries, validation, doctor, and adapter inspection commands suitable for CI and coding agents.
 
 ## Non-Goals
 
@@ -31,7 +31,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 
 - Initialize a base workspace with `specspine init .` and create agent guidance with `specspine agents init .`.
 - Initialize the full fusion layer with `specspine fuse . --agent codex`, which writes adapter contracts but does not invoke upstream tools.
-- Run `specspine status . --json` before work to understand missing artifacts, enabled upstreams, and next recommendations; add `--validate` when a single packet should also show quality-gate summary and failed check ids; add `--feature-summaries` only when choosing or comparing multiple native features; add local summary filters such as `--feature-status validated --feature-ready yes --feature-sort slug` when a multi-feature workspace needs triage.
+- Run `specspine status . --json` before work to understand missing artifacts, enabled upstreams, and next recommendations; add `--validate` when a single packet should also show quality-gate summary and failed check ids; add `--validation-warnings` with `--validate` only when scaffold warning details are needed; add `--feature-summaries` only when choosing or comparing multiple native features; add local summary filters such as `--feature-status validated --feature-ready yes --feature-sort slug` when a multi-feature workspace needs triage.
 - Create new requirements with `specspine feature new <slug> . --title "..." --why "..."`; the generated peer files prompt for non-goals, edge cases, constraints, dependencies, open questions, traceability notes, focused handoff/task-issues/tests/pr/ready commands, and local validation gates.
 - Move feature bundles through `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` with `specspine feature status <slug> . --set STATUS`; add `--enforce-transition` when agents or CI should reject out-of-order transitions.
 - Before archiving with `--enforce-transition`, pass `specspine feature ready <slug> . --json` so incomplete bundles cannot be archived by lifecycle status alone.
@@ -50,6 +50,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Base and fusion workspaces can be initialized without external dependencies.
 - A complete fused workspace reports `workspace.complete=true` and `fusion.complete=true` in status JSON.
 - `status --json --validate` reports `validation.ok`, summary counts, included check groups, and failed checks without changing the report command's zero exit behavior.
+- `status --json --validate --validation-warnings` reports `validation.warning_checks`, while default status validation omits warning details and `status --validation-warnings` without `--validate` returns code `2`.
 - `status --json --feature-summaries` reports compact per-feature progress, readiness, gap, blocking, next-action, and recommended-command summaries while default status JSON omits them.
 - `status --feature-summaries` applies optional local `--feature-status`, `--feature-ready`, `--feature-sort`, and `--feature-sort-desc` controls to JSON and text summaries, and returns code `2` when those controls are unsupported or used without `--feature-summaries`.
 - `feature tasks <slug> --json` reports stable ordered task records from `execution/features/<slug>.md`.
@@ -62,5 +63,5 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - `feature pr <slug> --json` reports an offline Pull Request draft with title, body, status, readiness, sources, missing files, gaps, blocking checks, summary counts, and recommended commands without calling GitHub APIs, `gh`, network services, or reading tokens.
 - `feature new <slug>` generates unchecked quality and release-readiness gates so structural validation can pass while `feature ready` remains blocked until acceptance criteria, test coverage, docs or PR draft, and local validation evidence are complete.
 - Enabled upstream metadata reports OpenSpec, Spec Kit, and Superpowers as enabled when their adapter files are present.
-- Validation passes for complete workspace, fusion artifacts, and native feature bundles with consistent allowed lifecycle status.
+- Validation passes for complete workspace, fusion artifacts, and native feature bundles with consistent allowed lifecycle status; unchanged base workspace Markdown scaffold content is reported as warning checks rather than failures.
 - Fusion config preserves `integration_mode: adapter` and `vendored_upstream_code: false`.

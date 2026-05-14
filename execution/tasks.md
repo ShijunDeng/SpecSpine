@@ -21,6 +21,7 @@
 - [x] Implement `specspine fuse` adapter-mode fusion generation.
 - [x] Implement `specspine status . --json`.
 - [x] Implement `specspine status . --json --validate` validation summaries.
+- [x] Implement `specspine status . --json --validate --validation-warnings` warning detail summaries.
 - [x] Implement `specspine status . --json --feature-summaries` optional native feature summaries.
 - [x] Implement local feature summary filters and sorting for `specspine status --feature-summaries`.
 - [x] Implement `specspine validate . --fusion --features`.
@@ -39,6 +40,7 @@
 - [x] Dogfood acceptance-test packet export with `feature-test-packet`.
 - [x] Dogfood explicit test coverage links with `feature-test-coverage-links`.
 - [x] Dogfood task issue draft packages with `feature-task-issue-drafts`.
+- [x] Dogfood status validation warnings with `status-validation-warnings`.
 
 ## Next
 
@@ -52,6 +54,7 @@
 - [ ] Observe whether reviewers use `feature pr --json` as the local bridge from feature evidence into Pull Request review.
 - [ ] Observe whether new feature bundles need less manual template cleanup after the focused workflow guidance.
 - [ ] Monitor whether agents prefer `status --json --validate` as the default startup packet.
+- [ ] Observe whether agents use `status --json --validate --validation-warnings` only when scaffold warning detail is needed.
 - [ ] Observe whether agents use `status --json --validate --feature-summaries` only when comparing multiple features, and whether local filters reduce follow-up handoff reads.
 - [ ] Revisit generated templates after dogfooding this workspace for one or more development cycles.
 - [ ] Add tests when template or validation behavior changes.

@@ -27,6 +27,7 @@ AGENTS_TEMPLATE = """
 
     ```bash
     specspine status . --json --validate
+    specspine status . --json --validate --validation-warnings
     specspine status . --json --validate --feature-summaries
     specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug
     specspine validate .
@@ -48,7 +49,7 @@ AGENTS_TEMPLATE = """
 
     ## Working Rules
 
-    - Read `specspine status . --json --validate` before planning or editing.
+    - Read `specspine status . --json --validate` before planning or editing; add `--validation-warnings` only when scaffold warning check ids are needed.
     - Use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features; add local filters such as `--feature-status validated --feature-ready yes --feature-sort slug` for triage.
     - For new requirements, create a feature bundle with `specspine feature new`; the generated peer files include focused handoff, task issue drafts, tests, PR, readiness, and validation guidance.
     - Keep feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.
