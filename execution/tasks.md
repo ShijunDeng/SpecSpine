@@ -30,6 +30,7 @@
 - [x] Implement coverage-required readiness summaries for `specspine status --feature-summaries --feature-require-coverage`.
 - [x] Implement `specspine adapters lifecycle` static adapter lifecycle mapping export.
 - [x] Implement `specspine adapters handoff` feature-specific adapter handoff export.
+- [x] Implement optional severity, owner, and CI metadata export for `specspine gates`.
 - [x] Implement `specspine validate . --fusion --features`.
 - [x] Document upstream adapter policy without vendoring upstream code.
 - [x] Initialize this repository as a complete SpecSpine fusion workspace.
@@ -49,6 +50,7 @@
 - [x] Dogfood coverage-required readiness with `feature-coverage-readiness`.
 - [x] Dogfood task issue draft packages with `feature-task-issue-drafts`.
 - [x] Dogfood status validation warnings with `status-validation-warnings`.
+- [x] Dogfood quality gate metadata with `quality-gate-metadata`.
 - [x] Dogfood adapter lifecycle mappings with `adapter-lifecycle-mappings`.
 - [x] Dogfood adapter feature handoff with `adapter-feature-handoff`.
 

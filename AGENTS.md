@@ -46,7 +46,7 @@ PYTHONPATH=src python3 -m specspine feature sync-plan <slug> . --output-dir .spe
 - Start implementation, acceptance, and review handoffs with `specspine feature handoff <slug> . --json`; use `feature tasks`, `feature task-issues`, `feature trace`, `feature ready`, `feature ready --require-coverage`, and `feature tests` for focused follow-up views. For QA context, add local `## Test Coverage` checklist links such as `- [ ] AC001 -> tests/test_features.py` in `quality/features/<slug>.md`.
 - Use `specspine feature pr <slug> . --json` to prepare an offline Pull Request draft from local evidence without reading tokens or calling GitHub.
 - Use `specspine feature sync-plan <slug> . --json` to review GitHub CLI sync intent without executing `gh`, reading tokens, or calling GitHub; use `--output-dir .specspine/sync-plan/<slug>` when maintainers need local body files, manifest, and review-only `commands.sh`.
-- Use `specspine gates . --json` to export quality gate definitions only; do not treat it as executing tests or status checks.
+- Use `specspine gates . --json` to export quality gate definitions and optional severity/owner/CI metadata only; do not treat it as executing tests, CI, or status checks.
 - Use `specspine adapters lifecycle . --json` to export adapter lifecycle definitions only; do not treat it as invoking upstream tools.
 - Use `specspine adapters handoff <slug> . --json` to export feature-specific OpenSpec, Spec Kit, and Superpowers adapter handoff data only; do not treat recommended upstream steps as executed commands.
 - OpenSpec, Spec Kit, and Superpowers are external adapters only. Do not vendor upstream source code.

@@ -143,7 +143,9 @@ Feature summary triage stays local to the already-built summaries. `--feature-st
 - `GATE001` required checks come from checkbox items under `## Required Checks`.
 - `DOD001` Definition Of Done items come from bullet items under `## Definition Of Done`.
 
-The JSON report includes `root`, `source_file`, `source_missing`, `required_checks`, `definition_of_done`, `summary`, and `recommended_commands`. Missing sources return code `1` with empty lists; existing sources return code `0` even when gate checkboxes are open because this command exports definitions rather than evaluating completion.
+Required gate checkbox text can include optional case-insensitive inline metadata labels: `[severity: critical|high|medium|low]`, `[owner: role-or-team]`, and `[ci: check-name]`. The parser strips recognized labels from `text`, preserves the complete checkbox body in `raw_text`, defaults unlabeled gates to `severity=medium`, `owner=unassigned`, and `ci_check=null`, and attaches `metadata_warnings` for unsupported severity values without failing the command.
+
+The JSON report includes `root`, `source_file`, `source_missing`, `required_checks`, `definition_of_done`, `summary`, and `recommended_commands`. Summary keeps the required and Definition Of Done counts and adds `severity_counts`, `owners_total`, and `ci_checks_total` for machine consumers. Missing sources return code `1` with empty lists and zeroed metadata counts; existing sources return code `0` even when gate checkboxes are open because this command exports definitions rather than evaluating completion.
 
 `specspine adapters lifecycle [path] [--json]` is the adapter lifecycle policy packet. It exports static local mappings for OpenSpec, Spec Kit, and Superpowers without probing tools, running shell commands, reading tokens, calling GitHub APIs, or using network access. It reads `.specspine/fusion.yaml` only to determine adapter enablement and configured adapter contract paths, then checks whether those local config paths exist.
 

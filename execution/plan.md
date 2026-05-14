@@ -24,7 +24,7 @@
 - Optional validation summaries in `specspine status --json --validate`.
 - Opt-in validation warning details in `specspine status --json --validate --validation-warnings`.
 - Optional native feature summaries in `specspine status --json --feature-summaries`, with local status/readiness filters, coverage-required readiness, and deterministic sorting.
-- Repository-level quality gate definition export through `specspine gates`.
+- Repository-level quality gate definition export through `specspine gates`, including optional severity, owner, and CI metadata labels.
 - Unit tests and GitHub Actions coverage for the current command surface.
 
 ## Current Milestone
@@ -45,7 +45,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine feature tests <slug> . --json` when QA or testing agents need acceptance criteria mapped to pending test cases plus existing test plan, gaps, and blockers.
 - Use `specspine feature pr <slug> . --json` when a reviewer or release agent needs a local Pull Request draft without touching GitHub.
 - Use `specspine feature sync-plan <slug> . --json` when a maintainer needs to review GitHub CLI issue/PR sync intent before any remote execution; add `--output-dir .specspine/sync-plan/<slug>` when the body files, manifest, and review-only command script should be materialized locally.
-- Use `specspine gates . --json` when an agent, reviewer, or CI author needs repository-level quality gate definitions before running or wiring checks.
+- Use `specspine gates . --json` when an agent, reviewer, or CI author needs repository-level quality gate definitions, severity/owner/CI metadata, and metadata coverage counts before running or wiring checks.
 - Use `specspine adapters lifecycle . --json` when an agent or maintainer needs local status-to-upstream phase definitions before adapter sync or upstream planning.
 - Use `specspine adapters handoff <slug> . --json` when an agent needs OpenSpec, Spec Kit, and Superpowers handoff steps for one native feature without executing upstream tooling.
 - Use `specspine validate . --fusion --features` as the project-level gate.
@@ -70,6 +70,6 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Should readiness summaries eventually be included in workspace status, or remain an explicit per-feature gate?
 - Should workspaces eventually have a policy file that chooses when `feature ready --require-coverage` is mandatory?
 - Should the refreshed feature bundle template later grow explicit rollout-owner or implementation-file metadata, or stay minimal until a real workflow needs it?
-- Should future quality gate definitions include structured severity, owning role, or expected CI check names, or stay as Markdown-derived records until remote sync exists?
+- Should future remote sync consume quality gate `ci_check` labels for branch-protection required checks, or should SpecSpine continue to export them only as local planning metadata?
 - Should a future remote-sync command consume `feature sync-plan --output-dir` artifacts after explicit confirmation, or should SpecSpine remain plan-only for GitHub writes?
 - Should adapter handoff packets later support per-adapter output files, or is one combined packet enough for agents?

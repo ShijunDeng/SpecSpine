@@ -9,6 +9,8 @@ from pathlib import Path
 QUALITY_GATE_SOURCE_FILE = "quality/checklist.md"
 CHECKBOX_RE = re.compile(r"^\s*[-*]\s+\[([ xX])\]\s+(.+?)\s*$")
 BULLET_RE = re.compile(r"^\s*[-*]\s+(?:\[[ xX]\]\s+)?(.+?)\s*$")
+METADATA_TAG_RE = re.compile(r"\s*\[([A-Za-z][A-Za-z0-9_-]*)\s*:\s*([^\]]*?)\]\s*")
+SUPPORTED_SEVERITIES = ("critical", "high", "medium", "low")
 
 
 @dataclass(frozen=True)
@@ -18,12 +20,24 @@ class RequiredGate:
     done: bool
     source_file: str
     line: int
+    severity: str = "medium"
+    owner: str = "unassigned"
+    ci_check: str | None = None
+    metadata: dict[str, str] | None = None
+    metadata_warnings: tuple[str, ...] = ()
+    raw_text: str = ""
 
     def as_dict(self) -> dict[str, object]:
         return {
+            "ci_check": self.ci_check,
             "done": self.done,
             "id": self.id,
             "line": self.line,
+            "metadata": dict(self.metadata or {}),
+            "metadata_warnings": list(self.metadata_warnings),
+            "owner": self.owner,
+            "raw_text": self.raw_text,
+            "severity": self.severity,
             "source_file": self.source_file,
             "text": self.text,
         }
@@ -55,14 +69,24 @@ class QualityGateReport:
     recommended_commands: tuple[str, ...]
 
     @property
-    def summary(self) -> dict[str, int]:
+    def summary(self) -> dict[str, object]:
         required_done = sum(1 for gate in self.required_checks if gate.done)
         required_total = len(self.required_checks)
+        severity_counts = {severity: 0 for severity in SUPPORTED_SEVERITIES}
+        for gate in self.required_checks:
+            severity_counts[gate.severity] = severity_counts.get(gate.severity, 0) + 1
         return {
             "definition_total": len(self.definition_of_done),
+            "ci_checks_total": sum(
+                1 for gate in self.required_checks if gate.ci_check is not None
+            ),
+            "owners_total": sum(
+                1 for gate in self.required_checks if gate.owner != "unassigned"
+            ),
             "required_done": required_done,
             "required_open": required_total - required_done,
             "required_total": required_total,
+            "severity_counts": severity_counts,
         }
 
     def as_dict(self) -> dict[str, object]:
@@ -132,6 +156,54 @@ def _extract_markdown_section_lines(content: str, heading: str) -> list[tuple[in
     ]
 
 
+def _parse_gate_metadata(raw_text: str) -> tuple[
+    str,
+    str,
+    str,
+    str | None,
+    dict[str, str],
+    tuple[str, ...],
+]:
+    metadata: dict[str, str] = {}
+    warnings: list[str] = []
+    severity = "medium"
+    owner = "unassigned"
+    ci_check: str | None = None
+
+    def replace_tag(match: re.Match[str]) -> str:
+        nonlocal severity, owner, ci_check
+
+        raw_key, raw_value = match.groups()
+        key = raw_key.lower()
+        value = raw_value.strip()
+        if key not in {"severity", "owner", "ci"}:
+            return match.group(0)
+
+        if key == "severity":
+            normalized = value.lower()
+            metadata[key] = normalized
+            if normalized in SUPPORTED_SEVERITIES:
+                severity = normalized
+            else:
+                warnings.append(f"unsupported severity: {value}")
+            return " "
+
+        if key == "owner":
+            if value:
+                owner = value
+                metadata[key] = value
+            return " "
+
+        if value:
+            ci_check = value
+            metadata[key] = value
+        return " "
+
+    cleaned_text = METADATA_TAG_RE.sub(replace_tag, raw_text).strip()
+    cleaned_text = re.sub(r"\s{2,}", " ", cleaned_text)
+    return cleaned_text, severity, owner, ci_check, metadata, tuple(warnings)
+
+
 def parse_required_checks(
     content: str,
     *,
@@ -148,13 +220,27 @@ def parse_required_checks(
             continue
 
         marker, text = match.groups()
+        (
+            cleaned_text,
+            severity,
+            owner,
+            ci_check,
+            metadata,
+            metadata_warnings,
+        ) = _parse_gate_metadata(text.strip())
         checks.append(
             RequiredGate(
                 id=f"GATE{len(checks) + 1:03d}",
-                text=text.strip(),
+                text=cleaned_text,
                 done=marker.lower() == "x",
                 source_file=source_file,
                 line=line_number,
+                severity=severity,
+                owner=owner,
+                ci_check=ci_check,
+                metadata=metadata,
+                metadata_warnings=metadata_warnings,
+                raw_text=text.strip(),
             )
         )
 
@@ -258,8 +344,14 @@ def render_quality_gate_text(report: QualityGateReport) -> str:
     if report.required_checks:
         for gate in report.required_checks:
             marker = "x" if gate.done else " "
+            metadata = f"severity={gate.severity} owner={gate.owner}"
+            if gate.ci_check is not None:
+                metadata = f"{metadata} ci={gate.ci_check}"
+            if gate.metadata_warnings:
+                metadata = f"{metadata} warnings={len(gate.metadata_warnings)}"
             lines.append(
-                f"- [{marker}] {gate.id} {gate.source_file}:{gate.line} {gate.text}"
+                f"- [{marker}] {gate.id} {gate.source_file}:{gate.line} "
+                f"{gate.text} ({metadata})"
             )
     elif report.source_missing:
         lines.append("- None found because quality/checklist.md is missing.")

@@ -6,7 +6,7 @@ Why: Repository-level quality policy affects completion decisions, so the export
 
 ## Required Checks
 
-- [x] Unit tests verify initialized workspace JSON parsing from `quality/checklist.md`.
+- [x] Unit tests verify initialized workspace JSON parsing from `quality/checklist.md`, including stable default metadata.
 - [x] Unit tests verify text output includes summary counts and stable gate ids.
 - [x] Unit tests verify missing source behavior returns code `1` and reports empty lists.
 - [x] Unit tests verify only `## Required Checks` and `## Definition Of Done` are parsed.

@@ -43,10 +43,21 @@ class QualityGateTests(TestCase):
             self.assertEqual(payload["summary"]["required_done"], 0)
             self.assertEqual(payload["summary"]["required_open"], 5)
             self.assertEqual(payload["summary"]["definition_total"], 0)
+            self.assertEqual(
+                payload["summary"]["severity_counts"],
+                {"critical": 0, "high": 0, "medium": 5, "low": 0},
+            )
+            self.assertEqual(payload["summary"]["owners_total"], 0)
+            self.assertEqual(payload["summary"]["ci_checks_total"], 0)
             self.assertEqual(payload["required_checks"][0]["id"], "GATE001")
             self.assertEqual(payload["required_checks"][0]["line"], 5)
             self.assertFalse(payload["required_checks"][0]["done"])
             self.assertEqual(payload["required_checks"][0]["source_file"], "quality/checklist.md")
+            self.assertEqual(payload["required_checks"][0]["severity"], "medium")
+            self.assertEqual(payload["required_checks"][0]["owner"], "unassigned")
+            self.assertIsNone(payload["required_checks"][0]["ci_check"])
+            self.assertEqual(payload["required_checks"][0]["metadata"], {})
+            self.assertEqual(payload["required_checks"][0]["metadata_warnings"], [])
             self.assertEqual(payload["definition_of_done"], [])
             self.assertIn(
                 "specspine validate . --fusion --features",
@@ -89,14 +100,13 @@ class QualityGateTests(TestCase):
 
             payload = json.loads(stdout.getvalue())
             self.assertEqual(exit_code, 0)
+            self.assertEqual(payload["summary"]["definition_total"], 2)
+            self.assertEqual(payload["summary"]["required_done"], 2)
+            self.assertEqual(payload["summary"]["required_open"], 2)
+            self.assertEqual(payload["summary"]["required_total"], 4)
             self.assertEqual(
-                payload["summary"],
-                {
-                    "definition_total": 2,
-                    "required_done": 2,
-                    "required_open": 2,
-                    "required_total": 4,
-                },
+                payload["summary"]["severity_counts"],
+                {"critical": 0, "high": 0, "medium": 4, "low": 0},
             )
             self.assertEqual(
                 [(gate["id"], gate["done"], gate["text"]) for gate in payload["required_checks"]],
@@ -128,7 +138,11 @@ class QualityGateTests(TestCase):
             self.assertEqual(exit_code, 0)
             self.assertIn("Source: quality/checklist.md", text)
             self.assertIn("Summary: required=5 done=0 open=5 definition=0", text)
-            self.assertIn("- [ ] GATE001 quality/checklist.md:5 Acceptance criteria are complete.", text)
+            self.assertIn(
+                "- [ ] GATE001 quality/checklist.md:5 Acceptance criteria are complete. "
+                "(severity=medium owner=unassigned)",
+                text,
+            )
             self.assertIn("Definition Of Done:", text)
 
     def test_gates_text_includes_done_open_markers_and_definition_ids(self) -> None:
@@ -163,10 +177,192 @@ class QualityGateTests(TestCase):
             self.assertEqual(exit_code, 0)
             self.assertIn("Source: quality/checklist.md", text)
             self.assertIn("Summary: required=2 done=1 open=1 definition=2", text)
-            self.assertIn("- [x] GATE001 quality/checklist.md:5 Shipping tests pass.", text)
-            self.assertIn("- [ ] GATE002 quality/checklist.md:6 Documentation is updated.", text)
+            self.assertIn(
+                "- [x] GATE001 quality/checklist.md:5 Shipping tests pass. "
+                "(severity=medium owner=unassigned)",
+                text,
+            )
+            self.assertIn(
+                "- [ ] GATE002 quality/checklist.md:6 Documentation is updated. "
+                "(severity=medium owner=unassigned)",
+                text,
+            )
             self.assertIn("- DOD001 quality/checklist.md:10 Reviewer approved.", text)
             self.assertIn("- DOD002 quality/checklist.md:11 Release note published.", text)
+
+    def test_gates_parse_metadata_tags_case_insensitively_and_strip_text(self) -> None:
+        content = "\n".join(
+            [
+                "# Quality Checklist",
+                "",
+                "## Required Checks",
+                "",
+                "- [x] Run unit tests. [SEVERITY: high] [Owner: qa] [ci: unit-tests]",
+                "- [ ] Keep release notes current. [owner: docs] [Ci: docs-check] [severity: LOW]",
+            ]
+        )
+
+        checks = parse_required_checks(content)
+
+        self.assertEqual([check.text for check in checks], ["Run unit tests.", "Keep release notes current."])
+        self.assertEqual([check.severity for check in checks], ["high", "low"])
+        self.assertEqual([check.owner for check in checks], ["qa", "docs"])
+        self.assertEqual([check.ci_check for check in checks], ["unit-tests", "docs-check"])
+        self.assertEqual(checks[0].metadata, {"severity": "high", "owner": "qa", "ci": "unit-tests"})
+        self.assertEqual(checks[0].raw_text, "Run unit tests. [SEVERITY: high] [Owner: qa] [ci: unit-tests]")
+
+    def test_gates_metadata_order_values_and_duplicate_tags_are_stable(self) -> None:
+        content = "\n".join(
+            [
+                "# Quality Checklist",
+                "",
+                "## Required Checks",
+                "",
+                "- [ ] [owner: platform quality] Deploy gate [ci: smoke-tests] [severity: high] passes.",
+                "- [x] Release gate [ci: release candidate] [owner: release-manager] [severity: low] [owner: final owner] [ci: final-ci-check]",
+                "- [ ] Escalation gate [severity: low] [severity: critical] [owner: qa-team]",
+            ]
+        )
+
+        checks = parse_required_checks(content)
+
+        self.assertEqual(
+            [check.text for check in checks],
+            [
+                "Deploy gate passes.",
+                "Release gate",
+                "Escalation gate",
+            ],
+        )
+        self.assertEqual([check.severity for check in checks], ["high", "low", "critical"])
+        self.assertEqual(
+            [check.owner for check in checks],
+            ["platform quality", "final owner", "qa-team"],
+        )
+        self.assertEqual(
+            [check.ci_check for check in checks],
+            ["smoke-tests", "final-ci-check", None],
+        )
+        self.assertEqual(
+            checks[1].metadata,
+            {"ci": "final-ci-check", "owner": "final owner", "severity": "low"},
+        )
+        self.assertEqual(checks[2].metadata, {"severity": "critical", "owner": "qa-team"})
+
+    def test_gates_unknown_metadata_key_is_preserved_as_text_not_metadata(self) -> None:
+        content = "\n".join(
+            [
+                "# Quality Checklist",
+                "",
+                "## Required Checks",
+                "",
+                "- [ ] Audit trail [ticket: OPS-123] is linked. [owner: qa]",
+            ]
+        )
+
+        checks = parse_required_checks(content)
+
+        self.assertEqual(len(checks), 1)
+        self.assertEqual(checks[0].text, "Audit trail [ticket: OPS-123] is linked.")
+        self.assertEqual(checks[0].owner, "qa")
+        self.assertEqual(checks[0].metadata, {"owner": "qa"})
+
+    def test_gates_metadata_stripping_normalizes_surrounding_whitespace(self) -> None:
+        content = "\n".join(
+            [
+                "# Quality Checklist",
+                "",
+                "## Required Checks",
+                "",
+                "- [ ] Prefix   [severity: high]   middle\t[owner: qa team]   suffix.   [ci: smoke suite]",
+            ]
+        )
+
+        checks = parse_required_checks(content)
+
+        self.assertEqual(len(checks), 1)
+        self.assertEqual(checks[0].text, "Prefix middle suffix.")
+        self.assertEqual(checks[0].severity, "high")
+        self.assertEqual(checks[0].owner, "qa team")
+        self.assertEqual(checks[0].ci_check, "smoke suite")
+
+    def test_gates_invalid_severity_warns_and_keeps_medium(self) -> None:
+        content = "\n".join(
+            [
+                "# Quality Checklist",
+                "",
+                "## Required Checks",
+                "",
+                "- [ ] Security review passes. [severity: blocker] [owner: security]",
+            ]
+        )
+
+        checks = parse_required_checks(content)
+
+        self.assertEqual(len(checks), 1)
+        self.assertEqual(checks[0].text, "Security review passes.")
+        self.assertEqual(checks[0].severity, "medium")
+        self.assertEqual(checks[0].owner, "security")
+        self.assertIn("unsupported severity: blocker", checks[0].metadata_warnings)
+
+    def test_gates_summary_counts_metadata_coverage(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            quality_dir = root / "quality"
+            quality_dir.mkdir()
+            (quality_dir / "checklist.md").write_text(
+                "\n".join(
+                    [
+                        "# Quality Checklist",
+                        "",
+                        "## Required Checks",
+                        "",
+                        "- [x] Critical gate. [severity: critical] [owner: qa] [ci: critical-check]",
+                        "- [x] High gate. [severity: high] [owner: security]",
+                        "- [ ] Default gate.",
+                        "- [ ] Bad severity. [severity: urgent] [ci: urgent-check]",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            report = build_quality_gate_report(root)
+
+            self.assertEqual(
+                report.summary["severity_counts"],
+                {"critical": 1, "high": 1, "medium": 2, "low": 0},
+            )
+            self.assertEqual(report.summary["owners_total"], 2)
+            self.assertEqual(report.summary["ci_checks_total"], 2)
+
+    def test_gates_text_includes_explicit_metadata(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            quality_dir = root / "quality"
+            quality_dir.mkdir()
+            (quality_dir / "checklist.md").write_text(
+                "\n".join(
+                    [
+                        "# Quality Checklist",
+                        "",
+                        "## Required Checks",
+                        "",
+                        "- [x] Run unit tests. [severity: high] [owner: qa] [ci: unit-tests]",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            stdout = StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main(["gates", str(root)])
+
+            self.assertEqual(exit_code, 0)
+            self.assertIn(
+                "- [x] GATE001 quality/checklist.md:5 Run unit tests. "
+                "(severity=high owner=qa ci=unit-tests)",
+                stdout.getvalue(),
+            )
 
     def test_gates_source_missing_returns_one_with_empty_json_lists(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -182,15 +378,16 @@ class QualityGateTests(TestCase):
             self.assertEqual(payload["source_file"], "quality/checklist.md")
             self.assertEqual(payload["required_checks"], [])
             self.assertEqual(payload["definition_of_done"], [])
+            self.assertEqual(payload["summary"]["definition_total"], 0)
+            self.assertEqual(payload["summary"]["required_done"], 0)
+            self.assertEqual(payload["summary"]["required_open"], 0)
+            self.assertEqual(payload["summary"]["required_total"], 0)
             self.assertEqual(
-                payload["summary"],
-                {
-                    "definition_total": 0,
-                    "required_done": 0,
-                    "required_open": 0,
-                    "required_total": 0,
-                },
+                payload["summary"]["severity_counts"],
+                {"critical": 0, "high": 0, "medium": 0, "low": 0},
             )
+            self.assertEqual(payload["summary"]["owners_total"], 0)
+            self.assertEqual(payload["summary"]["ci_checks_total"], 0)
 
     def test_gates_source_missing_text_is_clear(self) -> None:
         with TemporaryDirectory() as tmp:

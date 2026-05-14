@@ -20,6 +20,7 @@ Repository-level quality policy needs a local machine-readable view before agent
 - Add `specspine gates [path] [--json]`.
 - Read only `quality/checklist.md` from the selected workspace.
 - Parse Markdown checklist rows under `## Required Checks` into stable `GATE001` records.
+- Include optional metadata fields for severity, owner, and CI check names when inline labels are present.
 - Parse bullet rows under `## Definition Of Done` into stable `DOD001` records.
 - Emit stable JSON with source metadata, summaries, gate records, definition-of-done records, and recommended local commands.
 - Emit compact text output for humans and agents.
@@ -37,7 +38,7 @@ Repository-level quality policy needs a local machine-readable view before agent
 ## Acceptance Criteria
 
 - [x] `specspine gates --json` reads an initialized workspace and reports required checks from `quality/checklist.md`.
-- [x] Required check records use stable ids `GATE001`, `GATE002`, source file, source line, text, and done state.
+- [x] Required check records use stable ids `GATE001`, `GATE002`, source file, source line, text, done state, and stable metadata fields.
 - [x] Definition Of Done records use stable ids `DOD001`, `DOD002`, source file, source line, and text.
 - [x] JSON output includes `root`, `source_file`, `source_missing`, `required_checks`, `definition_of_done`, `summary`, and `recommended_commands`.
 - [x] Recommended commands include `specspine validate . --fusion --features` and `specspine status . --json --validate`.

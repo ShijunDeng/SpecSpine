@@ -40,6 +40,7 @@ class DogfoodArtifactsTests(TestCase):
             "status-validation-warnings",
             "feature-summary-metadata",
             "quality-gate-definitions",
+            "quality-gate-metadata",
             "adapter-lifecycle-mappings",
             "adapter-feature-handoff",
             "status-coverage-readiness-summaries",
@@ -81,6 +82,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:status-validation-warnings", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-summary-metadata", "pass"), checks)
         self.assertIn(("feature.status_consistency:quality-gate-definitions", "pass"), checks)
+        self.assertIn(("feature.status_consistency:quality-gate-metadata", "pass"), checks)
         self.assertIn(("feature.status_consistency:adapter-lifecycle-mappings", "pass"), checks)
         self.assertIn(("feature.status_consistency:adapter-feature-handoff", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-coverage-readiness-summaries", "pass"), checks)
@@ -110,7 +112,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine feature tests <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature pr <slug> . --json",
             "Keep feature specs, implementation tasks, and quality checks traceable",
-            "Use `specspine gates . --json` to export quality gate definitions only",
+            "Use `specspine gates . --json` to export quality gate definitions and optional severity/owner/CI metadata only",
             "Use `specspine adapters lifecycle . --json` to export adapter lifecycle definitions only",
             "prefer `--enforce-transition` when advancing lifecycle state",
             "Do not vendor upstream source code.",
@@ -236,6 +238,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/quality-gate-definitions.md",
             "execution/features/quality-gate-definitions.md",
             "quality/features/quality-gate-definitions.md",
+            "specs/features/quality-gate-metadata.md",
+            "execution/features/quality-gate-metadata.md",
+            "quality/features/quality-gate-metadata.md",
             "specs/features/adapter-lifecycle-mappings.md",
             "execution/features/adapter-lifecycle-mappings.md",
             "quality/features/adapter-lifecycle-mappings.md",
@@ -347,6 +352,22 @@ class DogfoodArtifactsTests(TestCase):
         self.assertTrue(report.ready)
         self.assertEqual(report.status, "validated")
         self.assertEqual(report.summary["fail"], 0)
+
+    def test_quality_gate_metadata_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(REPO_ROOT, "quality-gate-metadata")
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "quality-gate-metadata",
+            require_coverage=True,
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
 
     def test_adapter_lifecycle_mappings_dogfood_bundle_passes_its_gate(self) -> None:
         report = build_feature_ready_report(REPO_ROOT, "adapter-lifecycle-mappings")

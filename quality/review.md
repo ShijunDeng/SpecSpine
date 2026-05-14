@@ -25,6 +25,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine feature tests` now exports acceptance-test packets that map acceptance criteria to test cases, attach explicit local `## Test Coverage` links, and surface existing test plan, quality checks, gaps, and blockers without running tests or generating code.
 - `specspine feature new` now generates native feature bundles with focused spec, execution, quality, handoff, task issue draft, tests, PR, ready, validation guidance, and initial spec-level priority/owner metadata instead of broad generic placeholders.
 - `specspine gates` now exports repository-level quality gate definitions from `quality/checklist.md` without executing commands, reading tokens, requiring `gh`, or calling network services.
+- Repository quality gates can carry optional `[severity: ...]`, `[owner: ...]`, and `[ci: ...]` labels; unlabeled gates keep stable defaults, invalid severities become gate-level warnings, and CI labels are never executed by the exporter.
 - `specspine adapters lifecycle` now exports local lifecycle mappings for OpenSpec, Spec Kit, and Superpowers without probing upstream tools, reading tokens, calling GitHub, or using network services.
 - `specspine adapters handoff` now exports a feature-specific OpenSpec, Spec Kit, and Superpowers handoff packet without executing upstream tools, probing adapters, reading tokens, or using network services.
 - No upstream code should be copied into this repository as part of fusion work.
@@ -43,7 +44,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Treat `specspine feature tests <slug> . --json` as the focused local packet for QA and testing agents, and use `## Test Coverage` links in quality files to point AC ids at existing local tests.
 - Treat `specspine feature pr <slug> . --json` as the local Pull Request draft bridge after readiness and trace evidence are available.
 - Treat `specspine feature sync-plan <slug> . --json` as the local review packet for GitHub CLI sync intent, and `specspine feature sync-plan <slug> . --output-dir .specspine/sync-plan/<slug>` as the local body-file and manifest materialization step before a human runs any remote command.
-- Treat `specspine gates . --json` as the repository-level quality policy packet before implementation, review, or CI wiring; it exports definitions and does not run checks.
+- Treat `specspine gates . --json` as the repository-level quality policy packet before implementation, review, or CI wiring; it exports definitions, metadata, and coverage counts, and does not run checks.
 - Treat `specspine adapters lifecycle . --json` as the local adapter lifecycle policy packet before future adapter sync, upstream planning, or remote issue/PR mapping work.
 - Treat `specspine adapters handoff <slug> . --json` as the feature-specific adapter packet before handing a native feature to OpenSpec, Spec Kit, or Superpowers workflows.
 - Treat `specspine validate . --fusion --features` plus the unit test suite as the local completion gate.

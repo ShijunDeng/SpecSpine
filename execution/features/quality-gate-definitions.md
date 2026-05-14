@@ -34,7 +34,7 @@ Why: Repository-level quality checklists should become deterministic local gate 
 
 ## Open Questions
 
-- Whether future releases should let repositories add explicit machine-readable severity or CI check names to each gate.
+- Whether future releases should sync exported CI check names into remote branch-protection policy after explicit confirmation.
 - Whether later remote sync should map local gate definitions to GitHub branch-protection required checks or project policy fields.
 
 ## Agent Handoff
