@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import shutil
@@ -10,7 +11,10 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
-from specspine.adapters import ADAPTER_LIFECYCLE_MAPPINGS
+from specspine.adapters import (
+    ADAPTER_LIFECYCLE_MAPPINGS,
+    build_adapter_feature_handoff_report,
+)
 from specspine.cli import main
 from specspine.features import build_feature_ready_report
 from specspine.fusion import init_fusion_workspace
@@ -309,9 +313,13 @@ class AdapterFeatureHandoffTests(TestCase):
             expected_files = {
                 "manifest.json",
                 "combined.md",
+                "combined.json",
                 "adapters/openspec.md",
+                "adapters/openspec.json",
                 "adapters/speckit.md",
+                "adapters/speckit.json",
                 "adapters/superpowers.md",
+                "adapters/superpowers.json",
             }
             self.assertEqual(
                 {
@@ -325,6 +333,10 @@ class AdapterFeatureHandoffTests(TestCase):
                 "# Adapter Feature Handoff: add-dark-mode",
                 (output_dir / "combined.md").read_text(encoding="utf-8"),
             )
+            combined_json = json.loads((output_dir / "combined.json").read_text(encoding="utf-8"))
+            self.assertEqual(combined_json["feature_id"], "add-dark-mode")
+            self.assertEqual(combined_json["status"], "validated")
+            self.assertIn("openspec", combined_json["adapters"])
             self.assertIn(
                 "openspec instructions apply --change add-dark-mode --json",
                 (output_dir / "adapters" / "openspec.md").read_text(encoding="utf-8"),
@@ -350,6 +362,110 @@ class AdapterFeatureHandoffTests(TestCase):
             self.assertIn("# Superpowers Adapter Handoff: add-dark-mode", adapter_texts["superpowers"])
             self.assertNotIn("# OpenSpec Adapter Handoff", adapter_texts["superpowers"])
             self.assertNotIn("# Spec Kit Adapter Handoff", adapter_texts["superpowers"])
+            for key in ("openspec", "speckit", "superpowers"):
+                focused_payload = json.loads(
+                    (output_dir / "adapters" / f"{key}.json").read_text(encoding="utf-8")
+                )
+                self.assertEqual(
+                    set(focused_payload),
+                    {
+                        "adapter",
+                        "blocking_checks",
+                        "feature_id",
+                        "gaps",
+                        "missing_files",
+                        "ready",
+                        "recommended_commands",
+                        "safety_flags",
+                        "source_files",
+                        "status",
+                        "summary",
+                    },
+                )
+                self.assertEqual(focused_payload["feature_id"], "add-dark-mode")
+                self.assertNotIn("adapters", focused_payload)
+                self.assertEqual(focused_payload["adapter"]["key"], key)
+                self.assertEqual(focused_payload["adapter"], combined_json["adapters"][key])
+                self.assertEqual(
+                    set(focused_payload["adapter"]),
+                    {
+                        "agent_focus",
+                        "config",
+                        "config_exists",
+                        "display_name",
+                        "enabled",
+                        "integration_surface",
+                        "key",
+                        "local_commands",
+                        "native_status",
+                        "notes",
+                        "recommended_upstream_steps",
+                        "upstream_artifacts",
+                        "upstream_phase",
+                        "upstream_url",
+                    },
+                )
+                self.assertEqual(focused_payload["source_files"], combined_json["source_files"])
+                self.assertEqual(focused_payload["missing_files"], [])
+                self.assertEqual(focused_payload["gaps"], [])
+                self.assertEqual(focused_payload["blocking_checks"], [])
+                self.assertEqual(
+                    focused_payload["safety_flags"],
+                    {
+                        "creates_remote": False,
+                        "executed": False,
+                        "requires_network": False,
+                        "requires_token": False,
+                        "safe_to_auto_run": False,
+                    },
+                )
+                for step in focused_payload["adapter"]["recommended_upstream_steps"]:
+                    self.assertFalse(step["creates_remote"])
+                    self.assertFalse(step["executed"])
+                    self.assertFalse(step["requires_network"])
+                    self.assertFalse(step["requires_token"])
+                    self.assertFalse(step["safe_to_auto_run"])
+
+    def test_output_dir_combined_json_matches_report_and_json_stdout_body(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            write_feature_bundle(root)
+            output_dir = root / "adapter-artifacts"
+            expected_report = build_adapter_feature_handoff_report(root, "add-dark-mode").as_dict()
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "adapters",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--output-dir",
+                        str(output_dir),
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            combined_payload = json.loads(
+                (output_dir / "combined.json").read_text(encoding="utf-8")
+            )
+            stdout_payload = json.loads(stdout.getvalue())
+            stdout_report_body = {
+                key: value
+                for key, value in stdout_payload.items()
+                if key
+                not in {
+                    "artifact_checksums",
+                    "artifact_dir",
+                    "artifacts",
+                    "checksum_algorithm",
+                }
+            }
+            self.assertEqual(combined_payload, expected_report)
+            self.assertEqual(stdout_report_body, expected_report)
 
     def test_output_dir_creates_nested_non_existing_directory(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -404,6 +520,7 @@ class AdapterFeatureHandoffTests(TestCase):
             self.assertEqual(manifest["artifact_version"], 1)
             self.assertEqual(manifest["artifacts"]["manifest"], "manifest.json")
             self.assertEqual(manifest["artifacts"]["combined"], "combined.md")
+            self.assertEqual(manifest["artifacts"]["combined_json"], "combined.json")
             self.assertEqual(
                 manifest["artifacts"]["adapters"],
                 {
@@ -412,6 +529,15 @@ class AdapterFeatureHandoffTests(TestCase):
                     "superpowers": "adapters/superpowers.md",
                 },
             )
+            self.assertEqual(
+                manifest["artifacts"]["adapter_json"],
+                {
+                    "openspec": "adapters/openspec.json",
+                    "speckit": "adapters/speckit.json",
+                    "superpowers": "adapters/superpowers.json",
+                },
+            )
+            self.assertEqual(manifest["checksum_algorithm"], "sha256")
             self.assertEqual(
                 manifest["safety_flags"],
                 {
@@ -432,13 +558,24 @@ class AdapterFeatureHandoffTests(TestCase):
             artifact_paths = [
                 manifest["artifacts"]["manifest"],
                 manifest["artifacts"]["combined"],
+                manifest["artifacts"]["combined_json"],
                 *manifest["artifacts"]["adapters"].values(),
+                *manifest["artifacts"]["adapter_json"].values(),
             ]
             self.assertEqual(len(artifact_paths), len(set(artifact_paths)))
             for artifact_path in artifact_paths:
                 self.assertFalse(os.path.isabs(artifact_path))
                 self.assertNotIn("..", Path(artifact_path).parts)
                 self.assertTrue((output_dir / artifact_path).exists())
+            checksum_paths = set(artifact_paths)
+            checksum_paths.remove("manifest.json")
+            self.assertEqual(set(manifest["artifact_checksums"]), checksum_paths)
+            for artifact_path, digest in manifest["artifact_checksums"].items():
+                self.assertEqual(len(digest), 64)
+                self.assertEqual(
+                    digest,
+                    hashlib.sha256((output_dir / artifact_path).read_bytes()).hexdigest(),
+                )
 
     def test_output_dir_overwrite_requires_force_and_preserves_unknown_files(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -452,9 +589,13 @@ class AdapterFeatureHandoffTests(TestCase):
             managed_paths = [
                 output_dir / "manifest.json",
                 output_dir / "combined.md",
+                output_dir / "combined.json",
                 output_dir / "adapters" / "openspec.md",
+                output_dir / "adapters" / "openspec.json",
                 output_dir / "adapters" / "speckit.md",
+                output_dir / "adapters" / "speckit.json",
                 output_dir / "adapters" / "superpowers.md",
+                output_dir / "adapters" / "superpowers.json",
             ]
             for path in managed_paths:
                 path.write_text(f"stale {path.name}\n", encoding="utf-8")
@@ -502,7 +643,50 @@ class AdapterFeatureHandoffTests(TestCase):
                 "OpenSpec Adapter Handoff",
                 (output_dir / "adapters" / "openspec.md").read_text(encoding="utf-8"),
             )
+            self.assertEqual(
+                json.loads((output_dir / "adapters" / "openspec.json").read_text(encoding="utf-8"))[
+                    "adapter"
+                ]["key"],
+                "openspec",
+            )
             self.assertEqual(unknown_file.read_text(encoding="utf-8"), "keep me\n")
+
+    def test_output_dir_overwrite_rejects_single_existing_json_artifact(self) -> None:
+        for relative_path in ("combined.json", "adapters/openspec.json"):
+            with self.subTest(relative_path=relative_path):
+                with TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    init_fusion_workspace(root, agent="codex")
+                    write_feature_bundle(root)
+                    output_dir = root / "adapter-artifacts"
+                    existing_artifact = output_dir / relative_path
+                    existing_artifact.parent.mkdir(parents=True, exist_ok=True)
+                    existing_artifact.write_text("stale json\n", encoding="utf-8")
+                    stderr = StringIO()
+
+                    with redirect_stderr(stderr):
+                        returncode = main(
+                            [
+                                "adapters",
+                                "handoff",
+                                "add-dark-mode",
+                                str(root),
+                                "--output-dir",
+                                str(output_dir),
+                            ]
+                        )
+
+                    self.assertEqual(returncode, 1)
+                    self.assertIn(
+                        "Adapter handoff artifact files already exist",
+                        stderr.getvalue(),
+                    )
+                    self.assertIn(str(existing_artifact), stderr.getvalue())
+                    self.assertNotIn(str(output_dir / "manifest.json"), stderr.getvalue())
+                    self.assertEqual(
+                        existing_artifact.read_text(encoding="utf-8"),
+                        "stale json\n",
+                    )
 
     def test_json_output_dir_stdout_remains_parseable_full_report(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -531,7 +715,19 @@ class AdapterFeatureHandoffTests(TestCase):
             self.assertIn("adapters", payload)
             self.assertIn("recommended_commands", payload)
             self.assertEqual(payload["artifacts"]["combined"], "combined.md")
+            self.assertEqual(payload["artifacts"]["combined_json"], "combined.json")
             self.assertEqual(payload["artifacts"]["adapters"]["openspec"], "adapters/openspec.md")
+            self.assertEqual(
+                payload["artifacts"]["adapter_json"]["openspec"],
+                "adapters/openspec.json",
+            )
+            self.assertEqual(payload["checksum_algorithm"], "sha256")
+            self.assertEqual(
+                payload["artifact_checksums"],
+                json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))[
+                    "artifact_checksums"
+                ],
+            )
             self.assertTrue((output_dir / "manifest.json").exists())
 
     def test_output_file_and_output_dir_can_be_used_together(self) -> None:
@@ -591,7 +787,14 @@ class AdapterFeatureHandoffTests(TestCase):
             self.assertEqual(payload["feature_id"], "add-dark-mode")
             self.assertEqual(payload["artifacts"]["manifest"], "manifest.json")
             self.assertEqual(payload["artifacts"]["combined"], "combined.md")
+            self.assertEqual(payload["artifacts"]["combined_json"], "combined.json")
             self.assertEqual(payload["artifacts"]["adapters"]["superpowers"], "adapters/superpowers.md")
+            self.assertEqual(
+                payload["artifacts"]["adapter_json"]["superpowers"],
+                "adapters/superpowers.json",
+            )
+            self.assertEqual(payload["checksum_algorithm"], "sha256")
+            self.assertIn("combined.json", payload["artifact_checksums"])
             self.assertNotIn("Wrote adapter feature handoff", stdout.getvalue())
             self.assertNotIn("Wrote adapter handoff artifacts", stdout.getvalue())
             self.assertIn("# Adapter Feature Handoff: add-dark-mode", output_file.read_text(encoding="utf-8"))
@@ -727,6 +930,64 @@ class AdapterFeatureHandoffTests(TestCase):
             self.assertGreater(payload["summary"]["gaps"]["total"], 0)
             self.assertGreater(payload["summary"]["blocking_checks"]["total"], 0)
             self.assertEqual(payload["adapters"]["openspec"]["native_status"], "implemented")
+
+    def test_partial_bundle_output_dir_writes_structured_artifacts_with_blockers(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            write_feature_bundle(root, status="implemented")
+            (root / "quality" / "features" / "add-dark-mode.md").unlink()
+            output_dir = root / "adapter-artifacts"
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "adapters",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--output-dir",
+                        str(output_dir),
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            stdout_payload = json.loads(stdout.getvalue())
+            combined_payload = json.loads(
+                (output_dir / "combined.json").read_text(encoding="utf-8")
+            )
+            manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+            focused_payload = json.loads(
+                (output_dir / "adapters" / "openspec.json").read_text(encoding="utf-8")
+            )
+            self.assertTrue((output_dir / "combined.md").exists())
+            self.assertFalse(stdout_payload["ready"])
+            self.assertFalse(combined_payload["ready"])
+            self.assertFalse(manifest["ready"])
+            self.assertFalse(focused_payload["ready"])
+            self.assertEqual(
+                stdout_payload["missing_files"],
+                ["quality/features/add-dark-mode.md"],
+            )
+            self.assertEqual(combined_payload["missing_files"], stdout_payload["missing_files"])
+            self.assertEqual(manifest["missing_files"], stdout_payload["missing_files"])
+            self.assertEqual(focused_payload["missing_files"], stdout_payload["missing_files"])
+            self.assertGreater(len(stdout_payload["gaps"]), 0)
+            self.assertGreater(len(stdout_payload["blocking_checks"]), 0)
+            self.assertEqual(combined_payload["gaps"], stdout_payload["gaps"])
+            self.assertEqual(manifest["gaps"], stdout_payload["gaps"])
+            self.assertEqual(focused_payload["gaps"], stdout_payload["gaps"])
+            self.assertEqual(
+                combined_payload["blocking_checks"],
+                stdout_payload["blocking_checks"],
+            )
+            self.assertEqual(manifest["blocking_checks"], stdout_payload["blocking_checks"])
+            self.assertEqual(
+                focused_payload["blocking_checks"],
+                stdout_payload["blocking_checks"],
+            )
 
     def test_single_native_file_still_returns_zero_but_missing_all_returns_one(self) -> None:
         with TemporaryDirectory() as tmp:

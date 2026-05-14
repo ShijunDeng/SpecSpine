@@ -33,10 +33,10 @@ Why: SpecSpine should materialize adapter handoff context into local review arti
 - Existing combined adapter handoff Markdown renderer.
 - Existing feature readiness and validation checks.
 
-## Open Questions
+## Resolved Decisions
 
-- Whether future releases should also emit per-adapter JSON files for tools that want structured focused packets.
-- Whether artifact manifests should later include content hashes for review pipelines.
+- Per-adapter structured JSON files are implemented by `adapter-handoff-structured-artifacts`.
+- Artifact manifests now include SHA-256 content hashes for non-manifest managed artifacts.
 
 ## Agent Handoff
 

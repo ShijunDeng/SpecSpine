@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -375,7 +376,9 @@ class AdapterHandoffArtifacts:
     output_dir: Path
     manifest_path: Path
     combined_path: Path
+    combined_json_path: Path
     adapter_paths: tuple[Path, ...]
+    adapter_json_paths: tuple[Path, ...]
     written_paths: tuple[Path, ...]
     manifest: dict[str, object]
 
@@ -922,6 +925,48 @@ def render_adapter_feature_handoff_json(report: AdapterFeatureHandoffReport) -> 
     return json.dumps(report.as_dict(), indent=2, sort_keys=True) + "\n"
 
 
+def _adapter_handoff_blocking_checks(
+    report: AdapterFeatureHandoffReport,
+) -> list[dict[str, object]]:
+    return [
+        check.as_dict() if hasattr(check, "as_dict") else dict(check)
+        for check in report.blocking_checks
+    ]
+
+
+def adapter_feature_handoff_focused_payload(
+    report: AdapterFeatureHandoffReport,
+    adapter_key: str,
+) -> dict[str, object]:
+    return {
+        "adapter": report.adapters[adapter_key].as_dict(),
+        "blocking_checks": _adapter_handoff_blocking_checks(report),
+        "feature_id": report.feature_id,
+        "gaps": [dict(gap) for gap in report.gaps],
+        "missing_files": list(report.missing_files),
+        "ready": report.ready,
+        "recommended_commands": list(report.recommended_commands),
+        "safety_flags": dict(ADAPTER_HANDOFF_SAFETY_FLAGS),
+        "source_files": list(report.source_files),
+        "status": report.status,
+        "summary": report.summary,
+    }
+
+
+def render_adapter_feature_handoff_adapter_json(
+    report: AdapterFeatureHandoffReport,
+    adapter_key: str,
+) -> str:
+    return (
+        json.dumps(
+            adapter_feature_handoff_focused_payload(report, adapter_key),
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
+
+
 def _render_step_line(step: AdapterHandoffStep) -> str:
     if step.argv:
         command = " ".join(shlex.quote(part) for part in step.argv)
@@ -1102,23 +1147,29 @@ def render_adapter_feature_handoff_adapter_text(
 
 def _adapter_handoff_artifact_manifest(
     report: AdapterFeatureHandoffReport,
+    artifact_checksums: dict[str, str],
 ) -> dict[str, object]:
     adapter_artifacts = {
         key: f"adapters/{key}.md"
         for key in ADAPTER_SPECS
     }
+    adapter_json_artifacts = {
+        key: f"adapters/{key}.json"
+        for key in ADAPTER_SPECS
+    }
     return {
         "artifact_version": 1,
         "artifact_root": ".",
+        "artifact_checksums": artifact_checksums,
         "artifacts": {
             "manifest": "manifest.json",
             "combined": "combined.md",
+            "combined_json": "combined.json",
             "adapters": adapter_artifacts,
+            "adapter_json": adapter_json_artifacts,
         },
-        "blocking_checks": [
-            check.as_dict() if hasattr(check, "as_dict") else dict(check)
-            for check in report.blocking_checks
-        ],
+        "blocking_checks": _adapter_handoff_blocking_checks(report),
+        "checksum_algorithm": "sha256",
         "feature_id": report.feature_id,
         "gaps": [dict(gap) for gap in report.gaps],
         "missing_files": list(report.missing_files),
@@ -1137,6 +1188,10 @@ def _adapter_handoff_artifact_manifest(
     }
 
 
+def _sha256_hex(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+
 def write_adapter_feature_handoff_artifacts(
     report: AdapterFeatureHandoffReport,
     output_dir: Path,
@@ -1147,14 +1202,24 @@ def write_adapter_feature_handoff_artifacts(
     if resolved_output_dir.exists() and not resolved_output_dir.is_dir():
         raise NotADirectoryError(f"Output path is not a directory: {resolved_output_dir}")
 
-    manifest = _adapter_handoff_artifact_manifest(report)
     manifest_path = resolved_output_dir / "manifest.json"
     combined_path = resolved_output_dir / "combined.md"
+    combined_json_path = resolved_output_dir / "combined.json"
     adapter_paths = tuple(
         resolved_output_dir / "adapters" / f"{key}.md"
         for key in ADAPTER_SPECS
     )
-    write_targets = (manifest_path, combined_path, *adapter_paths)
+    adapter_json_paths = tuple(
+        resolved_output_dir / "adapters" / f"{key}.json"
+        for key in ADAPTER_SPECS
+    )
+    write_targets = (
+        manifest_path,
+        combined_path,
+        combined_json_path,
+        *adapter_paths,
+        *adapter_json_paths,
+    )
 
     parent_conflicts = tuple(
         path.parent
@@ -1174,15 +1239,27 @@ def write_adapter_feature_handoff_artifacts(
 
     resolved_output_dir.mkdir(parents=True, exist_ok=True)
     (resolved_output_dir / "adapters").mkdir(parents=True, exist_ok=True)
-    combined_path.write_text(
-        render_adapter_feature_handoff_text(report),
-        encoding="utf-8",
-    )
+
+    content_by_relative_path: dict[str, str] = {
+        "combined.md": render_adapter_feature_handoff_text(report),
+        "combined.json": render_adapter_feature_handoff_json(report),
+    }
     for key in ADAPTER_SPECS:
-        (resolved_output_dir / "adapters" / f"{key}.md").write_text(
-            render_adapter_feature_handoff_adapter_text(report, key),
-            encoding="utf-8",
+        content_by_relative_path[f"adapters/{key}.md"] = (
+            render_adapter_feature_handoff_adapter_text(report, key)
         )
+        content_by_relative_path[f"adapters/{key}.json"] = (
+            render_adapter_feature_handoff_adapter_json(report, key)
+        )
+
+    artifact_checksums = {
+        relative_path: _sha256_hex(content.encode("utf-8"))
+        for relative_path, content in content_by_relative_path.items()
+    }
+    manifest = _adapter_handoff_artifact_manifest(report, artifact_checksums)
+
+    for relative_path, content in content_by_relative_path.items():
+        (resolved_output_dir / relative_path).write_text(content, encoding="utf-8")
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -1192,7 +1269,9 @@ def write_adapter_feature_handoff_artifacts(
         output_dir=resolved_output_dir,
         manifest_path=manifest_path,
         combined_path=combined_path,
+        combined_json_path=combined_json_path,
         adapter_paths=adapter_paths,
+        adapter_json_paths=adapter_json_paths,
         written_paths=write_targets,
         manifest=manifest,
     )

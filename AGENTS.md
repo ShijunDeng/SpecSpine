@@ -55,7 +55,7 @@ PYTHONPATH=src python3 -m specspine feature sync-plan <slug> . --output-dir .spe
 - Use `specspine feature sync-plan <slug> . --json` to review GitHub CLI sync intent without executing `gh`, reading tokens, or calling GitHub; use `--output-dir .specspine/sync-plan/<slug>` when maintainers need local body files, manifest, and review-only `commands.sh`.
 - Use `specspine gates . --json` to export quality gate definitions and optional severity/owner/CI metadata only; do not treat it as executing tests, CI, or status checks.
 - Use `specspine adapters lifecycle . --json` to export adapter lifecycle definitions only; do not treat it as invoking upstream tools.
-- Use `specspine adapters handoff <slug> . --json` to export feature-specific OpenSpec, Spec Kit, and Superpowers adapter handoff data only; use `--output-dir .specspine/adapter-handoff/<slug>` to write local `manifest.json`, `combined.md`, and focused per-adapter Markdown files. Do not treat recommended upstream steps as executed commands.
+- Use `specspine adapters handoff <slug> . --json` to export feature-specific OpenSpec, Spec Kit, and Superpowers adapter handoff data only; use `--output-dir .specspine/adapter-handoff/<slug>` to write local `manifest.json`, `combined.md`, `combined.json`, focused per-adapter Markdown files, focused per-adapter JSON files, and SHA-256 checksums. Do not treat recommended upstream steps as executed commands.
 - OpenSpec, Spec Kit, and Superpowers are external adapters only. Do not vendor upstream source code.
 - Do not read or write GitHub tokens, and do not call GitHub APIs by default.
 - Use `--run-upstream` only when the user explicitly asks to invoke upstream tools.

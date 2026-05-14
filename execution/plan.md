@@ -49,7 +49,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine feature sync-plan <slug> . --json` when a maintainer needs to review GitHub CLI issue/PR sync intent before any remote execution; add `--output-dir .specspine/sync-plan/<slug>` when the body files, manifest, and review-only command script should be materialized locally.
 - Use `specspine gates . --json` when an agent, reviewer, or CI author needs repository-level quality gate definitions, severity/owner/CI metadata, and metadata coverage counts before running or wiring checks.
 - Use `specspine adapters lifecycle . --json` when an agent or maintainer needs local status-to-upstream phase definitions before adapter sync or upstream planning.
-- Use `specspine adapters handoff <slug> . --json` when an agent needs OpenSpec, Spec Kit, and Superpowers handoff steps for one native feature without executing upstream tooling; add `--output-dir .specspine/adapter-handoff/<slug>` when separate reviewable adapter files and a safety manifest should be materialized locally.
+- Use `specspine adapters handoff <slug> . --json` when an agent needs OpenSpec, Spec Kit, and Superpowers handoff steps for one native feature without executing upstream tooling; add `--output-dir .specspine/adapter-handoff/<slug>` when separate reviewable Markdown files, structured JSON files, a safety manifest, and SHA-256 checksums should be materialized locally.
 - Use `specspine validate . --fusion --features` as the project-level gate.
 - Let `specspine feature new <slug> . --title "..." --why "..."` seed the feature's spec, execution, quality, handoff, task issue draft, tests, PR, ready, validation workflow, and initial local triage metadata before implementation begins.
 - Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`; prefer `--enforce-transition` for ordered lifecycle advancement while keeping manual updates available by default.
@@ -74,4 +74,4 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Should the refreshed feature bundle template later grow explicit rollout-owner or implementation-file metadata, or stay minimal until a real workflow needs it?
 - Should future remote sync consume quality gate `ci_check` labels for branch-protection required checks, or should SpecSpine continue to export them only as local planning metadata?
 - Should a future remote-sync command consume `feature sync-plan --output-dir` artifacts after explicit confirmation, or should SpecSpine remain plan-only for GitHub writes?
-- Should per-adapter handoff artifact manifests later include content hashes or structured per-adapter JSON files?
+- Should future adapter handoff artifacts include a signed manifest or schema version after the current structured JSON files and SHA-256 checksums prove useful?

@@ -1384,6 +1384,12 @@ def main(argv: list[str] | None = None) -> int:
                     payload = report.as_dict()
                     payload["artifacts"] = artifact_output.manifest["artifacts"]
                     payload["artifact_dir"] = str(artifact_output.output_dir)
+                    payload["checksum_algorithm"] = artifact_output.manifest[
+                        "checksum_algorithm"
+                    ]
+                    payload["artifact_checksums"] = artifact_output.manifest[
+                        "artifact_checksums"
+                    ]
                     print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
             elif output_path is not None:
                 print(f"Wrote adapter feature handoff packet to {output_path}")

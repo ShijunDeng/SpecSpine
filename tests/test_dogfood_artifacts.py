@@ -45,6 +45,7 @@ class DogfoodArtifactsTests(TestCase):
             "adapter-feature-handoff",
             "status-coverage-readiness-summaries",
             "adapter-handoff-artifacts",
+            "adapter-handoff-structured-artifacts",
             "workspace-readiness-policy",
             "extended-feature-metadata",
             "feature-metadata-filters",
@@ -91,6 +92,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:adapter-feature-handoff", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-coverage-readiness-summaries", "pass"), checks)
         self.assertIn(("feature.status_consistency:adapter-handoff-artifacts", "pass"), checks)
+        self.assertIn(("feature.status_consistency:adapter-handoff-structured-artifacts", "pass"), checks)
         self.assertIn(("feature.status_consistency:workspace-readiness-policy", "pass"), checks)
         self.assertIn(("feature.status_consistency:extended-feature-metadata", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-metadata-filters", "pass"), checks)
@@ -265,6 +267,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/adapter-handoff-artifacts.md",
             "execution/features/adapter-handoff-artifacts.md",
             "quality/features/adapter-handoff-artifacts.md",
+            "specs/features/adapter-handoff-structured-artifacts.md",
+            "execution/features/adapter-handoff-structured-artifacts.md",
+            "quality/features/adapter-handoff-structured-artifacts.md",
             "specs/features/workspace-readiness-policy.md",
             "execution/features/workspace-readiness-policy.md",
             "quality/features/workspace-readiness-policy.md",
@@ -434,6 +439,25 @@ class DogfoodArtifactsTests(TestCase):
         coverage_report = build_feature_ready_report(
             REPO_ROOT,
             "adapter-handoff-artifacts",
+            require_coverage=True,
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+
+    def test_adapter_handoff_structured_artifacts_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(
+            REPO_ROOT,
+            "adapter-handoff-structured-artifacts",
+        )
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "adapter-handoff-structured-artifacts",
             require_coverage=True,
         )
 
