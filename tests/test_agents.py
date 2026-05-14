@@ -52,6 +52,7 @@ class AgentsTests(TestCase):
             "specspine feature trace <slug> . --json",
             "specspine feature ready <slug> . --json",
             "specspine feature tasks <slug> . --json",
+            "specspine feature tests <slug> . --json",
             "specspine feature issue <slug> . --json",
             "specspine feature pr <slug> . --json",
             "PYTHONPATH=src python3 -m unittest discover -s tests",

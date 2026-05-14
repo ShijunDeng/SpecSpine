@@ -202,6 +202,28 @@ class FeatureTraceTestPlanItem:
 
 
 @dataclass(frozen=True)
+class FeatureAcceptanceTestCase:
+    id: str
+    acceptance_criterion_id: str
+    acceptance_criterion_text: str
+    source_file: str
+    line: int
+    behavior: str
+    status: str = "pending"
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "acceptance_criterion_id": self.acceptance_criterion_id,
+            "acceptance_criterion_text": self.acceptance_criterion_text,
+            "behavior": self.behavior,
+            "id": self.id,
+            "line": self.line,
+            "source_file": self.source_file,
+            "status": self.status,
+        }
+
+
+@dataclass(frozen=True)
 class FeatureTraceReport:
     feature_id: str
     status: str
@@ -403,6 +425,70 @@ class FeatureHandoffReport:
             "status": self.status,
             "summary": self.summary,
             "tasks": [task.as_dict() for task in self.tasks],
+            "test_plan": [item.as_dict() for item in self.test_plan],
+        }
+
+
+@dataclass(frozen=True)
+class FeatureTestsReport:
+    feature_id: str
+    status: str
+    ready: bool
+    source_files: tuple[str, ...]
+    missing_files: tuple[str, ...]
+    gaps: tuple[dict[str, str], ...]
+    blocking_checks: tuple[FeatureReadyCheck, ...]
+    acceptance_criteria: tuple[FeatureTraceChecklistItem, ...]
+    test_plan: tuple[FeatureTraceTestPlanItem, ...]
+    test_cases: tuple[FeatureAcceptanceTestCase, ...]
+    quality_checks: tuple[FeatureTraceChecklistItem, ...]
+    ready_summary: dict[str, int]
+    recommended_commands: tuple[str, ...]
+    has_native_files: bool
+
+    @property
+    def summary(self) -> dict[str, object]:
+        def checklist_counts(
+            items: tuple[FeatureTraceChecklistItem, ...],
+        ) -> dict[str, int]:
+            done = sum(1 for item in items if item.done)
+            total = len(items)
+            return {
+                "done": done,
+                "open": total - done,
+                "total": total,
+            }
+
+        return {
+            "acceptance_criteria": checklist_counts(self.acceptance_criteria),
+            "blocking_checks": {"total": len(self.blocking_checks)},
+            "gaps": {"total": len(self.gaps)},
+            "missing_files": {"total": len(self.missing_files)},
+            "quality_checks": checklist_counts(self.quality_checks),
+            "ready": dict(self.ready_summary),
+            "source_files": {"total": len(self.source_files)},
+            "test_cases": {"total": len(self.test_cases)},
+            "test_plan": {"total": len(self.test_plan)},
+        }
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "acceptance_criteria": [
+                item.as_dict() for item in self.acceptance_criteria
+            ],
+            "blocking_checks": [
+                check.as_dict() for check in self.blocking_checks
+            ],
+            "feature_id": self.feature_id,
+            "gaps": [dict(gap) for gap in self.gaps],
+            "missing_files": list(self.missing_files),
+            "quality_checks": [item.as_dict() for item in self.quality_checks],
+            "ready": self.ready,
+            "recommended_commands": list(self.recommended_commands),
+            "source_files": list(self.source_files),
+            "status": self.status,
+            "summary": self.summary,
+            "test_cases": [test_case.as_dict() for test_case in self.test_cases],
             "test_plan": [item.as_dict() for item in self.test_plan],
         }
 
@@ -1999,6 +2085,155 @@ def render_feature_handoff_text(report: FeatureHandoffReport) -> str:
         lines.append("- None.")
 
     lines.extend(["", "Key commands:"])
+    lines.extend(f"- {command}" for command in report.recommended_commands)
+
+    return "\n".join(lines) + "\n"
+
+
+def _recommended_test_packet_commands(slug: str) -> tuple[str, ...]:
+    return (
+        f"specspine feature tests {slug} . --json",
+        f"specspine feature trace {slug} . --json",
+        f"specspine feature ready {slug} . --json",
+        f"specspine feature handoff {slug} . --json",
+        "specspine validate . --fusion --features",
+    )
+
+
+def _acceptance_test_cases(
+    acceptance_criteria: tuple[FeatureTraceChecklistItem, ...],
+) -> tuple[FeatureAcceptanceTestCase, ...]:
+    test_cases: list[FeatureAcceptanceTestCase] = []
+    for index, criterion in enumerate(acceptance_criteria, start=1):
+        test_cases.append(
+            FeatureAcceptanceTestCase(
+                id=f"TC{index:03d}",
+                acceptance_criterion_id=criterion.id,
+                acceptance_criterion_text=criterion.text,
+                source_file=criterion.source_file,
+                line=criterion.line,
+                behavior=f"Pending behavior to test: {criterion.text}",
+            )
+        )
+    return tuple(test_cases)
+
+
+def build_feature_tests_report(root: Path, slug: str) -> FeatureTestsReport:
+    slug = validate_feature_slug(slug)
+    resolved_root = root.expanduser().resolve()
+    handoff = build_feature_handoff_report(resolved_root, slug)
+    source_files = tuple(
+        source["path"]
+        for source in handoff.sources.values()
+        if bool(source["exists"])
+    )
+
+    return FeatureTestsReport(
+        feature_id=slug,
+        status=handoff.status,
+        ready=handoff.ready,
+        source_files=source_files,
+        missing_files=handoff.missing_files,
+        gaps=handoff.gaps,
+        blocking_checks=handoff.blocking_checks,
+        acceptance_criteria=handoff.acceptance_criteria,
+        test_plan=handoff.test_plan,
+        test_cases=_acceptance_test_cases(handoff.acceptance_criteria),
+        quality_checks=handoff.quality_checks,
+        ready_summary=handoff.ready_summary,
+        recommended_commands=_recommended_test_packet_commands(slug),
+        has_native_files=handoff.has_native_files,
+    )
+
+
+def render_feature_tests_json(report: FeatureTestsReport) -> str:
+    return json.dumps(report.as_dict(), indent=2, sort_keys=True) + "\n"
+
+
+def render_feature_tests_text(report: FeatureTestsReport) -> str:
+    summary = report.summary
+    lines = [
+        f"Feature test packet: {report.feature_id}",
+        f"Feature: {report.feature_id}",
+        f"Status: {report.status}",
+        f"Ready: {'yes' if report.ready else 'no'}",
+        "Sources:",
+    ]
+    if report.source_files:
+        lines.extend(f"- [ok] {relative_path}" for relative_path in report.source_files)
+    if report.missing_files:
+        lines.extend(
+            f"- [missing] {relative_path}"
+            for relative_path in report.missing_files
+        )
+    if not report.source_files and not report.missing_files:
+        lines.append("- None.")
+
+    lines.extend(
+        [
+            (
+                "Summary: "
+                f"acceptance_criteria={summary['acceptance_criteria']['total']} "
+                f"test_cases={summary['test_cases']['total']} "
+                f"test_plan={summary['test_plan']['total']} "
+                f"quality_checks={summary['quality_checks']['total']} "
+                f"gaps={summary['gaps']['total']} "
+                f"blocking={summary['blocking_checks']['total']}"
+            ),
+            "",
+            "Test Cases:",
+        ]
+    )
+    if report.test_cases:
+        for test_case in report.test_cases:
+            lines.append(
+                f"- [ ] {test_case.id} -> "
+                f"{test_case.acceptance_criterion_id} "
+                f"{test_case.source_file}:{test_case.line} "
+                f"{test_case.behavior}"
+            )
+    else:
+        lines.append(
+            "- [ ] Add acceptance criteria checklist items before testing behavior."
+        )
+
+    lines.extend(["", "Existing Test Plan:"])
+    if report.test_plan:
+        lines.extend(
+            f"- {item.id} {item.source_file}:{item.line} {item.text}"
+            for item in report.test_plan
+        )
+    else:
+        lines.append("- None found.")
+
+    lines.extend(["", "Quality Checks:"])
+    if report.quality_checks:
+        lines.extend(
+            _render_trace_checklist_item(item)
+            for item in report.quality_checks
+        )
+    else:
+        lines.append("- None found.")
+
+    lines.extend(["", "Gaps:"])
+    if report.gaps:
+        lines.extend(
+            f"- {gap['id']}: {gap['source_file']} - {gap['message']}"
+            for gap in report.gaps
+        )
+    else:
+        lines.append("- None.")
+
+    lines.extend(["", "Blocking Checks:"])
+    if report.blocking_checks:
+        lines.extend(
+            f"- {check.id}: {check.message}"
+            for check in report.blocking_checks
+        )
+    else:
+        lines.append("- None.")
+
+    lines.extend(["", "Key Commands:"])
     lines.extend(f"- {command}" for command in report.recommended_commands)
 
     return "\n".join(lines) + "\n"

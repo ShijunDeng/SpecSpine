@@ -12,6 +12,7 @@
 - Native feature readiness gates through `specspine feature ready`.
 - Opt-in native feature transition enforcement through `specspine feature status --enforce-transition`.
 - Offline Pull Request draft export through `specspine feature pr`.
+- Native acceptance-test packet export through `specspine feature tests`.
 - Fusion layer generation for OpenSpec, Spec Kit, and Superpowers.
 - Status JSON, validation JSON/text, adapter doctor, and install hints.
 - Optional validation summaries in `specspine status --json --validate`.
@@ -31,6 +32,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
 - Use `specspine feature trace <slug> . --json` when an agent or reviewer needs acceptance criteria, tasks, checks, test plan, and gaps in one packet.
 - Use `specspine feature ready <slug> . --json` when a reviewer, agent, or CI step needs a failing per-feature release gate.
+- Use `specspine feature tests <slug> . --json` when QA or testing agents need acceptance criteria mapped to pending test cases plus existing test plan, gaps, and blockers.
 - Use `specspine feature pr <slug> . --json` when a reviewer or release agent needs a local Pull Request draft without touching GitHub.
 - Use `specspine validate . --fusion --features` as the project-level gate.
 - Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`; prefer `--enforce-transition` for ordered lifecycle advancement while keeping manual updates available by default.
@@ -50,4 +52,5 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Should status JSON eventually include warning details, or keep the validation summary focused on failed checks?
 - Should optional feature summaries grow filters or sorting after multi-feature dogfooding, or remain a compact append-only view?
 - Should readiness summaries eventually be included in workspace status, or remain an explicit per-feature gate?
+- Should acceptance-test packets later include explicit user-supplied AC-to-test-file links, or remain implementation-file agnostic until that metadata exists?
 - Which generated templates should be tightened based on this dogfood workspace?

@@ -25,6 +25,7 @@ The CLI is intentionally thin:
 - `specspine feature trace` exports a feature bundle traceability handoff.
 - `specspine feature ready` evaluates a feature bundle as a local pass/fail readiness gate.
 - `specspine feature handoff` exports a compact feature packet for implementation, acceptance, and review agents.
+- `specspine feature tests` exports an acceptance-test packet for QA and testing agents.
 - `specspine feature issue` exports a local GitHub issue draft from a native feature bundle.
 - `specspine feature pr` exports a local GitHub Pull Request draft from a native feature bundle.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
@@ -113,6 +114,10 @@ The readiness report includes `feature_id`, `ready`, `status`, stable `checks`, 
 `specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]` composes the existing local feature status, trace, tasks, readiness, and release readiness evidence into one minimal packet for agents. JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`.
 
 The handoff summary preserves the focused report counts: trace total/done/open, ready pass/fail/total, tasks total/done/open, gap count, and blocking check count. Next actions are deterministic and ordered: create or restore missing bundles, add missing peer files or sections, complete open tasks, resolve blocking checks, then review/merge/archive ready bundles. Missing bundles return `1` with a packet; invalid slugs return `2`; partial bundles return `0`. Output behavior matches other feature exporters: `--output` writes text with overwrite protection, and `--json --output` prints JSON while writing text to the file.
+
+`specspine feature tests <slug> [path] [--json] [--output FILE] [--force]` composes a QA-focused acceptance-test packet from the local feature handoff, trace, readiness, status, and source-file evidence. It does not execute tests, generate test code, infer implementation files, call upstream CLIs, call GitHub, access the network, read tokens, or require dependencies beyond the Python standard library.
+
+The tests report includes `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `acceptance_criteria`, `test_plan`, `test_cases`, `quality_checks`, `summary`, and `recommended_commands`. Test cases are deterministic: one acceptance criterion becomes one pending test case, so `TC001` maps to `AC001` and carries the AC text, source file, line, and an explicit behavior-to-test statement. Text output uses GitHub Markdown checklist items for test cases and also includes existing test plan lines, quality checks, gaps, blocking checks, and key local commands. Partial bundles return `0`; all-files-missing returns `1`; invalid slugs return `2`; output file semantics match the other local exporters.
 
 `specspine status <path> --feature-summaries` is an opt-in workspace view for comparing native features. The default status payload intentionally stays compact for agent startup and does not include per-feature task or readiness detail. With the flag, `status` reuses `list_feature_bundles` and the existing feature handoff report to add `feature_summaries` with lifecycle status, completeness, readiness, missing files, task summary counts, ready summary counts, gap count, blocking check count, next actions, and recommended local commands. Text status adds only a short Feature summaries section. Invalid feature filenames produce not-ready summary records instead of crashing workspace status.
 

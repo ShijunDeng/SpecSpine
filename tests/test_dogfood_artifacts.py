@@ -1,7 +1,7 @@
 from pathlib import Path
 from unittest import TestCase
 
-from specspine.features import build_feature_ready_report
+from specspine.features import build_feature_ready_report, build_feature_tests_report
 from specspine.status import build_status
 from specspine.validation import build_validation_report
 
@@ -31,6 +31,7 @@ class DogfoodArtifactsTests(TestCase):
             "status-validation-summary",
             "feature-transition-policy",
             "feature-pr-draft",
+            "feature-test-packet",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -61,6 +62,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:status-validation-summary", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-transition-policy", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-pr-draft", "pass"), checks)
+        self.assertIn(("feature.status_consistency:feature-test-packet", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -76,6 +78,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine feature status <slug> . --set planned --enforce-transition --json",
             "PYTHONPATH=src python3 -m specspine feature handoff <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature tasks <slug> . --json",
+            "PYTHONPATH=src python3 -m specspine feature tests <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature pr <slug> . --json",
             "Keep feature specs, implementation tasks, and quality checks traceable",
             "prefer `--enforce-transition` when advancing lifecycle state",
@@ -174,6 +177,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/feature-pr-draft.md",
             "execution/features/feature-pr-draft.md",
             "quality/features/feature-pr-draft.md",
+            "specs/features/feature-test-packet.md",
+            "execution/features/feature-test-packet.md",
+            "quality/features/feature-test-packet.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -207,3 +213,19 @@ class DogfoodArtifactsTests(TestCase):
         self.assertTrue(report.ready)
         self.assertEqual(report.status, "validated")
         self.assertEqual(report.summary["fail"], 0)
+
+    def test_feature_test_packet_dogfood_bundle_passes_its_gate(self) -> None:
+        report = build_feature_ready_report(REPO_ROOT, "feature-test-packet")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.status, "validated")
+        self.assertEqual(report.summary["fail"], 0)
+
+    def test_feature_test_packet_dogfood_exports_test_cases(self) -> None:
+        report = build_feature_tests_report(REPO_ROOT, "feature-test-packet")
+
+        self.assertTrue(report.ready)
+        self.assertTrue(report.test_cases)
+        self.assertEqual(report.test_cases[0].id, "TC001")
+        self.assertEqual(report.test_cases[0].acceptance_criterion_id, "AC001")
+        self.assertEqual(report.missing_files, ())

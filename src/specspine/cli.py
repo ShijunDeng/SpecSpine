@@ -22,6 +22,7 @@ from .features import (
     InvalidFeatureSlug,
     build_feature_handoff_report,
     build_feature_ready_report,
+    build_feature_tests_report,
     build_feature_trace_report,
     build_feature_tasks_report,
     build_issue_draft,
@@ -32,6 +33,8 @@ from .features import (
     render_feature_handoff_text,
     render_feature_ready_json,
     render_feature_ready_text,
+    render_feature_tests_json,
+    render_feature_tests_text,
     render_feature_trace_json,
     render_feature_trace_text,
     render_feature_tasks_json,
@@ -229,6 +232,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the text handoff packet to a file instead of printing it",
     )
     feature_handoff_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite an existing output file",
+    )
+
+    feature_tests_parser = feature_subcommands.add_parser(
+        "tests",
+        help="export an acceptance-test packet from a native feature bundle",
+    )
+    feature_tests_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    feature_tests_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    feature_tests_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    feature_tests_parser.add_argument(
+        "--output",
+        help="write the text acceptance-test packet to a file instead of printing it",
+    )
+    feature_tests_parser.add_argument(
         "--force",
         action="store_true",
         help="overwrite an existing output file",
@@ -630,6 +654,43 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_feature_handoff_json(report), end="")
             elif args.output:
                 print(f"Wrote feature handoff packet to {output_path}")
+            else:
+                print(text_body, end="")
+            return 0 if report.has_native_files else 1
+
+        if args.feature_command == "tests":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                report = build_feature_tests_report(root, args.slug)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not read feature test packet: {error}", file=sys.stderr)
+                return 1
+
+            text_body = render_feature_tests_text(report)
+            if args.output:
+                output_path = Path(args.output).expanduser().resolve()
+                if output_path.exists() and not args.force:
+                    print(
+                        f"Output file already exists: {output_path}. "
+                        "Use --force to overwrite it.",
+                        file=sys.stderr,
+                    )
+                    return 1
+
+                try:
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(text_body, encoding="utf-8")
+                except OSError as error:
+                    print(f"Could not write feature test packet: {error}", file=sys.stderr)
+                    return 1
+
+            if args.json:
+                print(render_feature_tests_json(report), end="")
+            elif args.output:
+                print(f"Wrote feature test packet to {output_path}")
             else:
                 print(text_body, end="")
             return 0 if report.has_native_files else 1

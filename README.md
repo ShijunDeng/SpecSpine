@@ -30,6 +30,7 @@ This repository is an early project skeleton. It includes:
 - A native feature traceability exporter: `specspine feature trace`.
 - A native feature readiness gate: `specspine feature ready`.
 - A native feature handoff packet exporter: `specspine feature handoff`.
+- A native feature acceptance-test packet exporter: `specspine feature tests`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
 - A local GitHub Pull Request draft exporter: `specspine feature pr`.
 - A fusion initializer: `specspine fuse`.
@@ -104,6 +105,13 @@ Export a full traceability handoff from the feature bundle:
 ```bash
 specspine feature trace add-dark-mode .
 specspine feature trace add-dark-mode . --json
+```
+
+Export the acceptance-test packet for QA or testing agents:
+
+```bash
+specspine feature tests add-dark-mode .
+specspine feature tests add-dark-mode . --json
 ```
 
 Check whether the feature is ready for review or release:
@@ -322,6 +330,16 @@ Exports a compact feature-level handoff packet for implementation, acceptance, a
 JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Summary includes trace total/done/open, ready pass/fail/total, task total/done/open, gap count, and blocking check count. Text output is brief and includes feature/status/ready, counts, sources, next actions, open tasks, blocking checks, and key commands.
 
 Missing bundles return `1` with create-or-restore guidance. Invalid slugs return `2`. Partial bundles return `0` and include missing files, trace gaps, and next actions. `--output` writes the text handoff and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
+
+```bash
+specspine feature tests <slug> [path] [--json] [--output FILE] [--force]
+```
+
+Exports a local acceptance-test packet for QA agents, test agents, and humans. It composes existing local evidence from feature handoff, trace, readiness, status, and source files; it does not run tests, generate test code, infer implementation files, call network services, invoke GitHub or upstream CLIs, read tokens, or add dependencies.
+
+JSON output includes `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `acceptance_criteria`, `test_plan`, `test_cases`, `quality_checks`, `summary`, and `recommended_commands`. Each `test_cases` record maps deterministically from one acceptance criterion: `TC001` maps `AC001`, includes the AC text, source file, line, `status=pending`, and a clear pending behavior-to-test statement.
+
+Text output includes feature/status/ready, sources, summary, GitHub Markdown checklist test cases, existing test plan, quality checks, gaps, blocking checks, and key commands. Partial bundles return `0` with missing files and gaps recorded. Missing bundles return `1`; invalid slugs return `2`. `--output` writes the text packet and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
 
 ```bash
 specspine feature issue <slug> [path] [--json] [--output FILE] [--force]
