@@ -19,11 +19,14 @@ from .features import (
     FeatureBundleNotFoundError,
     InvalidFeatureStatus,
     InvalidFeatureSlug,
+    build_feature_ready_report,
     build_feature_trace_report,
     build_feature_tasks_report,
     build_issue_draft,
     create_feature_bundle,
     get_feature_status,
+    render_feature_ready_json,
+    render_feature_ready_text,
     render_feature_trace_json,
     render_feature_trace_text,
     render_feature_tasks_json,
@@ -180,6 +183,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="overwrite an existing output file",
+    )
+
+    feature_ready_parser = feature_subcommands.add_parser(
+        "ready",
+        help="check whether a native feature bundle passes the local readiness gate",
+    )
+    feature_ready_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    feature_ready_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    feature_ready_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
     )
 
     feature_status_parser = feature_subcommands.add_parser(
@@ -481,6 +496,23 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(text_body, end="")
             return 0
+
+        if args.feature_command == "ready":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                report = build_feature_ready_report(root, args.slug)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not read feature readiness: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_feature_ready_json(report), end="")
+            else:
+                print(render_feature_ready_text(report), end="")
+            return 0 if report.ready else 1
 
         if args.feature_command == "status":
             root = Path(args.path).expanduser().resolve()

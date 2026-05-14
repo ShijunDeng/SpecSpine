@@ -10,6 +10,7 @@
 - [x] Implement `specspine feature status` native lifecycle state query/update.
 - [x] Implement `specspine feature tasks` execution checklist export.
 - [x] Implement `specspine feature trace` traceability handoff export.
+- [x] Implement `specspine feature ready` per-feature readiness gate.
 - [x] Implement `specspine fuse` adapter-mode fusion generation.
 - [x] Implement `specspine status . --json`.
 - [x] Implement `specspine status . --json --validate` validation summaries.
@@ -20,11 +21,13 @@
 - [x] Dogfood status validation summaries with `status-validation-summary`.
 - [x] Dogfood task export with `feature-task-export`.
 - [x] Dogfood traceability export with `feature-traceability-export`.
+- [x] Dogfood readiness gate with `feature-readiness-gate`.
 
 ## Next
 
 - [ ] Observe whether implementation agents use `feature tasks --json` as their default feature handoff.
 - [ ] Observe whether reviewers prefer `feature trace --json` as the default traceability packet.
+- [ ] Observe whether reviewers and CI jobs prefer `feature ready --json` for per-feature release gates.
 - [ ] Monitor whether agents prefer `status --json --validate` as the default startup packet.
 - [ ] Revisit generated templates after dogfooding this workspace for one or more development cycles.
 - [ ] Add tests when template or validation behavior changes.

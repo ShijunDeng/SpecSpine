@@ -12,6 +12,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine status --validate` now reports workspace, fusion, and feature validation summaries without becoming a failing gate command.
 - `specspine feature tasks` now exports execution checklist items into stable text and JSON task lists for implementation agents.
 - `specspine feature trace` now exports a local traceability handoff that connects acceptance criteria, tasks, required checks, test plan entries, sources, and gaps.
+- `specspine feature ready` now evaluates a local per-feature readiness gate with blocking checks and failing exit codes.
 - No upstream code should be copied into this repository as part of fusion work.
 
 ## Decisions
@@ -20,6 +21,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Use `specspine status . --json --validate` when agents need context and failed quality checks together.
 - Treat `specspine feature tasks <slug> . --json` as the local feature implementation handoff when an execution checklist exists.
 - Treat `specspine feature trace <slug> . --json` as the local traceability handoff when reviewers need a complete feature packet.
+- Treat `specspine feature ready <slug> . --json` as the local per-feature acceptance and release gate after implementation evidence is complete.
 - Treat `specspine validate . --fusion --features` plus the unit test suite as the local completion gate.
 - Keep GitHub issue generation offline and token-free by default.
 - Keep native feature peer files on a consistent allowed lifecycle status.
@@ -33,3 +35,4 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Status packets can now include compact validation summaries with failed checks only.
 - Feature execution checklists can now be exported without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be exported as deterministic traceability packets without generation, GitHub credentials, or upstream tool calls.
+- Feature bundles can now be checked with deterministic readiness gates that fail on missing files, inconsistent statuses, trace gaps, incomplete checklist evidence, missing test plans, or open release readiness items.

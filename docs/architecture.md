@@ -23,6 +23,7 @@ The CLI is intentionally thin:
 - `specspine feature status` reads or updates native feature lifecycle state.
 - `specspine feature tasks` exports execution checklist items as stable agent tasks.
 - `specspine feature trace` exports a feature bundle traceability handoff.
+- `specspine feature ready` evaluates a feature bundle as a local pass/fail readiness gate.
 - `specspine feature issue` exports a local GitHub issue draft from a native feature bundle.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
@@ -92,6 +93,17 @@ Task export is local and non-generative. It does not infer tasks from prose, cal
 
 The trace report includes `feature_id`, `status`, `sources`, `missing_files`, ordered trace sections, `summary`, and `gaps`. It is extractive and deterministic: it does not infer coverage, call GitHub, call upstream CLIs, read tokens, or require dependencies beyond the Python standard library. Partial bundles return zero with missing file and missing section gaps; all-files-missing returns non-zero. `--output` writes the text handoff with overwrite protection, while `--json --output` keeps stdout as JSON and writes text to the file.
 
+`specspine feature ready <slug> [path] [--json]` turns the trace evidence and release checklist into a failing per-feature quality gate. It checks:
+
+- all three native peer files exist.
+- peer-file lifecycle status is consistent.
+- lifecycle status is `implemented` or `validated`.
+- trace gaps are empty.
+- acceptance criteria, tasks, required checks, and `## Release Readiness` checklist items exist and are all checked.
+- `## Test Plan` has non-empty content.
+
+The readiness report includes `feature_id`, `ready`, `status`, stable `checks`, `blocking_checks`, `summary`, `missing_files`, and `gaps`. It is local and deterministic, and does not execute the test plan or call external services. Ready returns `0`; not-ready and missing bundles return `1`; invalid slugs return `2`.
+
 `specspine feature issue <slug> [path]` is the local bridge from native feature bundles to GitHub issue workflows. It reads the spec, execution, and quality peer files and builds a structured issue draft with:
 
 - title from the spec file's first-line H1, falling back to slug title case.
@@ -132,7 +144,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 
 - `specspine.workspace`: local file templates and workspace checks.
 - `specspine.agents`: project-local `AGENTS.md` generation for AI coding agents.
-- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, trace export, and issue draft export.
+- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, trace export, readiness gate evaluation, and issue draft export.
 - `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, and optional validation summary rendering.

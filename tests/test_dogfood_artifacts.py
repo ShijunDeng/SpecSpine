@@ -1,6 +1,7 @@
 from pathlib import Path
 from unittest import TestCase
 
+from specspine.features import build_feature_ready_report
 from specspine.status import build_status
 from specspine.validation import build_validation_report
 
@@ -22,6 +23,7 @@ class DogfoodArtifactsTests(TestCase):
         }
         for slug in (
             "feature-status-lifecycle",
+            "feature-readiness-gate",
             "feature-task-export",
             "feature-traceability-export",
             "status-validation-summary",
@@ -47,6 +49,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("fusion.integration_mode", "pass"), checks)
         self.assertIn(("fusion.vendored_upstream_code", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-status-lifecycle", "pass"), checks)
+        self.assertIn(("feature.status_consistency:feature-readiness-gate", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-task-export", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-traceability-export", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-validation-summary", "pass"), checks)
@@ -143,6 +146,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/feature-task-export.md",
             "execution/features/feature-task-export.md",
             "quality/features/feature-task-export.md",
+            "specs/features/feature-readiness-gate.md",
+            "execution/features/feature-readiness-gate.md",
+            "quality/features/feature-readiness-gate.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -150,3 +156,9 @@ class DogfoodArtifactsTests(TestCase):
         )
 
         self.assertNotIn("TODO", combined)
+
+    def test_feature_readiness_gate_dogfood_bundle_passes_its_gate(self) -> None:
+        report = build_feature_ready_report(REPO_ROOT, "feature-readiness-gate")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.summary["fail"], 0)
