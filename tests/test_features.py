@@ -116,6 +116,29 @@ def write_ready_feature_bundle(
     )
 
 
+def write_coverage_target(
+    root: Path,
+    relative_path: str = "tests/test_feature_ready_coverage.py",
+) -> None:
+    target = root / relative_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("# local coverage target\n", encoding="utf-8")
+
+
+def insert_test_coverage(
+    root: Path,
+    lines: list[str],
+    slug: str = "add-dark-mode",
+) -> None:
+    quality = root / "quality" / "features" / f"{slug}.md"
+    content = quality.read_text(encoding="utf-8")
+    section = "## Test Coverage\n\n" + "\n".join(lines) + "\n\n## Test Plan"
+    quality.write_text(
+        content.replace("## Test Plan", section, 1),
+        encoding="utf-8",
+    )
+
+
 def add_feature_metadata(
     root: Path,
     slug: str = "add-dark-mode",
@@ -2310,6 +2333,7 @@ class FeatureBundleTests(TestCase):
             self.assertEqual(payload["missing_files"], [])
             self.assertEqual(payload["gaps"], [])
             self.assertEqual(payload["blocking_checks"], [])
+            self.assertNotIn("coverage_required", payload)
             self.assertEqual(payload["summary"], {"fail": 0, "pass": 9, "total": 9})
             self.assertEqual(
                 [check["id"] for check in payload["checks"]],
@@ -2325,6 +2349,339 @@ class FeatureBundleTests(TestCase):
                     "feature.release_readiness",
                 ],
             )
+
+    def test_feature_ready_default_does_not_require_coverage_links(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+
+            output = StringIO()
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "ready", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertTrue(payload["ready"])
+            self.assertNotIn("coverage_required", payload)
+            self.assertNotIn(
+                "feature.test_coverage",
+                [check["id"] for check in payload["checks"]],
+            )
+
+    def test_feature_ready_require_coverage_passes_with_checked_existing_targets(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            write_coverage_target(root)
+            insert_test_coverage(
+                root,
+                [
+                    "- [x] AC001 -> tests/test_feature_ready_coverage.py::test_enable_dark",
+                    "- [x] AC002 -> tests/test_feature_ready_coverage.py",
+                ],
+            )
+
+            text_output = StringIO()
+            with redirect_stdout(text_output):
+                text_returncode = main(
+                    [
+                        "feature",
+                        "ready",
+                        "add-dark-mode",
+                        str(root),
+                        "--require-coverage",
+                    ]
+                )
+
+            text = text_output.getvalue()
+            self.assertEqual(text_returncode, 0)
+            self.assertIn("Ready: yes", text)
+            self.assertIn("Summary: pass=10 fail=0 total=10", text)
+            self.assertIn("- None.", text)
+
+            json_output = StringIO()
+            with redirect_stdout(json_output):
+                json_returncode = main(
+                    [
+                        "feature",
+                        "ready",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--require-coverage",
+                    ]
+                )
+
+            payload = json.loads(json_output.getvalue())
+            checks = {check["id"]: check for check in payload["checks"]}
+            self.assertEqual(json_returncode, 0)
+            self.assertTrue(payload["ready"])
+            self.assertTrue(payload["coverage_required"])
+            self.assertEqual(payload["summary"], {"fail": 0, "pass": 10, "total": 10})
+            self.assertEqual(checks["feature.test_coverage"]["status"], "pass")
+            self.assertEqual(
+                checks["feature.test_coverage"]["message"],
+                "Completed local test coverage links exist for all acceptance criteria.",
+            )
+
+    def test_feature_ready_require_coverage_fails_for_missing_open_or_missing_target_links(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            write_coverage_target(root)
+            spec = root / "specs" / "features" / "add-dark-mode.md"
+            spec.write_text(
+                spec.read_text(encoding="utf-8").replace(
+                    "- [x] Users can return to light mode.",
+                    "- [x] Users can return to light mode.\n"
+                    "- [x] Users can preview contrast before saving.",
+                ),
+                encoding="utf-8",
+            )
+            insert_test_coverage(
+                root,
+                [
+                    "- [ ] AC001 -> tests/test_feature_ready_coverage.py",
+                    "- [x] AC002 -> tests/missing_feature_ready_coverage.py",
+                ],
+            )
+
+            json_output = StringIO()
+            with redirect_stdout(json_output):
+                json_returncode = main(
+                    [
+                        "feature",
+                        "ready",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--require-coverage",
+                    ]
+                )
+
+            payload = json.loads(json_output.getvalue())
+            blocking = {check["id"]: check for check in payload["blocking_checks"]}
+            self.assertEqual(json_returncode, 1)
+            self.assertFalse(payload["ready"])
+            self.assertEqual(payload["summary"], {"fail": 1, "pass": 9, "total": 10})
+            self.assertIn("feature.test_coverage", blocking)
+            self.assertIn("AC001", blocking["feature.test_coverage"]["message"])
+            self.assertIn("AC002", blocking["feature.test_coverage"]["message"])
+            self.assertIn("AC003", blocking["feature.test_coverage"]["message"])
+
+            text_output = StringIO()
+            with redirect_stdout(text_output):
+                text_returncode = main(
+                    [
+                        "feature",
+                        "ready",
+                        "add-dark-mode",
+                        str(root),
+                        "--require-coverage",
+                    ]
+                )
+
+            text = text_output.getvalue()
+            self.assertEqual(text_returncode, 1)
+            self.assertIn("Ready: no", text)
+            self.assertIn("feature.test_coverage", text)
+            self.assertIn("AC001, AC002, AC003", text)
+
+    def test_feature_ready_require_coverage_fails_for_absolute_target_and_wrong_ac_id(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            write_coverage_target(root)
+            absolute_target = root / "tests" / "test_feature_ready_coverage.py"
+            insert_test_coverage(
+                root,
+                [
+                    f"- [x] AC001 -> {absolute_target}",
+                    "- [x] AC999 -> tests/test_feature_ready_coverage.py",
+                ],
+            )
+
+            output = StringIO()
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "ready",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--require-coverage",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            blocking = {check["id"]: check for check in payload["blocking_checks"]}
+            self.assertEqual(returncode, 1)
+            self.assertFalse(payload["ready"])
+            self.assertEqual(payload["summary"], {"fail": 1, "pass": 9, "total": 10})
+            self.assertIn("feature.test_coverage", blocking)
+            self.assertIn("AC001", blocking["feature.test_coverage"]["message"])
+            self.assertIn("AC002", blocking["feature.test_coverage"]["message"])
+            self.assertNotIn("AC999", blocking["feature.test_coverage"]["message"])
+
+    def test_feature_ready_require_coverage_missing_bundle_does_not_crash(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "ready",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--require-coverage",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            checks = {check["id"]: check for check in payload["checks"]}
+            self.assertEqual(returncode, 1)
+            self.assertFalse(payload["ready"])
+            self.assertTrue(payload["coverage_required"])
+            self.assertIn("feature.bundle_files", checks)
+            self.assertIn("feature.test_coverage", checks)
+
+    def test_feature_ready_require_coverage_partial_bundle_does_not_crash(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            (root / "quality" / "features" / "add-dark-mode.md").unlink()
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "ready",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--require-coverage",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            checks = {check["id"]: check for check in payload["checks"]}
+            self.assertEqual(returncode, 1)
+            self.assertFalse(payload["ready"])
+            self.assertTrue(payload["coverage_required"])
+            self.assertIn("quality/features/add-dark-mode.md", payload["missing_files"])
+            self.assertIn("feature.bundle_files", checks)
+            self.assertIn("feature.test_coverage", checks)
+
+    def test_feature_ready_require_coverage_does_not_read_tokens_or_call_network(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            write_coverage_target(root)
+            insert_test_coverage(
+                root,
+                [
+                    "- [x] AC001 -> tests/test_feature_ready_coverage.py",
+                    "- [x] AC002 -> tests/test_feature_ready_coverage.py",
+                ],
+            )
+            output = StringIO()
+            token_names = {
+                "GH_TOKEN",
+                "GITHUB_API_TOKEN",
+                "GITHUB_PAT",
+                "GITHUB_TOKEN",
+            }
+            environ_type = os.environ.__class__
+            original_get = environ_type.get
+            original_getitem = environ_type.__getitem__
+            original_contains = environ_type.__contains__
+
+            def guarded_get(environ, key, default=None):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_get(environ, key, default)
+
+            def guarded_getitem(environ, key):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_getitem(environ, key)
+
+            def guarded_contains(environ, key):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_contains(environ, key)
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "GH_TOKEN": "secret-gh-token",
+                    "GITHUB_API_TOKEN": "secret-github-api-token",
+                    "GITHUB_PAT": "secret-github-pat",
+                    "GITHUB_TOKEN": "secret-github-token",
+                    "PATH": "",
+                },
+            ):
+                with (
+                    patch.object(environ_type, "get", guarded_get),
+                    patch.object(environ_type, "__getitem__", guarded_getitem),
+                    patch.object(environ_type, "__contains__", guarded_contains),
+                    patch(
+                        "subprocess.run",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_run,
+                    patch(
+                        "subprocess.Popen",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_popen,
+                    patch(
+                        "urllib.request.urlopen",
+                        side_effect=AssertionError("network called"),
+                    ) as urlopen,
+                    patch(
+                        "socket.create_connection",
+                        side_effect=AssertionError("network called"),
+                    ) as create_connection,
+                    patch(
+                        "socket.socket.connect",
+                        side_effect=AssertionError("network called"),
+                    ) as socket_connect,
+                    redirect_stdout(output),
+                ):
+                    returncode = main(
+                        [
+                            "feature",
+                            "ready",
+                            "add-dark-mode",
+                            str(root),
+                            "--json",
+                            "--require-coverage",
+                        ]
+                    )
+
+            self.assertEqual(returncode, 0)
+            subprocess_run.assert_not_called()
+            subprocess_popen.assert_not_called()
+            urlopen.assert_not_called()
+            create_connection.assert_not_called()
+            socket_connect.assert_not_called()
+            self.assertNotIn("secret-gh-token", output.getvalue())
+            self.assertNotIn("secret-github-api-token", output.getvalue())
+            self.assertNotIn("secret-github-pat", output.getvalue())
+            self.assertNotIn("secret-github-token", output.getvalue())
 
     def test_feature_handoff_cli_text_and_json_outputs_ready_bundle(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -4074,6 +4431,25 @@ class FeatureBundleTests(TestCase):
         self.assertEqual(report.missing_files, ())
         self.assertEqual(report.gaps, ())
         self.assertEqual(report.summary["fail"], 0)
+
+    def test_dogfood_feature_coverage_readiness_is_validated_and_coverage_ready(self) -> None:
+        default_report = build_feature_ready_report(REPO_ROOT, "feature-coverage-readiness")
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "feature-coverage-readiness",
+            require_coverage=True,
+        )
+        validation = build_validation_report(REPO_ROOT, include_features=True)
+
+        self.assertTrue(default_report.ready)
+        self.assertTrue(coverage_report.ready)
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertEqual(coverage_report.missing_files, ())
+        self.assertEqual(coverage_report.gaps, ())
+        self.assertEqual(coverage_report.summary["fail"], 0)
+        self.assertTrue(validation["ok"])
+        self.assertEqual(validation_exit_code(validation), 0)
 
     def test_dogfood_feature_handoff_packet_is_validated_and_ready(self) -> None:
         report = build_feature_handoff_report(REPO_ROOT, "feature-handoff-packet")

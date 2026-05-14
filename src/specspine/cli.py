@@ -344,6 +344,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="print stable JSON for agents and scripts",
     )
+    feature_ready_parser.add_argument(
+        "--require-coverage",
+        action="store_true",
+        help="require completed local Test Coverage links for every acceptance criterion",
+    )
 
     feature_status_parser = feature_subcommands.add_parser(
         "status",
@@ -958,7 +963,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.feature_command == "ready":
             root = Path(args.path).expanduser().resolve()
             try:
-                report = build_feature_ready_report(root, args.slug)
+                report = build_feature_ready_report(
+                    root,
+                    args.slug,
+                    require_coverage=args.require_coverage,
+                )
             except InvalidFeatureSlug as error:
                 print(str(error), file=sys.stderr)
                 return 2

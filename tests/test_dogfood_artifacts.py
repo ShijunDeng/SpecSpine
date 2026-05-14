@@ -35,6 +35,7 @@ class DogfoodArtifactsTests(TestCase):
             "feature-template-refresh",
             "feature-summary-filters",
             "feature-test-coverage-links",
+            "feature-coverage-readiness",
             "feature-task-issue-drafts",
             "status-validation-warnings",
             "feature-summary-metadata",
@@ -74,6 +75,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:feature-test-packet", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-summary-filters", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-test-coverage-links", "pass"), checks)
+        self.assertIn(("feature.status_consistency:feature-coverage-readiness", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-task-issue-drafts", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-validation-warnings", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-summary-metadata", "pass"), checks)
@@ -100,6 +102,8 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine feature handoff <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature tasks <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature task-issues <slug> . --json",
+            "PYTHONPATH=src python3 -m specspine feature ready <slug> . --json",
+            "PYTHONPATH=src python3 -m specspine feature ready <slug> . --json --require-coverage",
             "PYTHONPATH=src python3 -m specspine feature tests <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature pr <slug> . --json",
             "Keep feature specs, implementation tasks, and quality checks traceable",
@@ -214,6 +218,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/feature-test-coverage-links.md",
             "execution/features/feature-test-coverage-links.md",
             "quality/features/feature-test-coverage-links.md",
+            "specs/features/feature-coverage-readiness.md",
+            "execution/features/feature-coverage-readiness.md",
+            "quality/features/feature-coverage-readiness.md",
             "specs/features/feature-task-issue-drafts.md",
             "execution/features/feature-task-issue-drafts.md",
             "quality/features/feature-task-issue-drafts.md",
@@ -293,6 +300,26 @@ class DogfoodArtifactsTests(TestCase):
         self.assertTrue(report.ready)
         self.assertEqual(report.status, "validated")
         self.assertEqual(report.summary["fail"], 0)
+
+    def test_feature_coverage_readiness_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(REPO_ROOT, "feature-coverage-readiness")
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "feature-coverage-readiness",
+            require_coverage=True,
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+        self.assertIn(
+            "feature.test_coverage",
+            [check.id for check in coverage_report.checks],
+        )
 
     def test_status_validation_warnings_dogfood_bundle_passes_its_gate(self) -> None:
         report = build_feature_ready_report(REPO_ROOT, "status-validation-warnings")

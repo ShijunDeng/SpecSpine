@@ -11,6 +11,7 @@
 - Native feature task issue draft package export through `specspine feature task-issues`.
 - Native feature traceability export through `specspine feature trace`.
 - Native feature readiness gates through `specspine feature ready`.
+- Optional coverage-required readiness gates through `specspine feature ready --require-coverage`.
 - Opt-in native feature transition enforcement through `specspine feature status --enforce-transition`.
 - Offline Pull Request draft export through `specspine feature pr`.
 - Local GitHub CLI synchronization planning and artifact materialization through `specspine feature sync-plan`.
@@ -40,7 +41,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
 - Use `specspine feature task-issues <slug> . --json` when an agent needs one local GitHub issue draft per execution task.
 - Use `specspine feature trace <slug> . --json` when an agent or reviewer needs acceptance criteria, tasks, checks, test plan, and gaps in one packet.
-- Use `specspine feature ready <slug> . --json` when a reviewer, agent, or CI step needs a failing per-feature release gate.
+- Use `specspine feature ready <slug> . --json` when a reviewer, agent, or CI step needs a failing per-feature release gate; add `--require-coverage` before high-risk release handoffs when every AC must have checked local test coverage evidence.
 - Use `specspine feature tests <slug> . --json` when QA or testing agents need acceptance criteria mapped to pending test cases plus existing test plan, gaps, and blockers.
 - Use `specspine feature pr <slug> . --json` when a reviewer or release agent needs a local Pull Request draft without touching GitHub.
 - Use `specspine feature sync-plan <slug> . --json` when a maintainer needs to review GitHub CLI issue/PR sync intent before any remote execution; add `--output-dir .specspine/sync-plan/<slug>` when the body files, manifest, and review-only command script should be materialized locally.
@@ -67,7 +68,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Should future warning categories beyond scaffold placeholders be exposed through the same opt-in status flag?
 - Should feature summary triage later need richer structured metadata beyond local `Priority:` and `Owner:`, such as milestone, target release, or remote project fields?
 - Should readiness summaries eventually be included in workspace status, or remain an explicit per-feature gate?
-- Should acceptance-test packets later include explicit user-supplied AC-to-test-file links, or remain implementation-file agnostic until that metadata exists?
+- Should workspaces eventually have a policy file that chooses when `feature ready --require-coverage` is mandatory?
 - Should the refreshed feature bundle template later grow explicit rollout-owner or implementation-file metadata, or stay minimal until a real workflow needs it?
 - Should future quality gate definitions include structured severity, owning role, or expected CI check names, or stay as Markdown-derived records until remote sync exists?
 - Should a future remote-sync command consume `feature sync-plan --output-dir` artifacts after explicit confirmation, or should SpecSpine remain plan-only for GitHub writes?

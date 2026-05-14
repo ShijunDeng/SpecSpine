@@ -133,6 +133,7 @@ Check whether the feature is ready for review or release:
 ```bash
 specspine feature ready add-dark-mode .
 specspine feature ready add-dark-mode . --json
+specspine feature ready add-dark-mode . --json --require-coverage
 ```
 
 Draft a local GitHub issue from the feature bundle:
@@ -353,12 +354,14 @@ Exports a native feature traceability handoff that connects acceptance criteria,
 JSON output includes `feature_id`, `status`, `sources`, `missing_files`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `summary`, and `gaps`. Text output is a short agent handoff with source summary, counts, gaps, and ordered trace content. Partial bundles return `0` while reporting missing files and gaps. If no native feature files exist for the slug, the command returns non-zero. `--output` writes the text handoff and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
 
 ```bash
-specspine feature ready <slug> [path] [--json]
+specspine feature ready <slug> [path] [--json] [--require-coverage]
 ```
 
-Runs a deterministic local readiness gate for a native feature bundle. The gate requires all three peer files, consistent peer-file status, lifecycle status `implemented` or `validated`, empty trace gaps, completed acceptance criteria, completed execution tasks, completed required checks, non-empty test plan content, and a completed `## Release Readiness` checklist in `quality/features/<slug>.md`.
+Runs a deterministic local readiness gate for a native feature bundle. The default gate requires all three peer files, consistent peer-file status, lifecycle status `implemented` or `validated`, empty trace gaps, completed acceptance criteria, completed execution tasks, completed required checks, non-empty test plan content, and a completed `## Release Readiness` checklist in `quality/features/<slug>.md`.
 
-JSON output includes `feature_id`, `ready`, `status`, `checks`, `blocking_checks`, `summary`, `missing_files`, and `gaps`. Text output is a compact reviewer/agent gate with status, readiness, summary counts, and blocking checks. Ready bundles return `0`; not-ready bundles and missing bundles return `1`; invalid slugs return `2`.
+Add `--require-coverage` for high-risk or pre-release checks that must prove every acceptance criterion has at least one checked `## Test Coverage` link to an existing local relative target file. This appends the stable `feature.test_coverage` check, does not run tests, and does not call subprocesses, network services, upstream CLIs, GitHub APIs, or token providers.
+
+JSON output includes `feature_id`, `ready`, `status`, `checks`, `blocking_checks`, `summary`, `missing_files`, and `gaps`; when coverage is required it also includes `coverage_required: true`. Text output is a compact reviewer/agent gate with status, readiness, summary counts, and blocking checks. Ready bundles return `0`; not-ready bundles and missing bundles return `1`; invalid slugs return `2`.
 
 ```bash
 specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]

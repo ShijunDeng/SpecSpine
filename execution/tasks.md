@@ -13,6 +13,7 @@
 - [x] Implement `specspine feature task-issues` task-level issue draft packages.
 - [x] Implement `specspine feature trace` traceability handoff export.
 - [x] Implement `specspine feature ready` per-feature readiness gate.
+- [x] Implement opt-in `specspine feature ready --require-coverage` coverage readiness gate.
 - [x] Implement `specspine feature handoff` compact agent handoff packet export.
 - [x] Implement `specspine feature tests` acceptance-test packet export.
 - [x] Implement explicit local `## Test Coverage` links for `specspine feature tests`.
@@ -43,6 +44,7 @@
 - [x] Dogfood offline Pull Request draft export with `feature-pr-draft`.
 - [x] Dogfood acceptance-test packet export with `feature-test-packet`.
 - [x] Dogfood explicit test coverage links with `feature-test-coverage-links`.
+- [x] Dogfood coverage-required readiness with `feature-coverage-readiness`.
 - [x] Dogfood task issue draft packages with `feature-task-issue-drafts`.
 - [x] Dogfood status validation warnings with `status-validation-warnings`.
 - [x] Dogfood adapter lifecycle mappings with `adapter-lifecycle-mappings`.
@@ -55,6 +57,7 @@
 - [ ] Observe whether implementation agents use `feature task-issues --json` before creating remote GitHub task issues.
 - [ ] Observe whether reviewers prefer `feature trace --json` as the default traceability packet.
 - [ ] Observe whether reviewers and CI jobs prefer `feature ready --json` for per-feature release gates.
+- [ ] Observe whether high-risk releases use `feature ready --json --require-coverage` before handoff.
 - [ ] Observe whether QA and testing agents prefer `feature tests --json` as their focused acceptance-test context.
 - [ ] Observe whether explicit `## Test Coverage` links reduce acceptance-test handoff ambiguity.
 - [ ] Observe whether reviewers use `feature pr --json` as the local bridge from feature evidence into Pull Request review.

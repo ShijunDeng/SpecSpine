@@ -15,6 +15,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine feature task-issues` now exports one local GitHub issue draft per execution task without GitHub API calls, token reads, `gh`, subprocesses, or network access.
 - `specspine feature trace` now exports a local traceability handoff that connects acceptance criteria, tasks, required checks, test plan entries, sources, and gaps.
 - `specspine feature ready` now evaluates a local per-feature readiness gate with blocking checks and failing exit codes.
+- `specspine feature ready --require-coverage` now optionally blocks readiness until every acceptance criterion has checked local test coverage evidence.
 - `specspine feature handoff` now exports a compact feature packet that composes status, tasks, trace, readiness, release readiness, next actions, and key commands.
 - `specspine status --feature-summaries` now adds optional compact per-feature progress, readiness, gaps, blocking counts, next actions, and local status/readiness/sort controls without changing default status output.
 - `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
@@ -37,7 +38,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Use `specspine feature tasks <slug> . --json` as the focused execution checklist view when an agent only needs tasks.
 - Use `specspine feature task-issues <slug> . --json` when a maintainer or agent needs local task-level issue drafts before any remote GitHub issue exists.
 - Treat `specspine feature trace <slug> . --json` as the local traceability handoff when reviewers need a complete feature packet.
-- Treat `specspine feature ready <slug> . --json` as the local per-feature acceptance and release gate after implementation evidence is complete.
+- Treat `specspine feature ready <slug> . --json` as the local per-feature acceptance and release gate after implementation evidence is complete; add `--require-coverage` for high-risk or pre-release reviews that require completed local AC coverage links.
 - Treat `specspine feature tests <slug> . --json` as the focused local packet for QA and testing agents, and use `## Test Coverage` links in quality files to point AC ids at existing local tests.
 - Treat `specspine feature pr <slug> . --json` as the local Pull Request draft bridge after readiness and trace evidence are available.
 - Treat `specspine feature sync-plan <slug> . --json` as the local review packet for GitHub CLI sync intent, and `specspine feature sync-plan <slug> . --output-dir .specspine/sync-plan/<slug>` as the local body-file and manifest materialization step before a human runs any remote command.
@@ -64,6 +65,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Feature execution checklists can now be exported without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be exported as deterministic traceability packets without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be checked with deterministic readiness gates that fail on missing files, inconsistent statuses, trace gaps, incomplete checklist evidence, missing test plans, or open release readiness items.
+- Feature readiness can now opt into `feature.test_coverage`, failing on missing, unchecked, or missing-target AC coverage links without changing default readiness behavior.
 - Feature bundles can now be exported as compact handoff packets without generation, GitHub credentials, token reads, network calls, upstream CLIs, or new dependencies.
 - Feature lifecycle updates can now opt into transition enforcement and archive readiness guards without changing default manual status updates.
 - Feature bundles can now be exported as offline Pull Request drafts with GitHub Markdown checklist evidence and key local commands.

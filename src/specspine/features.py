@@ -453,6 +453,7 @@ class FeatureReadyReport:
     checks: tuple[FeatureReadyCheck, ...]
     missing_files: tuple[str, ...]
     gaps: tuple[dict[str, str], ...]
+    coverage_required: bool = False
 
     @property
     def blocking_checks(self) -> tuple[FeatureReadyCheck, ...]:
@@ -469,7 +470,7 @@ class FeatureReadyReport:
         }
 
     def as_dict(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "blocking_checks": [
                 check.as_dict() for check in self.blocking_checks
             ],
@@ -481,6 +482,9 @@ class FeatureReadyReport:
             "status": self.status,
             "summary": self.summary,
         }
+        if self.coverage_required:
+            payload["coverage_required"] = True
+        return payload
 
 
 @dataclass(frozen=True)
@@ -2033,7 +2037,41 @@ def _checklist_ready_message(
     return True, f"{label.title()} complete: {done} of {total} done."
 
 
-def build_feature_ready_report(root: Path, slug: str) -> FeatureReadyReport:
+def _coverage_ready_message(
+    acceptance_criteria: tuple[FeatureTraceChecklistItem, ...],
+    test_coverage: tuple[FeatureTestCoverageLink, ...],
+) -> tuple[bool, str]:
+    missing_ids = []
+    for criterion in acceptance_criteria:
+        has_completed_local_link = any(
+            link.acceptance_criterion_id == criterion.id
+            and link.done
+            and link.target_exists
+            for link in test_coverage
+        )
+        if not has_completed_local_link:
+            missing_ids.append(criterion.id)
+
+    if missing_ids:
+        return (
+            False,
+            "Missing completed local test coverage for acceptance criteria: "
+            + ", ".join(missing_ids)
+            + ".",
+        )
+
+    return (
+        True,
+        "Completed local test coverage links exist for all acceptance criteria.",
+    )
+
+
+def build_feature_ready_report(
+    root: Path,
+    slug: str,
+    *,
+    require_coverage: bool = False,
+) -> FeatureReadyReport:
     slug = validate_feature_slug(slug)
     resolved_root = root.expanduser().resolve()
     relative_paths = _relative_feature_paths(slug)
@@ -2066,12 +2104,19 @@ def build_feature_ready_report(root: Path, slug: str) -> FeatureReadyReport:
 
     quality_path = feature_bundle_paths(resolved_root, slug)["quality"]
     release_readiness: tuple[FeatureTraceChecklistItem, ...] = ()
+    test_coverage: tuple[FeatureTestCoverageLink, ...] = ()
     if quality_path.exists():
         quality_content = quality_path.read_text(encoding="utf-8")
         release_readiness = parse_release_readiness(
             quality_content,
             source_file=relative_paths["quality"],
         )
+        if require_coverage:
+            test_coverage = parse_test_coverage(
+                quality_content,
+                source_file=relative_paths["quality"],
+                root=resolved_root,
+            )
 
     checks: list[FeatureReadyCheck] = []
 
@@ -2153,6 +2198,13 @@ def build_feature_ready_report(root: Path, slug: str) -> FeatureReadyReport:
     )
     checks.append(_ready_check("feature.release_readiness", passed, message))
 
+    if require_coverage:
+        passed, message = _coverage_ready_message(
+            acceptance_criteria,
+            test_coverage,
+        )
+        checks.append(_ready_check("feature.test_coverage", passed, message))
+
     ready = all(check.status == "pass" for check in checks)
     return FeatureReadyReport(
         feature_id=slug,
@@ -2161,6 +2213,7 @@ def build_feature_ready_report(root: Path, slug: str) -> FeatureReadyReport:
         checks=tuple(checks),
         missing_files=missing_files,
         gaps=gaps,
+        coverage_required=require_coverage,
     )
 
 

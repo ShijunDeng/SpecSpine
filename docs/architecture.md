@@ -109,7 +109,7 @@ Task export is local and non-generative. It does not infer tasks from prose, cal
 
 The trace report includes `feature_id`, `status`, `sources`, `missing_files`, ordered trace sections, `summary`, and `gaps`. It is extractive and deterministic: it does not infer coverage, call GitHub, call upstream CLIs, read tokens, or require dependencies beyond the Python standard library. Partial bundles return zero with missing file and missing section gaps; all-files-missing returns non-zero. `--output` writes the text handoff with overwrite protection, while `--json --output` keeps stdout as JSON and writes text to the file.
 
-`specspine feature ready <slug> [path] [--json]` turns the trace evidence and release checklist into a failing per-feature quality gate. It checks:
+`specspine feature ready <slug> [path] [--json] [--require-coverage]` turns the trace evidence and release checklist into a failing per-feature quality gate. By default it checks:
 
 - all three native peer files exist.
 - peer-file lifecycle status is consistent.
@@ -118,7 +118,9 @@ The trace report includes `feature_id`, `status`, `sources`, `missing_files`, or
 - acceptance criteria, tasks, required checks, and `## Release Readiness` checklist items exist and are all checked.
 - `## Test Plan` has non-empty content.
 
-The readiness report includes `feature_id`, `ready`, `status`, stable `checks`, `blocking_checks`, `summary`, `missing_files`, and `gaps`. It is local and deterministic, and does not execute the test plan or call external services. Ready returns `0`; not-ready and missing bundles return `1`; invalid slugs return `2`.
+With `--require-coverage`, readiness also appends `feature.test_coverage`. That check reads existing `## Test Coverage` links from the quality peer and requires every acceptance criterion to have at least one checked link whose target path is relative and exists in the local workspace. Missing links, unchecked links, and links to missing target files are reported by AC id. The coverage gate is metadata-only: it does not execute the test plan, invoke subprocesses, call external services, read tokens, or validate test selectors.
+
+The readiness report includes `feature_id`, `ready`, `status`, stable `checks`, `blocking_checks`, `summary`, `missing_files`, and `gaps`; coverage-required JSON also includes `coverage_required: true`. It is local and deterministic. Ready returns `0`; not-ready and missing bundles return `1`; invalid slugs return `2`.
 
 `specspine adapters handoff <slug> [path] [--json] [--output FILE] [--force]` composes the existing native feature handoff with the adapter lifecycle mapping selected for the feature's current status. The packet includes feature id, status, readiness, source files, missing files, gaps, blockers, adapter config state, upstream phase, upstream artifacts, agent focus, local commands, notes, and recommended upstream steps. Recommended upstream steps are plan data only: OpenSpec uses argv arrays, Spec Kit and Superpowers use agent instructions, and every step is marked not executed, not safe to auto-run, no remote creation, no network, and no token requirement. Partial bundles return `0`; missing bundles return `1`; invalid slugs return `2`.
 

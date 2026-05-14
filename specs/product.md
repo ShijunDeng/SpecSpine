@@ -11,7 +11,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Native feature task export from execution checklists.
 - Native feature task issue draft packages with one local GitHub issue draft per execution task.
 - Native feature traceability export across acceptance criteria, tasks, required checks, and test plans.
-- Native feature readiness gate across peer files, lifecycle status, trace gaps, completed checklists, test plan evidence, and release readiness.
+- Native feature readiness gate across peer files, lifecycle status, trace gaps, completed checklists, test plan evidence, release readiness, and optional completed local coverage links.
 - Native feature handoff packets that compose status, trace, tasks, readiness, release readiness, next actions, and recommended commands.
 - Native feature acceptance-test packets that map acceptance criteria to deterministic test cases, attach explicit local test coverage links, and surface existing test plans, quality checks, gaps, and blockers.
 - Local GitHub issue draft generation from feature bundles without API calls.
@@ -43,7 +43,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Hand execution checklists to implementation agents with `specspine feature tasks <slug> . --json`.
 - Draft one local GitHub issue per execution task with `specspine feature task-issues <slug> . --json` or `--output`.
 - Hand a full traceability packet to agents or reviewers with `specspine feature trace <slug> . --json`.
-- Fail or pass a per-feature readiness gate with `specspine feature ready <slug> . --json`.
+- Fail or pass a per-feature readiness gate with `specspine feature ready <slug> . --json`; add `--require-coverage` for high-risk or pre-release checks that require every AC to have a checked local `## Test Coverage` link.
 - Hand an acceptance-test packet with explicit local test coverage links to QA or testing agents with `specspine feature tests <slug> . --json`.
 - Generate an offline issue draft with `specspine feature issue <slug> . --json` or `--output`.
 - Generate an offline Pull Request draft with `specspine feature pr <slug> . --json` or `--output`.
@@ -64,7 +64,8 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - `feature tasks <slug> --json` reports stable ordered task records from `execution/features/<slug>.md`.
 - `feature task-issues <slug> --json` reports a local issue draft package with one issue per execution task, including stable titles, bodies, source lines, task metadata, summary counts, and recommended local commands without calling GitHub APIs, `gh`, network services, upstream CLIs, or reading tokens.
 - `feature trace <slug> --json` reports sources, missing files, acceptance criteria, tasks, required checks, test plan entries, summary counts, and trace gaps without calling external services.
-- `feature ready <slug> --json` reports stable checks, blocking checks, summary counts, missing files, and gaps, returning non-zero until the feature is implemented or validated and all required evidence is complete.
+- `feature ready <slug> --json` reports stable checks, blocking checks, summary counts, missing files, and gaps, returning non-zero until the feature is implemented or validated and all required evidence is complete; by default it does not require coverage links.
+- `feature ready <slug> --json --require-coverage` appends `feature.test_coverage`, reports `coverage_required: true`, returns non-zero when any acceptance criterion lacks a checked link to an existing local relative target file, lists affected AC ids, and does not run tests, invoke subprocesses, call network services, read tokens, or add dependencies.
 - `feature status <slug> --set STATUS --enforce-transition --json` reports stable transition success or failure payloads, preserves default manual status updates when the flag is absent, blocks writes for invalid transition edges or inconsistent current peer status, and requires readiness before enforced archive writes.
 - `feature handoff <slug> --json` reports a compact feature packet with status, readiness, sources, gaps, blocking checks, trace sections, release readiness, recommended commands, deterministic next actions, and summary counts without calling external services.
 - `feature tests <slug> --json` reports a QA-focused packet with status, readiness, source files, missing files, gaps, blocking checks, acceptance criteria, existing test plan, explicit `## Test Coverage` links, quality checks, deterministic `TC001 -> AC001` test cases with `covered`/`planned`/`pending` status, summary counts, and recommended local commands without running tests, generating test code, calling external services, or reading tokens.
