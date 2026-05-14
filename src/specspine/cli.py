@@ -2,184 +2,37 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from textwrap import dedent
 
 from . import __version__
+from .adapters import (
+    ADAPTER_SPECS,
+    AGENT_PROFILES,
+    AdapterStatus,
+    build_upstream_init_commands,
+    probe_adapters,
+    run_upstream_initializers,
+)
+from .fusion import FUSION_REQUIRED_FILES, init_fusion_workspace
+from .workspace import BASE_WORKSPACE_FILES, check_workspace, init_workspace
 
 
-WORKSPACE_FILES: dict[str, str] = {
-    ".specspine/spine.yaml": """
-        name: SpecSpine Workspace
-        version: 0.1
-        backbone:
-          intent: specs/intent.md
-          product: specs/product.md
-          architecture: specs/architecture.md
-          execution_plan: execution/plan.md
-          task_board: execution/tasks.md
-          quality_checklist: quality/checklist.md
-          review_notes: quality/review.md
-        adapters:
-          openspec: null
-          speckit: null
-          superpower: null
-    """,
-    "specs/intent.md": """
-        # Intent
-
-        ## Why
-
-        What problem are we solving, and why does it matter now?
-
-        ## Users
-
-        Who benefits from this work?
-
-        ## Outcomes
-
-        What measurable signals show that the work succeeded?
-
-        ## Constraints
-
-        What business, technical, legal, operational, or timing constraints shape the solution?
-    """,
-    "specs/product.md": """
-        # Product Spec
-
-        ## Scope
-
-        What should be built?
-
-        ## Non-Goals
-
-        What is explicitly out of scope?
-
-        ## User Workflows
-
-        What should users be able to do from start to finish?
-
-        ## Acceptance Criteria
-
-        What must be true before this work is considered complete?
-    """,
-    "specs/architecture.md": """
-        # Architecture
-
-        ## System Shape
-
-        What are the major components and boundaries?
-
-        ## Data And Interfaces
-
-        What data structures, APIs, files, commands, or events matter?
-
-        ## Decisions
-
-        What decisions have been made, and why?
-
-        ## Risks
-
-        What can break the plan, and how will it be handled?
-    """,
-    "specs/features/.gitkeep": "",
-    "execution/plan.md": """
-        # Execution Plan
-
-        ## Milestones
-
-        What are the meaningful checkpoints?
-
-        ## Work Breakdown
-
-        What tasks need to be completed?
-
-        ## Dependencies
-
-        What needs to happen first?
-
-        ## Open Questions
-
-        What must be resolved before implementation can proceed safely?
-    """,
-    "execution/tasks.md": """
-        # Tasks
-
-        - [ ] Define intent
-        - [ ] Draft product spec
-        - [ ] Document architecture decisions
-        - [ ] Break work into implementation tasks
-        - [ ] Define quality gates
-    """,
-    "quality/checklist.md": """
-        # Quality Checklist
-
-        ## Required Checks
-
-        - [ ] Acceptance criteria are complete.
-        - [ ] Tests cover the changed behavior.
-        - [ ] Documentation reflects the final behavior.
-        - [ ] Risks and tradeoffs are recorded.
-        - [ ] Release readiness is reviewed.
-
-        ## Definition Of Done
-
-        What must be true before this work ships?
-    """,
-    "quality/review.md": """
-        # Review Notes
-
-        ## Findings
-
-        What issues, regressions, or risks were found?
-
-        ## Decisions
-
-        What changed after review?
-
-        ## Release Notes
-
-        What should users or operators know?
-    """,
-}
+def _print_created(paths: list[Path], root: Path) -> None:
+    for path in paths:
+        print(f"  created {path.relative_to(root)}")
 
 
-def normalize_template(content: str) -> str:
-    if not content:
-        return content
-    return dedent(content).strip() + "\n"
+def _print_adapter_statuses(statuses: list[AdapterStatus] | None = None) -> None:
+    if statuses is None:
+        statuses = probe_adapters()
 
-
-def init_workspace(path: Path, *, force: bool = False) -> list[Path]:
-    root = path.expanduser().resolve()
-    root.mkdir(parents=True, exist_ok=True)
-
-    written: list[Path] = []
-    for relative_path, template in WORKSPACE_FILES.items():
-        target = root / relative_path
-        target.parent.mkdir(parents=True, exist_ok=True)
-
-        if target.exists() and not force:
-            continue
-
-        target.write_text(normalize_template(template), encoding="utf-8")
-        written.append(target)
-
-    return written
-
-
-def check_workspace(path: Path) -> tuple[list[Path], list[Path]]:
-    root = path.expanduser().resolve()
-    present: list[Path] = []
-    missing: list[Path] = []
-
-    for relative_path in WORKSPACE_FILES:
-        target = root / relative_path
-        if target.exists():
-            present.append(target)
-        else:
-            missing.append(target)
-
-    return present, missing
+    print("External adapters:")
+    for status in statuses:
+        marker = "ok" if status.available else "missing"
+        version = f" ({status.version})" if status.version else ""
+        print(f"  [{marker}] {status.display_name}{version}")
+        print(f"      {status.detail}")
+        if not status.available:
+            print(f"      install: {status.install_hint}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -195,8 +48,45 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     init_parser.add_argument("--force", action="store_true", help="overwrite existing SpecSpine files")
 
+    fuse_parser = subcommands.add_parser(
+        "fuse",
+        help="initialize the OpenSpec + Spec Kit + Superpowers fusion layer",
+    )
+    fuse_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    fuse_parser.add_argument(
+        "--agent",
+        choices=sorted(AGENT_PROFILES),
+        default="codex",
+        help="AI coding agent profile used by upstream adapters",
+    )
+    fuse_parser.add_argument("--force", action="store_true", help="overwrite SpecSpine fusion files")
+    fuse_parser.add_argument(
+        "--run-upstream",
+        action="store_true",
+        help="run upstream initializer commands after writing SpecSpine files",
+    )
+    fuse_parser.add_argument("--skip-openspec", action="store_true", help="do not enable the OpenSpec adapter")
+    fuse_parser.add_argument("--skip-speckit", action="store_true", help="do not enable the Spec Kit adapter")
+    fuse_parser.add_argument("--skip-superpowers", action="store_true", help="do not enable the Superpowers adapter")
+
     doctor_parser = subcommands.add_parser("doctor", help="check SpecSpine workspace files")
     doctor_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    doctor_parser.add_argument(
+        "--fusion",
+        action="store_true",
+        help="also require SpecSpine fusion files",
+    )
+    doctor_parser.add_argument(
+        "--adapters",
+        action="store_true",
+        help="also check external adapter availability",
+    )
+
+    adapters_parser = subcommands.add_parser("adapters", help="inspect external adapter integration")
+    adapters_subcommands = adapters_parser.add_subparsers(dest="adapters_command", required=True)
+
+    adapters_subcommands.add_parser("doctor", help="check OpenSpec, Spec Kit, and Superpowers availability")
+    adapters_subcommands.add_parser("install-hints", help="print upstream install commands and links")
 
     return parser
 
@@ -206,25 +96,97 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "init":
-        written = init_workspace(Path(args.path), force=args.force)
+        root = Path(args.path).expanduser().resolve()
+        written = init_workspace(root, force=args.force)
         if written:
-            print(f"Initialized SpecSpine workspace at {Path(args.path).resolve()}")
-            for path in written:
-                print(f"  created {path.relative_to(Path(args.path).resolve())}")
+            print(f"Initialized SpecSpine workspace at {root}")
+            _print_created(written, root)
         else:
-            print(f"SpecSpine workspace already exists at {Path(args.path).resolve()}")
+            print(f"SpecSpine workspace already exists at {root}")
         return 0
+
+    if args.command == "fuse":
+        root = Path(args.path).expanduser().resolve()
+        include_openspec = not args.skip_openspec
+        include_speckit = not args.skip_speckit
+        include_superpowers = not args.skip_superpowers
+
+        written = init_fusion_workspace(
+            root,
+            agent=args.agent,
+            force=args.force,
+            include_openspec=include_openspec,
+            include_speckit=include_speckit,
+            include_superpowers=include_superpowers,
+        )
+
+        if written:
+            print(f"Initialized SpecSpine fusion layer at {root}")
+            _print_created(written, root)
+        else:
+            print(f"SpecSpine fusion layer already exists at {root}")
+
+        commands = build_upstream_init_commands(
+            agent=args.agent,
+            include_openspec=include_openspec,
+            include_speckit=include_speckit,
+            include_superpowers=include_superpowers,
+            force=args.force,
+        )
+
+        if not args.run_upstream:
+            print("Upstream tools were not run. Use --run-upstream to invoke:")
+            for command in commands:
+                print(f"  {command.key}: {command.display() or command.description}")
+            return 0
+
+        results = run_upstream_initializers(root, commands)
+        failed = False
+        print("Upstream initializer results:")
+        for result in results:
+            marker = "ok" if result.returncode == 0 else "failed"
+            print(f"  [{marker}] {result.key}: {result.command}")
+            if result.stdout.strip():
+                print(f"      {result.stdout.strip()}")
+            if result.stderr.strip():
+                print(f"      {result.stderr.strip()}")
+            failed = failed or result.returncode != 0
+        return 1 if failed else 0
 
     if args.command == "doctor":
-        _present, missing = check_workspace(Path(args.path))
+        required_files = dict(BASE_WORKSPACE_FILES)
+        if args.fusion:
+            required_files.update(FUSION_REQUIRED_FILES)
+
+        _present, missing = check_workspace(Path(args.path), required_files=required_files)
         if missing:
             print("SpecSpine workspace is incomplete.")
+            root = Path(args.path).expanduser().resolve()
             for path in missing:
-                print(f"  missing {path.relative_to(Path(args.path).resolve())}")
+                print(f"  missing {path.relative_to(root)}")
+            if args.adapters:
+                _print_adapter_statuses()
             return 1
 
-        print(f"SpecSpine workspace is ready at {Path(args.path).resolve()}")
+        print(f"SpecSpine workspace is ready at {Path(args.path).expanduser().resolve()}")
+        if args.adapters:
+            statuses = probe_adapters()
+            _print_adapter_statuses(statuses)
+            return 0 if all(status.available for status in statuses) else 1
         return 0
+
+    if args.command == "adapters":
+        if args.adapters_command == "doctor":
+            statuses = probe_adapters()
+            _print_adapter_statuses(statuses)
+            return 0 if all(status.available for status in statuses) else 1
+
+        if args.adapters_command == "install-hints":
+            for spec in ADAPTER_SPECS.values():
+                print(f"{spec.display_name}:")
+                print(f"  upstream: {spec.upstream_url}")
+                print(f"  install: {spec.install_hint}")
+            return 0
 
     parser.print_help()
     return 1

@@ -15,16 +15,19 @@ The backbone is represented by `.specspine/spine.yaml`. It records where the cur
 
 ## CLI
 
-The CLI is intentionally small at this stage:
+The CLI is intentionally thin:
 
 - `specspine init` creates the default workspace structure.
+- `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
+- `specspine adapters doctor` checks whether external tools are installed.
+- `specspine adapters install-hints` prints upstream install guidance.
 
 Future commands should remain thin orchestration layers over explicit files so the workspace stays understandable without a server.
 
 ## Adapter Direction
 
-Adapters should be optional. SpecSpine should be usable as plain files first, then integrate with tools such as OpenSpec, Spec Kit, Superpower, GitHub issues, and pull requests.
+Adapters should be optional. SpecSpine should be usable as plain files first, then integrate with tools such as OpenSpec, Spec Kit, Superpowers, GitHub issues, and pull requests.
 
 The expected adapter boundary:
 
@@ -33,3 +36,21 @@ SpecSpine files <-> adapter <-> external tool
 ```
 
 Adapters should not own the source of truth unless the user explicitly chooses that mode.
+
+## Fusion Layer
+
+`specspine fuse` writes:
+
+- `.specspine/fusion.yaml` for machine-readable adapter mapping.
+- `.specspine/fusion-map.md` for human-readable responsibility mapping.
+- `.specspine/adapters/*.md` for per-upstream contracts.
+- `quality/superpowers.md` for the project-local Superpowers quality policy.
+
+The fusion layer records `vendored_upstream_code: false`. Upstream tools are invoked through public CLIs or installed agent plugins.
+
+## Modules
+
+- `specspine.workspace`: local file templates and workspace checks.
+- `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
+- `specspine.fusion`: fusion file generation and workspace initialization.
+- `specspine.cli`: command-line interface.

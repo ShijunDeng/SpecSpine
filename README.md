@@ -23,6 +23,8 @@ This repository is an early project skeleton. It includes:
 
 - A zero-dependency Python CLI.
 - A workspace initializer: `specspine init`.
+- A fusion initializer: `specspine fuse`.
+- Adapter metadata for OpenSpec, Spec Kit, and Superpowers.
 - Default spec templates for intent, product, architecture, features, quality, and execution.
 - A lightweight test suite and GitHub Actions CI.
 
@@ -52,17 +54,32 @@ Create a SpecSpine workspace in an existing product repository:
 specspine init .
 ```
 
+Create the full OpenSpec + Spec Kit + Superpowers fusion layer:
+
+```bash
+specspine fuse . --agent codex
+```
+
+This writes SpecSpine's own backbone and adapter contracts without running external tools. To also invoke the upstream tools through their official command surfaces:
+
+```bash
+specspine fuse . --agent codex --run-upstream
+```
+
 Or create one in a new directory:
 
 ```bash
 specspine init ./my-product
 ```
 
-The command creates:
+The fusion command creates:
 
 ```text
 .specspine/
   spine.yaml
+  fusion.yaml
+  fusion-map.md
+  adapters/
 specs/
   intent.md
   product.md
@@ -74,6 +91,35 @@ execution/
 quality/
   checklist.md
   review.md
+  superpowers.md
+```
+
+## Upstream Integration
+
+SpecSpine integrates upstream tools as open source software dependencies and plugins. It does not copy their source code into this repository.
+
+| Tool | Role | Integration Surface |
+| --- | --- | --- |
+| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | Lightweight change proposals, spec deltas, design, tasks, validation, archive flow | External `openspec` CLI |
+| [Spec Kit](https://github.com/github/spec-kit) | Intent-first spec, implementation plan, tasks, and agent command files | External `specify` CLI |
+| [Superpowers](https://github.com/obra/superpowers) | Brainstorming, planning discipline, TDD, subagent execution, review, verification | Installed agent plugin/extension |
+
+Install hints:
+
+```bash
+# OpenSpec
+npm install -g @fission-ai/openspec@latest
+
+# Spec Kit
+uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@vX.Y.Z
+```
+
+Superpowers is installed through your AI coding agent's plugin/extension system.
+
+Check local adapter availability:
+
+```bash
+specspine adapters doctor
 ```
 
 ## Core Workflow
@@ -117,6 +163,30 @@ specspine doctor [path]
 
 Checks whether a directory contains the expected SpecSpine files.
 
+```bash
+specspine fuse [path] --agent codex
+```
+
+Creates the fusion layer and records how OpenSpec, Spec Kit, and Superpowers map into the SpecSpine workflow.
+
+```bash
+specspine fuse [path] --agent codex --run-upstream
+```
+
+Runs upstream initializers through their public CLIs or plugin checks.
+
+```bash
+specspine doctor [path] --fusion --adapters
+```
+
+Checks SpecSpine files and external adapter availability.
+
+```bash
+specspine adapters install-hints
+```
+
+Prints upstream install instructions and project links.
+
 ## Design Principles
 
 - **Specs are living artifacts**, not one-time documents.
@@ -124,6 +194,7 @@ Checks whether a directory contains the expected SpecSpine files.
 - **Execution should be traceable back to intent**.
 - **Quality should be represented before implementation starts**.
 - **The tool should fit existing repos**, not force a monorepo or platform migration.
+- **Upstream projects stay upstream**: integrations use public CLIs, packages, and plugins rather than vendored code.
 
 ## Roadmap
 
@@ -131,7 +202,7 @@ Checks whether a directory contains the expected SpecSpine files.
 - Task decomposition from specs.
 - Quality gate definitions.
 - Agent handoff packets.
-- Adapter layer for OpenSpec, Spec Kit, Superpower, and other workflow engines.
+- Richer adapter sync for OpenSpec, Spec Kit, Superpowers, and other workflow engines.
 - GitHub issue and pull request synchronization.
 
 ## Development
