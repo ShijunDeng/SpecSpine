@@ -14,6 +14,7 @@
 - [x] Implement `specspine feature ready` per-feature readiness gate.
 - [x] Implement `specspine feature handoff` compact agent handoff packet export.
 - [x] Implement `specspine feature tests` acceptance-test packet export.
+- [x] Implement explicit local `## Test Coverage` links for `specspine feature tests`.
 - [x] Implement `specspine feature pr` offline Pull Request draft export.
 - [x] Refresh `specspine feature new` templates for focused handoff, tests, PR, ready, and validation workflows.
 - [x] Implement `specspine fuse` adapter-mode fusion generation.
@@ -35,6 +36,7 @@
 - [x] Dogfood enforced transition policy with `feature-transition-policy`.
 - [x] Dogfood offline Pull Request draft export with `feature-pr-draft`.
 - [x] Dogfood acceptance-test packet export with `feature-test-packet`.
+- [x] Dogfood explicit test coverage links with `feature-test-coverage-links`.
 
 ## Next
 
@@ -43,6 +45,7 @@
 - [ ] Observe whether reviewers prefer `feature trace --json` as the default traceability packet.
 - [ ] Observe whether reviewers and CI jobs prefer `feature ready --json` for per-feature release gates.
 - [ ] Observe whether QA and testing agents prefer `feature tests --json` as their focused acceptance-test context.
+- [ ] Observe whether explicit `## Test Coverage` links reduce acceptance-test handoff ambiguity.
 - [ ] Observe whether reviewers use `feature pr --json` as the local bridge from feature evidence into Pull Request review.
 - [ ] Observe whether new feature bundles need less manual template cleanup after the focused workflow guidance.
 - [ ] Monitor whether agents prefer `status --json --validate` as the default startup packet.

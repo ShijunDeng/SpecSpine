@@ -86,7 +86,7 @@ Create a traceable feature bundle:
 specspine feature new add-dark-mode . --title "Add dark mode" --why "Reduce eye strain"
 ```
 
-New feature bundles start with focused spec -> execution -> quality guidance: goals and non-goals, acceptance criteria that can become tests, edge cases, constraints, dependencies, open questions, agent handoff commands, required checks, test plan, PR draft, readiness, and validation gates.
+New feature bundles start with focused spec -> execution -> quality guidance: goals and non-goals, acceptance criteria that can become tests, edge cases, constraints, dependencies, open questions, agent handoff commands, required checks, explicit test coverage links, test plan, PR draft, readiness, and validation gates.
 
 Export the compact implementation/review handoff packet:
 
@@ -338,11 +338,13 @@ Missing bundles return `1` with create-or-restore guidance. Invalid slugs return
 specspine feature tests <slug> [path] [--json] [--output FILE] [--force]
 ```
 
-Exports a local acceptance-test packet for QA agents, test agents, and humans. It composes existing local evidence from feature handoff, trace, readiness, status, and source files; it does not run tests, generate test code, infer implementation files, call network services, invoke GitHub or upstream CLIs, read tokens, or add dependencies.
+Exports a local acceptance-test packet for QA agents, test agents, and humans. It composes existing local evidence from feature handoff, trace, readiness, status, source files, and optional `## Test Coverage` links in `quality/features/<slug>.md`; it does not run tests, generate test code, infer implementation files, call network services, invoke GitHub or upstream CLIs, read tokens, or add dependencies.
 
-JSON output includes `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `acceptance_criteria`, `test_plan`, `test_cases`, `quality_checks`, `summary`, and `recommended_commands`. Each `test_cases` record maps deterministically from one acceptance criterion: `TC001` maps `AC001`, includes the AC text, source file, line, `status=pending`, and a clear pending behavior-to-test statement.
+Add coverage links with GitHub Markdown checklists such as `- [x] AC001 -> tests/test_features.py::FeatureBundleTests::test_name` or `- [ ] AC002 -> tests/test_features.py`. Each link records `COV###`, AC id, target, target path, local target existence, checkbox state, source file, and line. Links are local metadata only.
 
-Text output includes feature/status/ready, sources, summary, GitHub Markdown checklist test cases, existing test plan, quality checks, gaps, blocking checks, and key commands. Partial bundles return `0` with missing files and gaps recorded. Missing bundles return `1`; invalid slugs return `2`. `--output` writes the text packet and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
+JSON output includes `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `acceptance_criteria`, `test_plan`, `test_coverage`, `test_cases`, `quality_checks`, `summary`, and `recommended_commands`. Each `test_cases` record maps deterministically from one acceptance criterion: `TC001` maps `AC001`, includes the AC text, source file, line, associated coverage links, and a behavior-to-test statement. Test case status is `covered` when any linked coverage item is checked, `planned` when only unchecked coverage exists, and `pending` when no coverage is linked.
+
+Text output includes feature/status/ready, sources, summary, GitHub Markdown checklist test cases with linked targets, a Test Coverage section, existing test plan, quality checks, gaps, blocking checks, and key commands. Partial bundles return `0` with missing files and gaps recorded. Missing bundles return `1`; invalid slugs return `2`. `--output` writes the text packet and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
 
 ```bash
 specspine feature issue <slug> [path] [--json] [--output FILE] [--force]

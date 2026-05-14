@@ -210,16 +210,44 @@ class FeatureAcceptanceTestCase:
     line: int
     behavior: str
     status: str = "pending"
+    coverage: tuple[FeatureTestCoverageLink, ...] = ()
 
     def as_dict(self) -> dict[str, object]:
         return {
             "acceptance_criterion_id": self.acceptance_criterion_id,
             "acceptance_criterion_text": self.acceptance_criterion_text,
             "behavior": self.behavior,
+            "coverage": [link.as_dict() for link in self.coverage],
             "id": self.id,
             "line": self.line,
             "source_file": self.source_file,
             "status": self.status,
+        }
+
+
+@dataclass(frozen=True)
+class FeatureTestCoverageLink:
+    id: str
+    acceptance_criterion_id: str
+    target: str
+    target_path: str
+    target_exists: bool
+    done: bool
+    text: str
+    source_file: str
+    line: int
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "acceptance_criterion_id": self.acceptance_criterion_id,
+            "done": self.done,
+            "id": self.id,
+            "line": self.line,
+            "source_file": self.source_file,
+            "target": self.target,
+            "target_exists": self.target_exists,
+            "target_path": self.target_path,
+            "text": self.text,
         }
 
 
@@ -445,6 +473,7 @@ class FeatureTestsReport:
     ready_summary: dict[str, int]
     recommended_commands: tuple[str, ...]
     has_native_files: bool
+    test_coverage: tuple[FeatureTestCoverageLink, ...] = ()
 
     @property
     def summary(self) -> dict[str, object]:
@@ -468,6 +497,7 @@ class FeatureTestsReport:
             "ready": dict(self.ready_summary),
             "source_files": {"total": len(self.source_files)},
             "test_cases": {"total": len(self.test_cases)},
+            "test_coverage": checklist_counts(self.test_coverage),
             "test_plan": {"total": len(self.test_plan)},
         }
 
@@ -489,6 +519,7 @@ class FeatureTestsReport:
             "status": self.status,
             "summary": self.summary,
             "test_cases": [test_case.as_dict() for test_case in self.test_cases],
+            "test_coverage": [link.as_dict() for link in self.test_coverage],
             "test_plan": [item.as_dict() for item in self.test_plan],
         }
 
@@ -646,6 +677,12 @@ def build_feature_files(
             - [ ] TODO: Documentation, release notes, or PR draft reflect user-facing behavior.
             - [ ] TODO: `specspine feature ready {slug} . --json` has no blocking checks after evidence is complete.
             - [ ] TODO: `specspine validate . --fusion --features` passes.
+
+            ## Test Coverage
+
+            Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
+
+            - [ ] AC001 -> tests/...
 
             ## Test Plan
 
@@ -1321,6 +1358,7 @@ def build_issue_draft(root: Path, slug: str) -> IssueDraft:
 
 
 CHECKBOX_TASK_RE = re.compile(r"^\s*[-*]\s+\[([ xX])\]\s+(.+?)\s*$")
+AC_ID_RE = re.compile(r"\bAC\d{3,}\b", re.IGNORECASE)
 
 
 def _parse_trace_checklist_items(
@@ -1415,6 +1453,65 @@ def parse_release_readiness(
         prefix="RR",
         source_file=source_file,
     )
+
+
+def _strip_markdown_code(text: str) -> str:
+    stripped = text.strip()
+    if len(stripped) >= 2 and stripped.startswith("`") and stripped.endswith("`"):
+        return stripped[1:-1].strip()
+    return stripped
+
+
+def _test_coverage_target_path(target: str) -> str:
+    return _strip_markdown_code(target).split("::", 1)[0].strip()
+
+
+def parse_test_coverage(
+    content: str,
+    *,
+    source_file: str,
+    root: Path,
+) -> tuple[FeatureTestCoverageLink, ...]:
+    links: list[FeatureTestCoverageLink] = []
+    resolved_root = root.expanduser().resolve()
+
+    for line_number, raw_line in _extract_markdown_section_lines(content, "Test Coverage"):
+        match = CHECKBOX_TASK_RE.match(raw_line)
+        if match is None:
+            continue
+
+        marker, text = match.groups()
+        normalized_text = text.strip()
+        ac_match = AC_ID_RE.search(normalized_text)
+        acceptance_criterion_id = (
+            ac_match.group(0).upper() if ac_match is not None else "unknown"
+        )
+        target = ""
+        if "->" in normalized_text:
+            _left, right = normalized_text.split("->", 1)
+            target = _strip_markdown_code(right)
+        target_path = _test_coverage_target_path(target)
+        target_path_obj = Path(target_path)
+        target_exists = (
+            bool(target_path)
+            and not target_path_obj.is_absolute()
+            and (resolved_root / target_path_obj).exists()
+        )
+        links.append(
+            FeatureTestCoverageLink(
+                id=f"COV{len(links) + 1:03d}",
+                acceptance_criterion_id=acceptance_criterion_id,
+                target=target,
+                target_path=target_path,
+                target_exists=target_exists,
+                done=marker.lower() == "x",
+                text=normalized_text,
+                source_file=source_file,
+                line=line_number,
+            )
+        )
+
+    return tuple(links)
 
 
 def parse_test_plan(
@@ -2131,9 +2228,21 @@ def _recommended_test_packet_commands(slug: str) -> tuple[str, ...]:
 
 def _acceptance_test_cases(
     acceptance_criteria: tuple[FeatureTraceChecklistItem, ...],
+    test_coverage: tuple[FeatureTestCoverageLink, ...],
 ) -> tuple[FeatureAcceptanceTestCase, ...]:
     test_cases: list[FeatureAcceptanceTestCase] = []
     for index, criterion in enumerate(acceptance_criteria, start=1):
+        coverage = tuple(
+            link
+            for link in test_coverage
+            if link.acceptance_criterion_id == criterion.id
+        )
+        if any(link.done for link in coverage):
+            status = "covered"
+        elif coverage:
+            status = "planned"
+        else:
+            status = "pending"
         test_cases.append(
             FeatureAcceptanceTestCase(
                 id=f"TC{index:03d}",
@@ -2142,6 +2251,8 @@ def _acceptance_test_cases(
                 source_file=criterion.source_file,
                 line=criterion.line,
                 behavior=f"Pending behavior to test: {criterion.text}",
+                coverage=coverage,
+                status=status,
             )
         )
     return tuple(test_cases)
@@ -2156,6 +2267,15 @@ def build_feature_tests_report(root: Path, slug: str) -> FeatureTestsReport:
         for source in handoff.sources.values()
         if bool(source["exists"])
     )
+    test_coverage: tuple[FeatureTestCoverageLink, ...] = ()
+    relative_paths = _relative_feature_paths(slug)
+    quality_path = feature_bundle_paths(resolved_root, slug)["quality"]
+    if quality_path.exists():
+        test_coverage = parse_test_coverage(
+            quality_path.read_text(encoding="utf-8"),
+            source_file=relative_paths["quality"],
+            root=resolved_root,
+        )
 
     return FeatureTestsReport(
         feature_id=slug,
@@ -2167,7 +2287,11 @@ def build_feature_tests_report(root: Path, slug: str) -> FeatureTestsReport:
         blocking_checks=handoff.blocking_checks,
         acceptance_criteria=handoff.acceptance_criteria,
         test_plan=handoff.test_plan,
-        test_cases=_acceptance_test_cases(handoff.acceptance_criteria),
+        test_coverage=test_coverage,
+        test_cases=_acceptance_test_cases(
+            handoff.acceptance_criteria,
+            test_coverage,
+        ),
         quality_checks=handoff.quality_checks,
         ready_summary=handoff.ready_summary,
         recommended_commands=_recommended_test_packet_commands(slug),
@@ -2204,6 +2328,7 @@ def render_feature_tests_text(report: FeatureTestsReport) -> str:
                 "Summary: "
                 f"acceptance_criteria={summary['acceptance_criteria']['total']} "
                 f"test_cases={summary['test_cases']['total']} "
+                f"test_coverage={summary['test_coverage']['total']} "
                 f"test_plan={summary['test_plan']['total']} "
                 f"quality_checks={summary['quality_checks']['total']} "
                 f"gaps={summary['gaps']['total']} "
@@ -2215,9 +2340,14 @@ def render_feature_tests_text(report: FeatureTestsReport) -> str:
     )
     if report.test_cases:
         for test_case in report.test_cases:
+            linked_targets = (
+                ", ".join(link.target for link in test_case.coverage if link.target)
+                or "None linked"
+            )
             lines.append(
                 f"- [ ] {test_case.id} -> "
                 f"{test_case.acceptance_criterion_id} "
+                f"[{test_case.status}; links={linked_targets}] "
                 f"{test_case.source_file}:{test_case.line} "
                 f"{test_case.behavior}"
             )
@@ -2225,6 +2355,20 @@ def render_feature_tests_text(report: FeatureTestsReport) -> str:
         lines.append(
             "- [ ] Add acceptance criteria checklist items before testing behavior."
         )
+
+    lines.extend(["", "Test Coverage:"])
+    if report.test_coverage:
+        for link in report.test_coverage:
+            marker = "x" if link.done else " "
+            exists = "exists" if link.target_exists else "missing"
+            target = link.target or "None linked"
+            lines.append(
+                f"- [{marker}] {link.id} -> "
+                f"{link.acceptance_criterion_id} {target} "
+                f"({exists}) {link.source_file}:{link.line}"
+            )
+    else:
+        lines.append("- None linked.")
 
     lines.extend(["", "Existing Test Plan:"])
     if report.test_plan:

@@ -25,6 +25,7 @@ from specspine.features import (
     parse_feature_tasks,
     parse_quality_checks,
     parse_release_readiness,
+    parse_test_coverage,
     parse_test_plan,
     set_feature_status,
 )
@@ -177,6 +178,7 @@ class FeatureBundleTests(TestCase):
                 encoding="utf-8"
             )
             self.assertIn("## Required Checks", quality)
+            self.assertIn("## Test Coverage", quality)
             self.assertIn("## Test Plan", quality)
             self.assertIn("## Review Notes", quality)
             self.assertIn("## Release Readiness", quality)
@@ -186,13 +188,24 @@ class FeatureBundleTests(TestCase):
             self.assertIn("specspine feature ready add-dark-mode . --json", quality)
             self.assertIn("specspine validate . --fusion --features", quality)
             self.assertIn("specspine feature pr add-dark-mode . --json", quality)
+            self.assertIn("link existing local test files", quality)
+            self.assertIn("- [ ] AC001 -> tests/...", quality)
             quality_source = "quality/features/add-dark-mode.md"
             quality_checks = parse_quality_checks(quality, source_file=quality_source)
+            test_coverage = parse_test_coverage(
+                quality,
+                source_file=quality_source,
+                root=root,
+            )
             release_readiness = parse_release_readiness(
                 quality,
                 source_file=quality_source,
             )
             self.assertEqual(len(quality_checks), 5)
+            self.assertEqual(len(test_coverage), 1)
+            self.assertEqual(test_coverage[0].acceptance_criterion_id, "AC001")
+            self.assertEqual(test_coverage[0].target, "tests/...")
+            self.assertFalse(test_coverage[0].target_exists)
             self.assertEqual(len(release_readiness), 4)
             self.assertTrue(all(not check.done for check in quality_checks))
             self.assertTrue(all(not check.done for check in release_readiness))
@@ -243,6 +256,8 @@ class FeatureBundleTests(TestCase):
             self.assertFalse(tests.ready)
             self.assertEqual([test_case.id for test_case in tests.test_cases], ["TC001"])
             self.assertEqual(tests.test_cases[0].acceptance_criterion_id, "AC001")
+            self.assertEqual(tests.test_cases[0].status, "planned")
+            self.assertEqual([link.id for link in tests.test_coverage], ["COV001"])
 
     def test_create_feature_bundle_does_not_overwrite_existing_files(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -551,6 +566,53 @@ class FeatureBundleTests(TestCase):
             ["- Run unit tests.", "Manual check in a browser."],
         )
         self.assertEqual([item.line for item in test_plan], [10, 11])
+
+    def test_parse_test_coverage_extracts_links_and_target_existence(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tests").mkdir()
+            (root / "tests" / "test_features.py").write_text(
+                "def test_name():\n    pass\n",
+                encoding="utf-8",
+            )
+            content = "\n".join(
+                [
+                    "# Add dark mode Quality",
+                    "",
+                    "## Test Coverage",
+                    "",
+                    "- [x] AC001 -> tests/test_features.py::FeatureBundleTests::test_name",
+                    "- [ ] AC002 -> tests/missing.py",
+                    "- [x] Existing smoke test without AC -> tests/test_features.py",
+                    "- plain bullet ignored",
+                    "",
+                    "## Test Plan",
+                    "",
+                    "- [ ] AC003 -> tests/not-coverage.py",
+                ]
+            )
+
+            links = parse_test_coverage(
+                content,
+                source_file="quality/features/add-dark-mode.md",
+                root=root,
+            )
+
+            self.assertEqual([link.id for link in links], ["COV001", "COV002", "COV003"])
+            self.assertEqual(
+                [link.acceptance_criterion_id for link in links],
+                ["AC001", "AC002", "unknown"],
+            )
+            self.assertEqual(
+                links[0].target,
+                "tests/test_features.py::FeatureBundleTests::test_name",
+            )
+            self.assertEqual(links[0].target_path, "tests/test_features.py")
+            self.assertTrue(links[0].target_exists)
+            self.assertFalse(links[1].target_exists)
+            self.assertEqual(links[2].target_path, "tests/test_features.py")
+            self.assertEqual([link.done for link in links], [True, False, True])
+            self.assertEqual([link.line for link in links], [5, 6, 7])
 
     def test_feature_tasks_cli_text_and_json_outputs(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1501,15 +1563,17 @@ class FeatureBundleTests(TestCase):
             self.assertIn("- [ok] specs/features/add-dark-mode.md", text)
             self.assertIn(
                 "Summary: acceptance_criteria=2 test_cases=2 "
-                "test_plan=1 quality_checks=2 gaps=0 blocking=0",
+                "test_coverage=0 test_plan=1 quality_checks=2 gaps=0 blocking=0",
                 text,
             )
             self.assertIn("Test Cases:", text)
             self.assertIn(
-                "- [ ] TC001 -> AC001 specs/features/add-dark-mode.md:8 "
+                "- [ ] TC001 -> AC001 [pending; links=None linked] "
+                "specs/features/add-dark-mode.md:8 "
                 "Pending behavior to test: Users can enable dark mode.",
                 text,
             )
+            self.assertIn("Test Coverage:\n- None linked.", text)
             self.assertIn("Existing Test Plan:", text)
             self.assertIn(
                 "- TP001 quality/features/add-dark-mode.md:13 "
@@ -1548,6 +1612,7 @@ class FeatureBundleTests(TestCase):
                     "status",
                     "summary",
                     "test_cases",
+                    "test_coverage",
                     "test_plan",
                 },
             )
@@ -1580,6 +1645,7 @@ class FeatureBundleTests(TestCase):
                     "behavior": (
                         "Pending behavior to test: Users can enable dark mode."
                     ),
+                    "coverage": [],
                     "id": "TC001",
                     "line": 8,
                     "source_file": "specs/features/add-dark-mode.md",
@@ -1593,6 +1659,7 @@ class FeatureBundleTests(TestCase):
                         "acceptance_criterion_id",
                         "acceptance_criterion_text",
                         "behavior",
+                        "coverage",
                         "id",
                         "line",
                         "source_file",
@@ -1606,6 +1673,11 @@ class FeatureBundleTests(TestCase):
                 payload["summary"]["test_cases"],
                 {"total": 2},
             )
+            self.assertEqual(
+                payload["summary"]["test_coverage"],
+                {"done": 0, "open": 0, "total": 0},
+            )
+            self.assertEqual(payload["test_coverage"], [])
             self.assertNotIn("tasks", payload)
 
     def test_build_feature_tests_report_maps_one_test_case_per_acceptance_criterion(
@@ -1637,6 +1709,108 @@ class FeatureBundleTests(TestCase):
                 {test_case.status for test_case in report.test_cases},
                 {"pending"},
             )
+
+    def test_feature_tests_report_links_coverage_to_matching_acceptance_criteria(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            (root / "tests").mkdir()
+            (root / "tests" / "test_features.py").write_text(
+                "class FeatureBundleTests:\n"
+                "    def test_users_can_enable_dark_mode(self):\n"
+                "        pass\n",
+                encoding="utf-8",
+            )
+            quality = root / "quality" / "features" / "add-dark-mode.md"
+            quality.write_text(
+                quality.read_text(encoding="utf-8").replace(
+                    "## Test Plan",
+                    "\n".join(
+                        [
+                            "## Test Coverage",
+                            "",
+                            (
+                                "- [x] AC001 -> "
+                                "tests/test_features.py::FeatureBundleTests::"
+                                "test_users_can_enable_dark_mode"
+                            ),
+                            "- [ ] AC002 -> tests/missing_theme_tests.py",
+                            "",
+                            "## Test Plan",
+                        ]
+                    ),
+                ),
+                encoding="utf-8",
+            )
+
+            report = build_feature_tests_report(root, "add-dark-mode")
+
+            self.assertEqual(report.summary["test_coverage"], {"done": 1, "open": 1, "total": 2})
+            self.assertEqual([link.id for link in report.test_coverage], ["COV001", "COV002"])
+            self.assertEqual(report.test_coverage[0].target_path, "tests/test_features.py")
+            self.assertTrue(report.test_coverage[0].target_exists)
+            self.assertFalse(report.test_coverage[1].target_exists)
+            self.assertEqual([test_case.status for test_case in report.test_cases], ["covered", "planned"])
+            self.assertEqual([link.id for link in report.test_cases[0].coverage], ["COV001"])
+            self.assertEqual([link.id for link in report.test_cases[1].coverage], ["COV002"])
+
+    def test_feature_tests_cli_json_and_text_include_coverage_links(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            (root / "tests").mkdir()
+            (root / "tests" / "test_features.py").write_text("", encoding="utf-8")
+            quality = root / "quality" / "features" / "add-dark-mode.md"
+            quality.write_text(
+                quality.read_text(encoding="utf-8").replace(
+                    "## Test Plan",
+                    (
+                        "## Test Coverage\n\n"
+                        "- [x] AC001 -> tests/test_features.py::test_enable\n"
+                        "- [ ] AC002 -> tests/missing.py\n\n"
+                        "## Test Plan"
+                    ),
+                ),
+                encoding="utf-8",
+            )
+
+            text_output = StringIO()
+            with redirect_stdout(text_output):
+                text_returncode = main(["feature", "tests", "add-dark-mode", str(root)])
+
+            text = text_output.getvalue()
+            self.assertEqual(text_returncode, 0)
+            self.assertIn("test_coverage=2", text)
+            self.assertIn(
+                "- [ ] TC001 -> AC001 [covered; links=tests/test_features.py::test_enable]",
+                text,
+            )
+            self.assertIn(
+                "- [x] COV001 -> AC001 tests/test_features.py::test_enable (exists)",
+                text,
+            )
+            self.assertIn(
+                "- [ ] COV002 -> AC002 tests/missing.py (missing)",
+                text,
+            )
+
+            json_output = StringIO()
+            with redirect_stdout(json_output):
+                json_returncode = main(
+                    ["feature", "tests", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(json_output.getvalue())
+            self.assertEqual(json_returncode, 0)
+            self.assertEqual(payload["summary"]["test_coverage"], {"done": 1, "open": 1, "total": 2})
+            self.assertEqual(payload["test_cases"][0]["status"], "covered")
+            self.assertEqual(payload["test_cases"][1]["status"], "planned")
+            self.assertEqual(payload["test_cases"][0]["coverage"][0]["id"], "COV001")
+            self.assertEqual(payload["test_coverage"][0]["target_path"], "tests/test_features.py")
+            self.assertTrue(payload["test_coverage"][0]["target_exists"])
+            self.assertFalse(payload["test_coverage"][1]["target_exists"])
 
     def test_feature_tests_cli_reports_partial_bundle_gaps(self) -> None:
         with TemporaryDirectory() as tmp:

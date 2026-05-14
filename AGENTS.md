@@ -33,7 +33,7 @@ PYTHONPATH=src python3 -m specspine feature pr <slug> . --json
 - Use `specspine feature new` as the starting workflow for new requirements; the generated peer files include focused handoff, tests, PR, ready, and validation guidance.
 - Keep native feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.
 - Before archiving, run `specspine feature ready <slug> . --json`, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.
-- Start implementation, acceptance, and review handoffs with `specspine feature handoff <slug> . --json`; use `feature tasks`, `feature trace`, `feature ready`, and `feature tests` for focused follow-up views.
+- Start implementation, acceptance, and review handoffs with `specspine feature handoff <slug> . --json`; use `feature tasks`, `feature trace`, `feature ready`, and `feature tests` for focused follow-up views. For QA context, add local `## Test Coverage` checklist links such as `- [ ] AC001 -> tests/test_features.py` in `quality/features/<slug>.md`.
 - Use `specspine feature pr <slug> . --json` to prepare an offline Pull Request draft from local evidence without reading tokens or calling GitHub.
 - OpenSpec, Spec Kit, and Superpowers are external adapters only. Do not vendor upstream source code.
 - Do not read or write GitHub tokens, and do not call GitHub APIs by default.

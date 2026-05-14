@@ -54,6 +54,7 @@ AGENTS_TEMPLATE = """
     - Before archiving, run `specspine feature ready <slug> . --json`, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.
     - Start feature implementation, review, and acceptance handoffs with `specspine feature handoff <slug> . --json`.
     - Use `specspine feature tasks`, `specspine feature trace`, `specspine feature ready`, and `specspine feature tests` for focused task, trace, gate, and acceptance-test views.
+    - For QA context, add local `## Test Coverage` checklist links such as `- [ ] AC001 -> tests/test_features.py` in `quality/features/<slug>.md`.
     - Use `specspine feature pr <slug> . --json` to prepare an offline Pull Request draft from local evidence without reading tokens or calling GitHub.
     - Run `specspine validate .` before and after edits; use `specspine validate . --fusion --features` when feature bundles or fusion artifacts are involved.
     - Keep OpenSpec, Spec Kit, and Superpowers as external adapters. Do not vendor upstream code.

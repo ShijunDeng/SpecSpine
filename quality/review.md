@@ -17,7 +17,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine status --feature-summaries` now adds optional compact per-feature progress, readiness, gaps, blocking counts, next actions, and local status/readiness/sort controls without changing default status output.
 - `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
 - `specspine feature pr` now exports offline Pull Request drafts that compose local feature evidence without GitHub API calls, token reads, `gh`, or network access.
-- `specspine feature tests` now exports acceptance-test packets that map acceptance criteria to pending test cases and surface existing test plan, quality checks, gaps, and blockers without running tests or generating code.
+- `specspine feature tests` now exports acceptance-test packets that map acceptance criteria to test cases, attach explicit local `## Test Coverage` links, and surface existing test plan, quality checks, gaps, and blockers without running tests or generating code.
 - `specspine feature new` now generates native feature bundles with focused spec, execution, quality, handoff, tests, PR, ready, and validation guidance instead of broad generic placeholders.
 - No upstream code should be copied into this repository as part of fusion work.
 
@@ -30,7 +30,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Use `specspine feature tasks <slug> . --json` as the focused execution checklist view when an agent only needs tasks.
 - Treat `specspine feature trace <slug> . --json` as the local traceability handoff when reviewers need a complete feature packet.
 - Treat `specspine feature ready <slug> . --json` as the local per-feature acceptance and release gate after implementation evidence is complete.
-- Treat `specspine feature tests <slug> . --json` as the focused local packet for QA and testing agents.
+- Treat `specspine feature tests <slug> . --json` as the focused local packet for QA and testing agents, and use `## Test Coverage` links in quality files to point AC ids at existing local tests.
 - Treat `specspine feature pr <slug> . --json` as the local Pull Request draft bridge after readiness and trace evidence are available.
 - Treat `specspine validate . --fusion --features` plus the unit test suite as the local completion gate.
 - Treat generated feature templates as the starting workflow contract for new requirements: keep acceptance criteria testable, tasks traceable, quality gates unchecked until evidence exists, and handoff/tests/pr/ready commands visible.
@@ -53,5 +53,5 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Feature bundles can now be exported as compact handoff packets without generation, GitHub credentials, token reads, network calls, upstream CLIs, or new dependencies.
 - Feature lifecycle updates can now opt into transition enforcement and archive readiness guards without changing default manual status updates.
 - Feature bundles can now be exported as offline Pull Request drafts with GitHub Markdown checklist evidence and key local commands.
-- Feature bundles can now be exported as acceptance-test packets with GitHub Markdown checklist test cases and existing local quality evidence.
+- Feature bundles can now be exported as acceptance-test packets with GitHub Markdown checklist test cases, explicit local coverage links, and existing local quality evidence.
 - New feature bundles now include edge cases, constraints, traceability notes, dependencies, open questions, agent handoff commands, acceptance-test guidance, PR draft guidance, readiness checks, and validation gates from creation time.

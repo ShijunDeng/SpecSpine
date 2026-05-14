@@ -34,6 +34,7 @@ class DogfoodArtifactsTests(TestCase):
             "feature-test-packet",
             "feature-template-refresh",
             "feature-summary-filters",
+            "feature-test-coverage-links",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -66,6 +67,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:feature-pr-draft", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-test-packet", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-summary-filters", "pass"), checks)
+        self.assertIn(("feature.status_consistency:feature-test-coverage-links", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -191,6 +193,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/feature-summary-filters.md",
             "execution/features/feature-summary-filters.md",
             "quality/features/feature-summary-filters.md",
+            "specs/features/feature-test-coverage-links.md",
+            "execution/features/feature-test-coverage-links.md",
+            "quality/features/feature-test-coverage-links.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -246,6 +251,13 @@ class DogfoodArtifactsTests(TestCase):
         self.assertEqual(report.status, "validated")
         self.assertEqual(report.summary["fail"], 0)
 
+    def test_feature_test_coverage_links_dogfood_bundle_passes_its_gate(self) -> None:
+        report = build_feature_ready_report(REPO_ROOT, "feature-test-coverage-links")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.status, "validated")
+        self.assertEqual(report.summary["fail"], 0)
+
     def test_feature_test_packet_dogfood_exports_test_cases(self) -> None:
         report = build_feature_tests_report(REPO_ROOT, "feature-test-packet")
 
@@ -254,3 +266,17 @@ class DogfoodArtifactsTests(TestCase):
         self.assertEqual(report.test_cases[0].id, "TC001")
         self.assertEqual(report.test_cases[0].acceptance_criterion_id, "AC001")
         self.assertEqual(report.missing_files, ())
+
+    def test_feature_test_coverage_links_dogfood_exports_coverage(self) -> None:
+        report = build_feature_tests_report(REPO_ROOT, "feature-test-coverage-links")
+
+        self.assertTrue(report.ready)
+        self.assertTrue(report.test_coverage)
+        self.assertEqual(report.summary["test_coverage"], {"done": 2, "open": 0, "total": 2})
+        self.assertTrue(all(link.target_exists for link in report.test_coverage))
+        statuses = {
+            test_case.acceptance_criterion_id: test_case.status
+            for test_case in report.test_cases
+        }
+        self.assertEqual(statuses["AC005"], "covered")
+        self.assertEqual(statuses["AC008"], "covered")
