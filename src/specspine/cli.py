@@ -26,6 +26,7 @@ from .features import (
     build_feature_handoff_report,
     build_feature_ready_report,
     build_feature_task_issues_report,
+    build_feature_sync_plan,
     build_feature_tests_report,
     build_feature_trace_report,
     build_feature_tasks_report,
@@ -37,6 +38,8 @@ from .features import (
     render_feature_handoff_text,
     render_feature_ready_json,
     render_feature_ready_text,
+    render_feature_sync_plan_json,
+    render_feature_sync_plan_text,
     render_feature_task_issues_json,
     render_feature_task_issues_text,
     render_feature_tests_json,
@@ -232,6 +235,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the text issue draft package to a file instead of printing it",
     )
     feature_task_issues_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite an existing output file",
+    )
+
+    feature_sync_plan_parser = feature_subcommands.add_parser(
+        "sync-plan",
+        help="plan local GitHub CLI sync commands without executing them",
+    )
+    feature_sync_plan_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    feature_sync_plan_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    feature_sync_plan_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    feature_sync_plan_parser.add_argument(
+        "--output",
+        help="write the text sync plan to a file instead of printing it",
+    )
+    feature_sync_plan_parser.add_argument(
         "--force",
         action="store_true",
         help="overwrite an existing output file",
@@ -718,6 +742,48 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_feature_task_issues_json(report), end="")
             elif args.output:
                 print(f"Wrote feature task issue draft package to {output_path}")
+            else:
+                print(text_body, end="")
+            return 0
+
+        if args.feature_command == "sync-plan":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                plan = build_feature_sync_plan(root, args.slug)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not read feature sync plan: {error}", file=sys.stderr)
+                return 1
+
+            text_body = render_feature_sync_plan_text(plan)
+            if args.output:
+                output_path = Path(args.output).expanduser().resolve()
+                if output_path.exists() and not args.force:
+                    print(
+                        f"Output file already exists: {output_path}. "
+                        "Use --force to overwrite it.",
+                        file=sys.stderr,
+                    )
+                    return 1
+
+                try:
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(text_body, encoding="utf-8")
+                except OSError as error:
+                    print(f"Could not write feature sync plan: {error}", file=sys.stderr)
+                    return 1
+
+            if args.json:
+                print(render_feature_sync_plan_json(plan), end="")
+            elif args.output:
+                print(f"Wrote feature sync plan to {output_path}")
             else:
                 print(text_body, end="")
             return 0

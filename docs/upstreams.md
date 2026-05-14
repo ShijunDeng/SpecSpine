@@ -17,6 +17,7 @@ SpecSpine may:
 - Detect whether an upstream tool is installed.
 - Print official install hints.
 - Export static local lifecycle mappings for upstream adapter phases.
+- Export local GitHub CLI sync plans for human review before remote issue or PR creation.
 - Run upstream initializer commands when the user opts in with `--run-upstream`.
 - Store adapter contracts that point to upstream artifacts and commands.
 - Map upstream outputs into the SpecSpine backbone.
@@ -54,6 +55,10 @@ Superpowers is installed through the active AI coding agent's plugin or extensio
 `specspine adapters lifecycle [path] [--json]` exports the local mapping between SpecSpine native feature statuses and upstream phases before any sync command touches upstream or remote state. It covers `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` for OpenSpec, Spec Kit, and Superpowers.
 
 The command is definition-only. It reads local fusion config for adapter enablement and config paths, checks whether local adapter config files exist, and returns `0` even when adapters are disabled. It does not execute `openspec`, `specify`, Superpowers, `gh`, shell commands, GitHub APIs, network calls, or token reads.
+
+## GitHub Sync Planning
+
+`specspine feature sync-plan <slug> [path] [--json]` exports planned `gh issue create` and `gh pr create` argv arrays from local feature evidence. It is a local review packet only: SpecSpine does not execute `gh`, does not use `--dry-run` as an automatic safety claim, does not read tokens, does not call GitHub APIs, and does not access the network.
 
 ## Agent Mapping
 

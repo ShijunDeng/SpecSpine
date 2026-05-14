@@ -6,7 +6,7 @@ SpecSpine is a small Python package under `src/specspine` with a command-line en
 
 - `workspace` owns base workspace templates and required artifact checks.
 - `agents` writes project-local `AGENTS.md` instructions.
-- `features` creates and reads native feature bundles, updates lifecycle status, exports execution task handoffs, exports task issue draft packages, exports traceability handoffs, evaluates readiness gates, exports compact feature handoff packets, exports acceptance-test packets, and exports offline issue and Pull Request drafts.
+- `features` creates and reads native feature bundles, updates lifecycle status, exports execution task handoffs, exports task issue draft packages, exports traceability handoffs, evaluates readiness gates, exports compact feature handoff packets, exports acceptance-test packets, exports offline issue and Pull Request drafts, and exports local GitHub sync plans.
 - `adapters` describes external upstream tools and probes local availability.
 - `fusion` writes the OpenSpec + Spec Kit + Superpowers adapter layer.
 - `status` builds machine-readable workspace summaries, recommendations, optional validation summaries, and optional filterable native feature summaries.
@@ -21,7 +21,7 @@ SpecSpine is a small Python package under `src/specspine` with a command-line en
 - `specs/`, `execution/`, and `quality/` carry the repository-owned source of truth.
 - Native feature bundles use peer files with matching `Feature ID: <slug>` markers and one allowed lifecycle `Status`.
 - Generated native feature bundles include spec sections for acceptance and review, execution sections for dependencies/open questions and focused handoff commands, and quality sections for tests, PR draft, readiness, and validation gates.
-- The main machine interfaces are `specspine status . --json`, `specspine status . --json --validate`, `specspine status . --json --validate --feature-summaries`, `specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug`, `specspine feature handoff <slug> . --json`, `specspine feature task-issues <slug> . --json`, `specspine feature trace <slug> . --json`, `specspine feature ready <slug> . --json`, `specspine feature tests <slug> . --json`, `specspine feature pr <slug> . --json`, and `specspine validate . --fusion --features`.
+- The main machine interfaces are `specspine status . --json`, `specspine status . --json --validate`, `specspine status . --json --validate --feature-summaries`, `specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug`, `specspine feature handoff <slug> . --json`, `specspine feature task-issues <slug> . --json`, `specspine feature trace <slug> . --json`, `specspine feature ready <slug> . --json`, `specspine feature tests <slug> . --json`, `specspine feature pr <slug> . --json`, `specspine feature sync-plan <slug> . --json`, and `specspine validate . --fusion --features`.
 
 ## Decisions
 
@@ -30,11 +30,12 @@ SpecSpine is a small Python package under `src/specspine` with a command-line en
 - Keep GitHub issue support offline by drafting structured text/JSON instead of requiring `gh`, tokens, or API access.
 - Keep task issue draft packages offline by deriving one local issue body per execution checklist task without remote sync.
 - Keep GitHub Pull Request support offline by composing local feature evidence into review-ready Markdown instead of requiring `gh`, tokens, API access, or network calls.
+- Keep GitHub sync planning local by exporting reviewable `gh` argv arrays, labels, body sources, and safety notes without executing `gh`, reading tokens, or calling network services.
 - Keep feature traceability export offline and extractive by parsing native Markdown sections without AI inference, upstream CLIs, GitHub APIs, or token reads.
 - Keep feature readiness gates deterministic by deriving pass/fail checks from native files, trace gaps, lifecycle status, completed checklists, and release readiness evidence.
 - Keep feature handoff packets compact by composing existing local status, trace, task, readiness, and release readiness evidence rather than generating new content.
 - Keep acceptance-test packets deterministic and non-generative by mapping acceptance criteria to pending test cases and surfacing existing test plans, quality checks, gaps, and blockers without running tests or creating code.
-- Keep generated feature templates focused on the current handoff/task-issues/tests/pr/ready workflow so agents start with local commands and unchecked gates instead of generic placeholders.
+- Keep generated feature templates focused on the current handoff/task-issues/tests/pr/sync-plan/ready workflow so agents start with local commands and unchecked gates instead of generic placeholders.
 - Keep workspace feature summaries opt-in so default status remains a minimal startup context; compose summaries from local feature handoff evidence when multi-feature comparison is needed, then apply local status, readiness, and sort controls only after `--feature-summaries` is explicitly requested.
 - Make validation executable and local so agents can detect missing files and broken contracts before and after edits.
 - Keep `status --validate` as a report surface that summarizes failed checks while `validate` remains the failing gate command.

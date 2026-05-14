@@ -19,6 +19,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine status --feature-summaries` now adds optional compact per-feature progress, readiness, gaps, blocking counts, next actions, and local status/readiness/sort controls without changing default status output.
 - `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
 - `specspine feature pr` now exports offline Pull Request drafts that compose local feature evidence without GitHub API calls, token reads, `gh`, or network access.
+- `specspine feature sync-plan` now exports reviewable GitHub CLI argv plans for feature issues, task issues, and draft PRs without executing `gh`, reading tokens, calling APIs, or using network access.
 - `specspine feature tests` now exports acceptance-test packets that map acceptance criteria to test cases, attach explicit local `## Test Coverage` links, and surface existing test plan, quality checks, gaps, and blockers without running tests or generating code.
 - `specspine feature new` now generates native feature bundles with focused spec, execution, quality, handoff, task issue draft, tests, PR, ready, validation guidance, and initial spec-level priority/owner metadata instead of broad generic placeholders.
 - `specspine gates` now exports repository-level quality gate definitions from `quality/checklist.md` without executing commands, reading tokens, requiring `gh`, or calling network services.
@@ -38,11 +39,13 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Treat `specspine feature ready <slug> . --json` as the local per-feature acceptance and release gate after implementation evidence is complete.
 - Treat `specspine feature tests <slug> . --json` as the focused local packet for QA and testing agents, and use `## Test Coverage` links in quality files to point AC ids at existing local tests.
 - Treat `specspine feature pr <slug> . --json` as the local Pull Request draft bridge after readiness and trace evidence are available.
+- Treat `specspine feature sync-plan <slug> . --json` as the local review packet for GitHub CLI sync intent before a human runs any remote command.
 - Treat `specspine gates . --json` as the repository-level quality policy packet before implementation, review, or CI wiring; it exports definitions and does not run checks.
 - Treat `specspine adapters lifecycle . --json` as the local adapter lifecycle policy packet before future adapter sync, upstream planning, or remote issue/PR mapping work.
 - Treat `specspine validate . --fusion --features` plus the unit test suite as the local completion gate.
 - Treat generated feature templates as the starting workflow contract for new requirements: keep acceptance criteria testable, tasks traceable, quality gates unchecked until evidence exists, and handoff/task-issues/tests/pr/ready commands visible.
 - Keep GitHub issue and Pull Request draft generation offline and token-free by default.
+- Keep GitHub sync planning offline and token-free; remote issue/PR creation remains a future explicit workflow, not default behavior.
 - Keep native feature peer files on a consistent allowed lifecycle status.
 - Prefer `specspine feature status <slug> . --set STATUS --enforce-transition` when lifecycle order matters; run `specspine feature ready <slug> . --json` before archiving.
 - Use `--run-upstream` only after explicit user instruction.
@@ -65,4 +68,5 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Feature bundles can now be exported as acceptance-test packets with GitHub Markdown checklist test cases, explicit local coverage links, and existing local quality evidence.
 - Repository-level quality checklists can now be exported as stable `GATE###` and `DOD###` definition records with summary counts and recommended local commands.
 - Adapter lifecycle mappings can now be exported as stable OpenSpec, Spec Kit, and Superpowers records for every native feature status.
+- GitHub CLI sync plans can now be exported as stable local argv arrays with safety flags and notes before any remote issue or Pull Request is created.
 - New feature bundles now include edge cases, constraints, traceability notes, dependencies, open questions, agent handoff commands, acceptance-test guidance, PR draft guidance, readiness checks, and validation gates from creation time.

@@ -13,6 +13,7 @@
 - Native feature readiness gates through `specspine feature ready`.
 - Opt-in native feature transition enforcement through `specspine feature status --enforce-transition`.
 - Offline Pull Request draft export through `specspine feature pr`.
+- Local GitHub CLI synchronization planning through `specspine feature sync-plan`.
 - Native acceptance-test packet export through `specspine feature tests`.
 - Refreshed native feature bundle templates with focused handoff, task issue draft, tests, PR, readiness, and validation guidance.
 - Fusion layer generation for OpenSpec, Spec Kit, and Superpowers.
@@ -41,6 +42,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine feature ready <slug> . --json` when a reviewer, agent, or CI step needs a failing per-feature release gate.
 - Use `specspine feature tests <slug> . --json` when QA or testing agents need acceptance criteria mapped to pending test cases plus existing test plan, gaps, and blockers.
 - Use `specspine feature pr <slug> . --json` when a reviewer or release agent needs a local Pull Request draft without touching GitHub.
+- Use `specspine feature sync-plan <slug> . --json` when a maintainer needs to review GitHub CLI issue/PR sync intent before any remote execution.
 - Use `specspine gates . --json` when an agent, reviewer, or CI author needs repository-level quality gate definitions before running or wiring checks.
 - Use `specspine adapters lifecycle . --json` when an agent or maintainer needs local status-to-upstream phase definitions before adapter sync or upstream planning.
 - Use `specspine validate . --fusion --features` as the project-level gate.
@@ -66,3 +68,4 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Should acceptance-test packets later include explicit user-supplied AC-to-test-file links, or remain implementation-file agnostic until that metadata exists?
 - Should the refreshed feature bundle template later grow explicit rollout-owner or implementation-file metadata, or stay minimal until a real workflow needs it?
 - Should future quality gate definitions include structured severity, owning role, or expected CI check names, or stay as Markdown-derived records until remote sync exists?
+- Should a future remote-sync command consume `feature sync-plan` output after explicit confirmation, or should SpecSpine remain plan-only for GitHub writes?

@@ -34,6 +34,7 @@ This repository is an early project skeleton. It includes:
 - A native feature acceptance-test packet exporter: `specspine feature tests`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
 - A local GitHub Pull Request draft exporter: `specspine feature pr`.
+- A local GitHub CLI synchronization plan exporter: `specspine feature sync-plan`.
 - A repository quality gate definition exporter: `specspine gates`.
 - A fusion initializer: `specspine fuse`.
 - A local adapter lifecycle mapping exporter: `specspine adapters lifecycle`.
@@ -89,7 +90,7 @@ Create a traceable feature bundle:
 specspine feature new add-dark-mode . --title "Add dark mode" --why "Reduce eye strain"
 ```
 
-New feature bundles start with focused spec -> execution -> quality guidance: goals and non-goals, acceptance criteria that can become tests, edge cases, constraints, dependencies, open questions, agent handoff commands, required checks, explicit test coverage links, test plan, PR draft, readiness, and validation gates.
+New feature bundles start with focused spec -> execution -> quality guidance: goals and non-goals, acceptance criteria that can become tests, edge cases, constraints, dependencies, open questions, agent handoff commands, required checks, explicit test coverage links, test plan, PR draft, sync-plan review, readiness, and validation gates.
 
 Export the compact implementation/review handoff packet:
 
@@ -145,6 +146,13 @@ Draft a local GitHub Pull Request from the feature bundle:
 ```bash
 specspine feature pr add-dark-mode .
 specspine feature pr add-dark-mode . --json
+```
+
+Review a local GitHub CLI synchronization plan without executing it:
+
+```bash
+specspine feature sync-plan add-dark-mode .
+specspine feature sync-plan add-dark-mode . --json
 ```
 
 Advance the feature lifecycle when the bundle moves forward:
@@ -349,7 +357,7 @@ specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]
 
 Exports a compact feature-level handoff packet for implementation, acceptance, and review agents. It composes existing local evidence from feature status, trace, ready, tasks, and release readiness reports. It does not call GitHub APIs, read tokens, invoke upstream CLIs, use network access, or add third-party dependencies.
 
-JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Summary includes trace total/done/open, ready pass/fail/total, task total/done/open, gap count, and blocking check count. Text output is brief and includes feature/status/ready, counts, sources, next actions, open tasks, blocking checks, and key commands. The generated `feature new` execution template mirrors these focused commands for `handoff`, `tasks`, `task-issues`, `trace`, `tests`, `ready`, `pr`, and `validate . --fusion --features`.
+JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Summary includes trace total/done/open, ready pass/fail/total, task total/done/open, gap count, and blocking check count. Text output is brief and includes feature/status/ready, counts, sources, next actions, open tasks, blocking checks, and key commands. The generated `feature new` execution template mirrors these focused commands for `handoff`, `tasks`, `task-issues`, `trace`, `tests`, `ready`, `pr`, `sync-plan`, and `validate . --fusion --features`.
 
 Missing bundles return `1` with create-or-restore guidance. Invalid slugs return `2`. Partial bundles return `0` and include missing files, trace gaps, and next actions. `--output` writes the text handoff and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
 
@@ -390,6 +398,18 @@ Creates a local GitHub Pull Request draft from a native feature bundle without c
 JSON output includes `title`, `body`, `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `summary`, and `recommended_commands`. Text output includes the title and a GitHub Markdown body with Summary, Feature, Why, Acceptance Criteria, Tasks, Test Plan, Release Readiness, Readiness / Blocking Checks, Source Files, Missing Files, and Key Commands. Acceptance criteria, tasks, release readiness, gaps, and readiness checks use checklist syntax suitable for PR review.
 
 Partial bundles return `0` while marking missing files, gaps, and blocking checks in the draft. If no native feature files exist for the slug, the command returns non-zero. Invalid slugs return `2`. `--output` writes the PR body to a file and refuses to overwrite an existing file unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains the text body.
+
+```bash
+specspine feature sync-plan <slug> [path] [--json] [--output FILE] [--force]
+```
+
+Creates a local GitHub CLI synchronization plan from a native feature bundle without executing `gh`, calling GitHub APIs, reading tokens, using network access, invoking upstream CLIs, or adding dependencies. It composes the existing feature issue draft, task issue draft package, Pull Request draft, priority/owner metadata, lifecycle status, readiness, gaps, and blockers into one reviewable packet.
+
+JSON output includes `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `metadata`, `summary`, `commands`, `notes`, and `recommended_commands`. Each command includes stable `id`, `kind`, `description`, `argv`, `body_source`, `body`, `creates_remote`, `requires_token`, `requires_network`, and `safe_to_auto_run`. The generated argv arrays cover a feature-level `gh issue create`, one task-level `gh issue create` per execution task, and a draft `gh pr create --draft`. Labels include `specspine`, `feature:<slug>`, status, task labels where relevant, and `priority:<priority>` for the feature issue.
+
+Every command is marked as creating remote state, requiring token and network access, and not safe to auto-run. Notes explain that SpecSpine did not execute anything, a human must confirm and authenticate before running commands, GitHub Projects may require the `project` scope, `gh pr create --dry-run` is not used as a safety guarantee because it may still push git changes, and free-form `Owner:` metadata is not automatically mapped to `--assignee`.
+
+Text output is reviewable Markdown with Summary, Metadata, Notes, Sources, Missing Files, Gaps, Blocking Checks, and shell-quoted command lines for human copy/paste only. Partial bundles return `0` with missing files and blockers recorded. If no native feature files exist for the slug, the command returns `1`; invalid slugs return `2`. `--output` writes the text plan and refuses to overwrite an existing file unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
 
 ```bash
 specspine status [path] [--json] [--adapters] [--validate] [--validation-warnings] [--feature-summaries] [--feature-status STATUS] [--feature-ready READY] [--feature-priority VALUE] [--feature-owner VALUE] [--feature-sort KEY] [--feature-sort-desc]
@@ -468,6 +488,7 @@ The command reads local fusion config only to determine adapter enablement and c
 
 Completed roadmap item: adapter lifecycle mappings are covered by `specspine adapters lifecycle`.
 Completed roadmap item: repository quality gate definitions are covered by `specspine gates`.
+Completed roadmap item: local GitHub synchronization planning before remote execution is covered by `specspine feature sync-plan`.
 
 ## Development
 

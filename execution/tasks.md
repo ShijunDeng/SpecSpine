@@ -17,6 +17,7 @@
 - [x] Implement `specspine feature tests` acceptance-test packet export.
 - [x] Implement explicit local `## Test Coverage` links for `specspine feature tests`.
 - [x] Implement `specspine feature pr` offline Pull Request draft export.
+- [x] Implement `specspine feature sync-plan` local GitHub CLI sync planning.
 - [x] Refresh `specspine feature new` templates for focused handoff, task issue drafts, tests, PR, ready, and validation workflows.
 - [x] Implement `specspine fuse` adapter-mode fusion generation.
 - [x] Implement `specspine status . --json`.
@@ -54,6 +55,7 @@
 - [ ] Observe whether QA and testing agents prefer `feature tests --json` as their focused acceptance-test context.
 - [ ] Observe whether explicit `## Test Coverage` links reduce acceptance-test handoff ambiguity.
 - [ ] Observe whether reviewers use `feature pr --json` as the local bridge from feature evidence into Pull Request review.
+- [ ] Observe whether maintainers use `feature sync-plan --json` before manually running any GitHub CLI sync commands.
 - [ ] Observe whether new feature bundles need less manual template cleanup after the focused workflow guidance.
 - [ ] Monitor whether agents prefer `status --json --validate` as the default startup packet.
 - [ ] Observe whether agents use `status --json --validate --validation-warnings` only when scaffold warning detail is needed.

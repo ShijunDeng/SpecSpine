@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -159,6 +160,84 @@ class PullRequestDraft:
             "status": self.status,
             "summary": self.summary,
             "title": self.title,
+        }
+
+
+@dataclass(frozen=True)
+class FeatureSyncPlanCommand:
+    id: str
+    kind: str
+    description: str
+    argv: tuple[str, ...]
+    body_source: str
+    body: str
+    creates_remote: bool = True
+    requires_token: bool = True
+    requires_network: bool = True
+    safe_to_auto_run: bool = False
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "argv": list(self.argv),
+            "body": self.body,
+            "body_source": self.body_source,
+            "creates_remote": self.creates_remote,
+            "description": self.description,
+            "id": self.id,
+            "kind": self.kind,
+            "requires_network": self.requires_network,
+            "requires_token": self.requires_token,
+            "safe_to_auto_run": self.safe_to_auto_run,
+        }
+
+
+@dataclass(frozen=True)
+class FeatureSyncPlan:
+    feature_id: str
+    status: str
+    ready: bool
+    source_files: tuple[str, ...]
+    missing_files: tuple[str, ...]
+    gaps: tuple[dict[str, str], ...]
+    blocking_checks: tuple[FeatureReadyCheck, ...]
+    metadata: FeatureMetadata
+    commands: tuple[FeatureSyncPlanCommand, ...]
+    notes: tuple[str, ...]
+    recommended_commands: tuple[str, ...]
+
+    @property
+    def summary(self) -> dict[str, int]:
+        issue_commands = sum(1 for command in self.commands if command.kind == "issue")
+        task_issue_commands = sum(
+            1 for command in self.commands if command.kind == "task-issue"
+        )
+        pull_request_commands = sum(
+            1 for command in self.commands if command.kind == "pull-request"
+        )
+        return {
+            "commands_total": len(self.commands),
+            "issue_commands": issue_commands,
+            "notes_total": len(self.notes),
+            "pull_request_commands": pull_request_commands,
+            "task_issue_commands": task_issue_commands,
+        }
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "blocking_checks": [
+                check.as_dict() for check in self.blocking_checks
+            ],
+            "commands": [command.as_dict() for command in self.commands],
+            "feature_id": self.feature_id,
+            "gaps": [dict(gap) for gap in self.gaps],
+            "metadata": self.metadata.as_dict(),
+            "missing_files": list(self.missing_files),
+            "notes": list(self.notes),
+            "ready": self.ready,
+            "recommended_commands": list(self.recommended_commands),
+            "source_files": list(self.source_files),
+            "status": self.status,
+            "summary": self.summary,
         }
 
 
@@ -758,6 +837,7 @@ def build_feature_files(
             - Run `specspine feature tests {slug} . --json` to build the acceptance-test packet.
             - Run `specspine feature ready {slug} . --json` after implementation evidence is complete.
             - Run `specspine feature pr {slug} . --json` to draft local Pull Request review notes.
+            - Run `specspine feature sync-plan {slug} . --json` to review GitHub CLI sync intent without executing it.
             - Run `specspine validate . --fusion --features` before handoff or release.
         """,
         FEATURE_FILE_PATHS["quality"].format(slug=slug): f"""
@@ -793,6 +873,7 @@ def build_feature_files(
 
             - [ ] TODO: Acceptance criteria, tasks, required checks, and test plan evidence are complete.
             - [ ] TODO: Docs, release notes, or `specspine feature pr {slug} . --json` output are ready for reviewers.
+            - [ ] TODO: `specspine feature sync-plan {slug} . --json` has been reviewed before any remote GitHub sync.
             - [ ] TODO: `specspine feature ready {slug} . --json` and `specspine validate . --fusion --features` have been run.
             - [ ] TODO: No known blockers remain, or blockers are documented in review notes.
         """,
@@ -2952,6 +3033,320 @@ def render_pull_request_json(draft: PullRequestDraft) -> str:
 
 def render_pull_request_text(draft: PullRequestDraft) -> str:
     return f"Title: {draft.title}\n\n{draft.body}"
+
+
+def _recommended_sync_plan_commands(slug: str) -> tuple[str, ...]:
+    return (
+        f"specspine feature sync-plan {slug} . --json",
+        f"specspine feature issue {slug} . --json",
+        f"specspine feature task-issues {slug} . --json",
+        f"specspine feature pr {slug} . --json",
+        f"specspine feature ready {slug} . --json",
+        "specspine adapters lifecycle . --json",
+        "specspine validate . --fusion --features",
+    )
+
+
+def _github_label_args(labels: tuple[str, ...]) -> tuple[str, ...]:
+    args: list[str] = []
+    for label in labels:
+        args.extend(("--label", label))
+    return tuple(args)
+
+
+def _sync_body_source(slug: str, filename: str) -> str:
+    return str(Path(".specspine") / "sync-plan" / slug / filename)
+
+
+def _feature_issue_labels(slug: str, status: str, priority: str) -> tuple[str, ...]:
+    return (
+        "specspine",
+        f"feature:{slug}",
+        f"status:{status}",
+        f"priority:{priority}",
+    )
+
+
+def _task_issue_labels(slug: str, status: str) -> tuple[str, ...]:
+    return (
+        "specspine",
+        f"feature:{slug}",
+        "task",
+        f"status:{status}",
+    )
+
+
+def _pull_request_labels(slug: str, status: str) -> tuple[str, ...]:
+    return (
+        "specspine",
+        f"feature:{slug}",
+        f"status:{status}",
+    )
+
+
+def _sync_command(
+    *,
+    command_id: str,
+    kind: str,
+    description: str,
+    argv: tuple[str, ...],
+    body_source: str,
+    body: str,
+) -> FeatureSyncPlanCommand:
+    return FeatureSyncPlanCommand(
+        id=command_id,
+        kind=kind,
+        description=description,
+        argv=argv,
+        body_source=body_source,
+        body=body,
+    )
+
+
+def _sync_plan_notes(metadata: FeatureMetadata) -> tuple[str, ...]:
+    notes = [
+        (
+            "SpecSpine generated this as a local review plan only; it did not "
+            "execute gh, call GitHub APIs, read tokens, or access the network."
+        ),
+        (
+            "Every command would create remote GitHub resources if a human runs "
+            "it, so review the argv list, labels, and draft body first."
+        ),
+        (
+            "A human must authenticate GitHub CLI before running these commands; "
+            "adding issues or pull requests to Projects may require the gh "
+            "project scope."
+        ),
+        (
+            "Do not rely on gh pr create --dry-run as an automatic safety mode; "
+            "GitHub CLI documentation says dry-run may still push git changes."
+        ),
+        (
+            f"Priority is represented as the compatible label "
+            f"priority:{metadata.priority}; this plan does not call GitHub Issue "
+            "Fields APIs."
+        ),
+    ]
+    if metadata.owner == "unassigned":
+        notes.append(
+            "Owner is unassigned; local owner metadata is not automatically "
+            "mapped to --assignee."
+        )
+    else:
+        notes.append(
+            f"Owner '{metadata.owner}' is local SpecSpine metadata and is not "
+            "automatically mapped to --assignee."
+        )
+    return tuple(notes)
+
+
+def build_feature_sync_plan(root: Path, slug: str) -> FeatureSyncPlan:
+    slug = validate_feature_slug(slug)
+    resolved_root = root.expanduser().resolve()
+    status_report = get_feature_status(resolved_root, slug)
+    has_native_files = any(file["exists"] for file in status_report.files.values())
+    if not has_native_files:
+        raise FeatureBundleNotFoundError(
+            slug=slug,
+            root=resolved_root,
+            missing_paths=tuple(feature_bundle_paths(resolved_root, slug).values()),
+        )
+
+    metadata = read_feature_metadata(resolved_root, slug)
+    issue_draft = build_issue_draft(resolved_root, slug)
+    task_issues = build_feature_task_issues_report(resolved_root, slug)
+    pull_request = build_pull_request_draft(resolved_root, slug)
+    handoff = build_feature_handoff_report(resolved_root, slug)
+
+    commands: list[FeatureSyncPlanCommand] = []
+
+    feature_issue_body_source = _sync_body_source(slug, "feature-issue.md")
+    feature_issue_labels = _feature_issue_labels(
+        slug,
+        handoff.status,
+        metadata.priority,
+    )
+    commands.append(
+        _sync_command(
+            command_id="github.issue.feature",
+            kind="issue",
+            description="Create one GitHub issue for the feature-level specification.",
+            argv=(
+                "gh",
+                "issue",
+                "create",
+                "--title",
+                issue_draft.title,
+                "--body-file",
+                feature_issue_body_source,
+                *_github_label_args(feature_issue_labels),
+            ),
+            body_source=feature_issue_body_source,
+            body=issue_draft.body,
+        )
+    )
+
+    for task_issue in task_issues.issues:
+        body_source = _sync_body_source(
+            slug,
+            f"task-issues/{task_issue.task_id}.md",
+        )
+        commands.append(
+            _sync_command(
+                command_id=f"github.task_issue.{task_issue.task_id}",
+                kind="task-issue",
+                description=(
+                    f"Create one GitHub issue for execution task "
+                    f"{task_issue.task_id}."
+                ),
+                argv=(
+                    "gh",
+                    "issue",
+                    "create",
+                    "--title",
+                    task_issue.title,
+                    "--body-file",
+                    body_source,
+                    *_github_label_args(
+                        _task_issue_labels(slug, task_issues.status)
+                    ),
+                ),
+                body_source=body_source,
+                body=task_issue.body,
+            )
+        )
+
+    pull_request_body_source = _sync_body_source(slug, "pull-request.md")
+    commands.append(
+        _sync_command(
+            command_id="github.pull_request",
+            kind="pull-request",
+            description="Create a draft GitHub Pull Request from local feature evidence.",
+            argv=(
+                "gh",
+                "pr",
+                "create",
+                "--title",
+                pull_request.title,
+                "--body-file",
+                pull_request_body_source,
+                "--draft",
+                *_github_label_args(_pull_request_labels(slug, pull_request.status)),
+            ),
+            body_source=pull_request_body_source,
+            body=pull_request.body,
+        )
+    )
+
+    source_files = tuple(
+        source["path"]
+        for source in handoff.sources.values()
+        if bool(source["exists"])
+    )
+
+    return FeatureSyncPlan(
+        feature_id=slug,
+        status=handoff.status,
+        ready=handoff.ready,
+        source_files=source_files,
+        missing_files=handoff.missing_files,
+        gaps=handoff.gaps,
+        blocking_checks=handoff.blocking_checks,
+        metadata=metadata,
+        commands=tuple(commands),
+        notes=_sync_plan_notes(metadata),
+        recommended_commands=_recommended_sync_plan_commands(slug),
+    )
+
+
+def render_feature_sync_plan_json(plan: FeatureSyncPlan) -> str:
+    return json.dumps(plan.as_dict(), indent=2, sort_keys=True) + "\n"
+
+
+def render_feature_sync_plan_text(plan: FeatureSyncPlan) -> str:
+    summary = plan.summary
+    lines = [
+        f"# GitHub Sync Plan: {plan.feature_id}",
+        "",
+        "## Summary",
+        "",
+        f"- Status: {plan.status}",
+        f"- Ready: {'yes' if plan.ready else 'no'}",
+        (
+            "- Commands: "
+            f"total={summary['commands_total']} "
+            f"feature_issues={summary['issue_commands']} "
+            f"task_issues={summary['task_issue_commands']} "
+            f"pull_requests={summary['pull_request_commands']}"
+        ),
+        f"- Notes: {summary['notes_total']}",
+        "",
+        "## Metadata",
+        "",
+        f"- Priority: {plan.metadata.priority}",
+        f"- Owner: {plan.metadata.owner}",
+        "",
+        "## Notes",
+        "",
+    ]
+    lines.extend(f"- {note}" for note in plan.notes)
+
+    lines.extend(["", "## Sources", ""])
+    if plan.source_files:
+        lines.extend(f"- [ok] {relative_path}" for relative_path in plan.source_files)
+    else:
+        lines.append("- None.")
+
+    lines.extend(["", "## Missing Files", ""])
+    if plan.missing_files:
+        lines.extend(f"- [missing] {relative_path}" for relative_path in plan.missing_files)
+    else:
+        lines.append("- None.")
+
+    lines.extend(["", "## Gaps", ""])
+    if plan.gaps:
+        lines.extend(
+            f"- {gap['id']}: {gap['source_file']} - {gap['message']}"
+            for gap in plan.gaps
+        )
+    else:
+        lines.append("- None.")
+
+    lines.extend(["", "## Blocking Checks", ""])
+    if plan.blocking_checks:
+        lines.extend(
+            f"- {check.id}: {check.message}"
+            for check in plan.blocking_checks
+        )
+    else:
+        lines.append("- None.")
+
+    lines.extend(["", "## Commands", ""])
+    for command in plan.commands:
+        lines.extend(
+            [
+                f"### {command.id}",
+                "",
+                f"- Kind: {command.kind}",
+                f"- Description: {command.description}",
+                f"- Body source: {command.body_source}",
+                f"- Creates remote: {'yes' if command.creates_remote else 'no'}",
+                f"- Requires token: {'yes' if command.requires_token else 'no'}",
+                f"- Requires network: {'yes' if command.requires_network else 'no'}",
+                (
+                    "- Safe to auto-run: "
+                    f"{'yes' if command.safe_to_auto_run else 'no'}"
+                ),
+                f"- Command: `{shlex.join(command.argv)}`",
+                "",
+            ]
+        )
+
+    lines.extend(["## Recommended Local Commands", ""])
+    lines.extend(f"- `{command}`" for command in plan.recommended_commands)
+
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def render_feature_tasks_json(report: FeatureTasksReport) -> str:

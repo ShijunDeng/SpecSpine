@@ -15,6 +15,7 @@ from specspine.features import (
     InvalidFeatureSlug,
     build_feature_handoff_report,
     build_feature_ready_report,
+    build_feature_sync_plan,
     build_feature_task_issues_report,
     build_feature_tests_report,
     build_feature_trace_report,
@@ -115,6 +116,23 @@ def write_ready_feature_bundle(
     )
 
 
+def add_feature_metadata(
+    root: Path,
+    slug: str = "add-dark-mode",
+    *,
+    priority: str = "high",
+    owner: str = "Platform Team",
+) -> None:
+    spec = root / "specs" / "features" / f"{slug}.md"
+    content = spec.read_text(encoding="utf-8")
+    content = content.replace(
+        f"Feature ID: {slug}\n",
+        f"Feature ID: {slug}\nPriority: {priority}\nOwner: {owner}\n",
+        1,
+    )
+    spec.write_text(content, encoding="utf-8")
+
+
 class FeatureBundleTests(TestCase):
     def test_create_feature_bundle_in_plain_workspace(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -173,6 +191,7 @@ class FeatureBundleTests(TestCase):
                 "specspine feature tests add-dark-mode . --json",
                 "specspine feature ready add-dark-mode . --json",
                 "specspine feature pr add-dark-mode . --json",
+                "specspine feature sync-plan add-dark-mode . --json",
                 "specspine validate . --fusion --features",
             ):
                 with self.subTest(command=command):
@@ -189,6 +208,7 @@ class FeatureBundleTests(TestCase):
             self.assertIn("Acceptance criteria are reviewed", quality)
             self.assertIn("Test coverage proves", quality)
             self.assertIn("Documentation, release notes, or PR draft", quality)
+            self.assertIn("specspine feature sync-plan add-dark-mode . --json", quality)
             self.assertIn("specspine feature ready add-dark-mode . --json", quality)
             self.assertIn("specspine validate . --fusion --features", quality)
             self.assertIn("specspine feature pr add-dark-mode . --json", quality)
@@ -210,7 +230,7 @@ class FeatureBundleTests(TestCase):
             self.assertEqual(test_coverage[0].acceptance_criterion_id, "AC001")
             self.assertEqual(test_coverage[0].target, "tests/...")
             self.assertFalse(test_coverage[0].target_exists)
-            self.assertEqual(len(release_readiness), 4)
+            self.assertEqual(len(release_readiness), 5)
             self.assertTrue(all(not check.done for check in quality_checks))
             self.assertTrue(all(not check.done for check in release_readiness))
 
@@ -1064,6 +1084,7 @@ class FeatureBundleTests(TestCase):
             root = Path(tmp)
             init_workspace(root)
             write_ready_feature_bundle(root)
+            add_feature_metadata(root)
             output = StringIO()
             token_names = {
                 "GH_TOKEN",
@@ -1143,6 +1164,509 @@ class FeatureBundleTests(TestCase):
             self.assertNotIn("secret-github-token", output.getvalue())
             payload = json.loads(output.getvalue())
             self.assertEqual(payload["summary"]["issue_total"], 2)
+
+    def test_feature_sync_plan_cli_json_outputs_reviewable_github_commands(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            add_feature_metadata(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "sync-plan", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(
+                set(payload),
+                {
+                    "blocking_checks",
+                    "commands",
+                    "feature_id",
+                    "gaps",
+                    "metadata",
+                    "missing_files",
+                    "notes",
+                    "ready",
+                    "recommended_commands",
+                    "source_files",
+                    "status",
+                    "summary",
+                },
+            )
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertEqual(payload["status"], "validated")
+            self.assertTrue(payload["ready"])
+            self.assertEqual(payload["metadata"], {"owner": "Platform Team", "priority": "high"})
+            self.assertEqual(payload["missing_files"], [])
+            self.assertEqual(payload["gaps"], [])
+            self.assertEqual(payload["blocking_checks"], [])
+            self.assertEqual(
+                payload["summary"],
+                {
+                    "commands_total": 4,
+                    "issue_commands": 1,
+                    "notes_total": 6,
+                    "pull_request_commands": 1,
+                    "task_issue_commands": 2,
+                },
+            )
+            self.assertEqual(
+                [command["kind"] for command in payload["commands"]],
+                ["issue", "task-issue", "task-issue", "pull-request"],
+            )
+            expected_command_keys = {
+                "argv",
+                "body",
+                "body_source",
+                "creates_remote",
+                "description",
+                "id",
+                "kind",
+                "requires_network",
+                "requires_token",
+                "safe_to_auto_run",
+            }
+            for command in payload["commands"]:
+                self.assertEqual(set(command), expected_command_keys)
+                self.assertTrue(command["body"].strip())
+                self.assertTrue(
+                    command["body_source"].startswith(
+                        ".specspine/sync-plan/add-dark-mode/"
+                    )
+                )
+                self.assertTrue(command["creates_remote"])
+                self.assertTrue(command["requires_token"])
+                self.assertTrue(command["requires_network"])
+                self.assertFalse(command["safe_to_auto_run"])
+
+            feature_issue = payload["commands"][0]
+            self.assertEqual(feature_issue["id"], "github.issue.feature")
+            self.assertEqual(
+                feature_issue["argv"],
+                [
+                    "gh",
+                    "issue",
+                    "create",
+                    "--title",
+                    "Add dark mode",
+                    "--body-file",
+                    ".specspine/sync-plan/add-dark-mode/feature-issue.md",
+                    "--label",
+                    "specspine",
+                    "--label",
+                    "feature:add-dark-mode",
+                    "--label",
+                    "status:validated",
+                    "--label",
+                    "priority:high",
+                ],
+            )
+            self.assertEqual(feature_issue["body_source"], ".specspine/sync-plan/add-dark-mode/feature-issue.md")
+            self.assertIn("## Acceptance Criteria", feature_issue["body"])
+            self.assertTrue(feature_issue["creates_remote"])
+            self.assertTrue(feature_issue["requires_token"])
+            self.assertTrue(feature_issue["requires_network"])
+            self.assertFalse(feature_issue["safe_to_auto_run"])
+
+            task_issue = payload["commands"][1]
+            self.assertEqual(task_issue["id"], "github.task_issue.T001")
+            self.assertEqual(task_issue["kind"], "task-issue")
+            self.assertEqual(
+                task_issue["body_source"],
+                ".specspine/sync-plan/add-dark-mode/task-issues/T001.md",
+            )
+            self.assertIn("## Source", task_issue["body"])
+            self.assertTrue(
+                any("[add-dark-mode] T001" in arg for arg in task_issue["argv"])
+            )
+            self.assertIn("task", task_issue["argv"])
+            self.assertIn(".specspine/sync-plan/add-dark-mode/task-issues/T001.md", task_issue["argv"])
+            self.assertEqual(
+                task_issue["argv"][-8:],
+                [
+                    "--label",
+                    "specspine",
+                    "--label",
+                    "feature:add-dark-mode",
+                    "--label",
+                    "task",
+                    "--label",
+                    "status:validated",
+                ],
+            )
+
+            pull_request = payload["commands"][-1]
+            self.assertEqual(pull_request["id"], "github.pull_request")
+            self.assertEqual(pull_request["kind"], "pull-request")
+            self.assertEqual(
+                pull_request["argv"],
+                [
+                    "gh",
+                    "pr",
+                    "create",
+                    "--title",
+                    "Implement Add dark mode",
+                    "--body-file",
+                    ".specspine/sync-plan/add-dark-mode/pull-request.md",
+                    "--draft",
+                    "--label",
+                    "specspine",
+                    "--label",
+                    "feature:add-dark-mode",
+                    "--label",
+                    "status:validated",
+                ],
+            )
+            self.assertNotIn("--dry-run", pull_request["argv"])
+            self.assertEqual(pull_request["body_source"], ".specspine/sync-plan/add-dark-mode/pull-request.md")
+            self.assertIn("## Summary", pull_request["body"])
+
+            flat_argv = [
+                arg
+                for command in payload["commands"]
+                for arg in command["argv"]
+            ]
+            self.assertNotIn("--assignee", flat_argv)
+            notes_text = "\n".join(payload["notes"])
+            self.assertIn("did not execute gh", notes_text)
+            self.assertIn("authenticate GitHub CLI", notes_text)
+            self.assertIn("project scope", notes_text)
+            self.assertIn("dry-run may still push", notes_text)
+            self.assertIn("priority:high", notes_text)
+            self.assertIn("Owner 'Platform Team'", notes_text)
+            self.assertIn("not automatically mapped to --assignee", notes_text)
+            self.assertIn(
+                "specspine feature issue add-dark-mode . --json",
+                payload["recommended_commands"],
+            )
+            self.assertIn(
+                "specspine feature task-issues add-dark-mode . --json",
+                payload["recommended_commands"],
+            )
+            self.assertIn(
+                "specspine feature pr add-dark-mode . --json",
+                payload["recommended_commands"],
+            )
+            self.assertIn(
+                "specspine feature ready add-dark-mode . --json",
+                payload["recommended_commands"],
+            )
+            self.assertIn("specspine adapters lifecycle . --json", payload["recommended_commands"])
+
+    def test_feature_sync_plan_default_unassigned_owner_is_not_assigned(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(
+                root,
+                "add-dark-mode",
+                title="Add dark mode",
+                why="Reduce eye strain",
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "sync-plan", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            flat_argv = [
+                arg
+                for command in payload["commands"]
+                for arg in command["argv"]
+            ]
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["metadata"]["owner"], "unassigned")
+            self.assertNotIn("--assignee", flat_argv)
+            self.assertTrue(
+                any(
+                    "not automatically mapped to --assignee" in note
+                    for note in payload["notes"]
+                )
+            )
+
+    def test_feature_sync_plan_cli_text_output_contains_safe_command_lines_and_notes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            add_feature_metadata(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["feature", "sync-plan", "add-dark-mode", str(root)])
+
+            text = output.getvalue()
+            self.assertEqual(returncode, 0)
+            self.assertIn("# GitHub Sync Plan: add-dark-mode", text)
+            self.assertIn("## Summary", text)
+            self.assertIn("- Priority: high", text)
+            self.assertIn("- Owner: Platform Team", text)
+            self.assertIn("did not execute gh", text)
+            self.assertIn("authenticate GitHub CLI", text)
+            self.assertIn("project scope", text)
+            self.assertIn("dry-run may still push", text)
+            self.assertIn("not automatically mapped to --assignee", text)
+            self.assertIn("Creates remote: yes", text)
+            self.assertIn("Requires token: yes", text)
+            self.assertIn("Requires network: yes", text)
+            self.assertIn("Safe to auto-run: no", text)
+            self.assertIn("Command: `gh issue create --title 'Add dark mode'", text)
+            self.assertIn("Command: `gh pr create --title 'Implement Add dark mode'", text)
+            self.assertIn("--draft", text)
+            for line in text.splitlines():
+                if line.startswith("- Command:"):
+                    self.assertNotIn("--dry-run", line)
+            self.assertIn("specspine feature sync-plan add-dark-mode . --json", text)
+
+    def test_feature_sync_plan_output_file_overwrite_force_and_json_output(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            add_feature_metadata(root)
+            output_file = root / "reports" / "sync-plan.md"
+            output_file.parent.mkdir(parents=True)
+            output_file.write_text("existing\n", encoding="utf-8")
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(
+                    [
+                        "feature",
+                        "sync-plan",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(output_file),
+                    ]
+                )
+
+            self.assertEqual(returncode, 1)
+            self.assertIn("Output file already exists", stderr.getvalue())
+            self.assertEqual(output_file.read_text(encoding="utf-8"), "existing\n")
+
+            stdout = StringIO()
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "feature",
+                        "sync-plan",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--output",
+                        str(output_file),
+                        "--force",
+                    ]
+                )
+
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertIn(
+                "# GitHub Sync Plan: add-dark-mode",
+                output_file.read_text(encoding="utf-8"),
+            )
+            self.assertNotIn("Wrote feature sync plan", stdout.getvalue())
+
+            text_output_file = root / "reports" / "sync-plan-text.md"
+            stdout = StringIO()
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "feature",
+                        "sync-plan",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(text_output_file),
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            self.assertIn("Wrote feature sync plan to", stdout.getvalue())
+            self.assertIn(str(text_output_file.resolve()), stdout.getvalue())
+            self.assertIn(
+                "# GitHub Sync Plan: add-dark-mode",
+                text_output_file.read_text(encoding="utf-8"),
+            )
+
+    def test_feature_sync_plan_partial_bundle_returns_zero_with_missing_info(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root, status="implemented")
+            add_feature_metadata(root)
+            (root / "execution" / "features" / "add-dark-mode.md").unlink()
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "sync-plan", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            gap_ids = {gap["id"] for gap in payload["gaps"]}
+            self.assertEqual(returncode, 0)
+            self.assertFalse(payload["ready"])
+            self.assertEqual(
+                payload["missing_files"],
+                ["execution/features/add-dark-mode.md"],
+            )
+            self.assertIn("missing_file", gap_ids)
+            self.assertEqual(payload["summary"]["commands_total"], 2)
+            self.assertEqual(payload["summary"]["issue_commands"], 1)
+            self.assertEqual(payload["summary"]["task_issue_commands"], 0)
+            self.assertEqual(payload["summary"]["pull_request_commands"], 1)
+            self.assertEqual(
+                [command["kind"] for command in payload["commands"]],
+                ["issue", "pull-request"],
+            )
+            self.assertTrue(payload["blocking_checks"])
+
+    def test_feature_sync_plan_all_files_missing_returns_nonzero(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            stdout = StringIO()
+            stderr = StringIO()
+
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                returncode = main(["feature", "sync-plan", "add-dark-mode", str(root)])
+
+            self.assertEqual(returncode, 1)
+            self.assertEqual(stdout.getvalue(), "")
+            self.assertIn("No feature files found", stderr.getvalue())
+            self.assertIn("missing specs/features/add-dark-mode.md", stderr.getvalue())
+
+    def test_feature_sync_plan_invalid_slug_returns_two(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(["feature", "sync-plan", "bad_slug", str(root)])
+
+            self.assertEqual(returncode, 2)
+            self.assertIn("Invalid feature slug", stderr.getvalue())
+
+    def test_feature_sync_plan_does_not_read_tokens_call_network_or_subprocess(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            add_feature_metadata(root)
+            output = StringIO()
+            token_names = {
+                "GH_TOKEN",
+                "GITHUB_API_TOKEN",
+                "GITHUB_PAT",
+                "GITHUB_TOKEN",
+            }
+            environ_type = os.environ.__class__
+            original_get = environ_type.get
+            original_getitem = environ_type.__getitem__
+            original_contains = environ_type.__contains__
+
+            def guarded_get(environ, key, default=None):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_get(environ, key, default)
+
+            def guarded_getitem(environ, key):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_getitem(environ, key)
+
+            def guarded_contains(environ, key):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_contains(environ, key)
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "GH_TOKEN": "secret-gh-token",
+                    "GITHUB_API_TOKEN": "secret-github-api-token",
+                    "GITHUB_PAT": "secret-github-pat",
+                    "GITHUB_TOKEN": "secret-github-token",
+                    "PATH": "",
+                },
+            ):
+                with (
+                    patch.object(environ_type, "get", guarded_get),
+                    patch.object(environ_type, "__getitem__", guarded_getitem),
+                    patch.object(environ_type, "__contains__", guarded_contains),
+                    patch(
+                        "subprocess.run",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_run,
+                    patch(
+                        "subprocess.Popen",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_popen,
+                    patch(
+                        "subprocess.call",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_call,
+                    patch(
+                        "subprocess.check_call",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_check_call,
+                    patch(
+                        "subprocess.check_output",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_check_output,
+                    patch(
+                        "os.system",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as os_system,
+                    patch(
+                        "shutil.which",
+                        side_effect=AssertionError("gh lookup called"),
+                    ) as shutil_which,
+                    patch(
+                        "urllib.request.urlopen",
+                        side_effect=AssertionError("network called"),
+                    ) as urlopen,
+                    patch(
+                        "socket.create_connection",
+                        side_effect=AssertionError("network called"),
+                    ) as create_connection,
+                    patch(
+                        "socket.socket.connect",
+                        side_effect=AssertionError("network called"),
+                    ) as socket_connect,
+                    redirect_stdout(output),
+                ):
+                    returncode = main(
+                        ["feature", "sync-plan", "add-dark-mode", str(root), "--json"]
+                    )
+
+            self.assertEqual(returncode, 0)
+            subprocess_run.assert_not_called()
+            subprocess_popen.assert_not_called()
+            subprocess_call.assert_not_called()
+            subprocess_check_call.assert_not_called()
+            subprocess_check_output.assert_not_called()
+            os_system.assert_not_called()
+            shutil_which.assert_not_called()
+            urlopen.assert_not_called()
+            create_connection.assert_not_called()
+            socket_connect.assert_not_called()
+            self.assertNotIn("secret-gh-token", output.getvalue())
+            self.assertNotIn("secret-github-api-token", output.getvalue())
+            self.assertNotIn("secret-github-pat", output.getvalue())
+            self.assertNotIn("secret-github-token", output.getvalue())
+            payload = json.loads(output.getvalue())
+            self.assertFalse(any(command["safe_to_auto_run"] for command in payload["commands"]))
 
     def test_feature_trace_cli_text_and_json_outputs(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -3305,6 +3829,29 @@ class FeatureBundleTests(TestCase):
         self.assertIn(
             "specspine feature task-issues feature-task-issue-drafts . --json",
             report.issues[0].body,
+        )
+
+    def test_dogfood_github_sync_plan_is_validated_and_ready(self) -> None:
+        ready = build_feature_ready_report(REPO_ROOT, "github-sync-plan")
+        plan = build_feature_sync_plan(REPO_ROOT, "github-sync-plan")
+        validation = build_validation_report(REPO_ROOT, include_features=True)
+
+        self.assertTrue(ready.ready)
+        self.assertTrue(validation["ok"])
+        self.assertEqual(validation_exit_code(validation), 0)
+        self.assertEqual(plan.status, "validated")
+        self.assertTrue(plan.ready)
+        self.assertEqual(plan.metadata.priority, "high")
+        self.assertEqual(plan.metadata.owner, "SpecSpine maintainers")
+        self.assertEqual(plan.missing_files, ())
+        self.assertEqual(plan.gaps, ())
+        self.assertEqual(plan.blocking_checks, ())
+        self.assertGreater(plan.summary["task_issue_commands"], 0)
+        self.assertTrue(all(not command.safe_to_auto_run for command in plan.commands))
+        self.assertTrue(any("dry-run may still push" in note for note in plan.notes))
+        self.assertIn(
+            "specspine feature sync-plan github-sync-plan . --json",
+            plan.recommended_commands,
         )
 
     def test_validate_cli_can_check_feature_bundles(self) -> None:

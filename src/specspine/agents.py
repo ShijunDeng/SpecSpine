@@ -46,6 +46,7 @@ AGENTS_TEMPLATE = """
     specspine feature tests <slug> . --json
     specspine feature issue <slug> . --json
     specspine feature pr <slug> . --json
+    specspine feature sync-plan <slug> . --json
     PYTHONPATH=src python3 -m unittest discover -s tests
     ```
 
@@ -55,13 +56,14 @@ AGENTS_TEMPLATE = """
     - Use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features; add local filters such as `--feature-status validated --feature-ready yes --feature-sort slug` for triage.
     - Use `specspine gates . --json` when an agent or reviewer needs repository-level quality gate definitions; it exports definitions and does not execute checks.
     - Use `specspine adapters lifecycle . --json` when adapter lifecycle definitions are needed; it exports static local mappings and does not execute upstream tools.
-    - For new requirements, create a feature bundle with `specspine feature new`; the generated peer files include focused handoff, task issue drafts, tests, PR, readiness, and validation guidance.
+    - For new requirements, create a feature bundle with `specspine feature new`; the generated peer files include focused handoff, task issue drafts, tests, PR, readiness, and validation guidance, plus sync-plan review.
     - Keep feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.
     - Before archiving, run `specspine feature ready <slug> . --json`, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.
     - Start feature implementation, review, and acceptance handoffs with `specspine feature handoff <slug> . --json`.
     - Use `specspine feature tasks`, `specspine feature task-issues`, `specspine feature trace`, `specspine feature ready`, and `specspine feature tests` for focused task, task issue draft, trace, gate, and acceptance-test views.
     - For QA context, add local `## Test Coverage` checklist links such as `- [ ] AC001 -> tests/test_features.py` in `quality/features/<slug>.md`.
     - Use `specspine feature pr <slug> . --json` to prepare an offline Pull Request draft from local evidence without reading tokens or calling GitHub.
+    - Use `specspine feature sync-plan <slug> . --json` to review GitHub CLI sync intent without executing `gh`, reading tokens, or calling GitHub.
     - Run `specspine validate .` before and after edits; use `specspine validate . --fusion --features` when feature bundles or fusion artifacts are involved.
     - Keep OpenSpec, Spec Kit, and Superpowers as external adapters. Do not vendor upstream code.
     - By default, do not read or write GitHub tokens and do not call the GitHub API.

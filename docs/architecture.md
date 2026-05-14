@@ -29,6 +29,7 @@ The CLI is intentionally thin:
 - `specspine feature tests` exports an acceptance-test packet for QA and testing agents.
 - `specspine feature issue` exports a local GitHub issue draft from a native feature bundle.
 - `specspine feature pr` exports a local GitHub Pull Request draft from a native feature bundle.
+- `specspine feature sync-plan` exports a local GitHub CLI synchronization plan without executing it.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
 - `specspine status` emits a compact status packet for humans, agents, and scripts.
@@ -75,7 +76,7 @@ Workspace validation also checks base Markdown workspace files for scaffold plac
 
 - `specs/features/<slug>.md` for intent, users, scope, non-goals, acceptance criteria, edge cases, constraints, and traceability notes.
 - `execution/features/<slug>.md` for milestones, tasks, dependencies, open questions, and focused agent handoff commands.
-- `quality/features/<slug>.md` for required checks, test plan, review notes, and release readiness gates.
+- `quality/features/<slug>.md` for required checks, test plan, review notes, sync-plan review, and release readiness gates.
 
 Each file records the same `Feature ID: <slug>` and starts at `Status: proposed`. The spec peer also starts with `Priority: medium` and `Owner: unassigned`; those two local fields are the source of truth for workspace feature-summary triage and are not repeated in execution or quality peers. The generated quality checklists stay unchecked so a new bundle validates as structurally complete but does not pass `specspine feature ready` until implementation, tests, docs or PR draft, `feature ready`, and `validate . --fusion --features` evidence are complete. The command refuses to overwrite existing feature files unless `--force` is passed.
 
@@ -160,6 +161,10 @@ JSON output includes `title`, `body`, `feature_id`, `status`, `ready`, `source_f
 
 The command is intentionally offline. It does not call GitHub APIs, does not require `gh`, does not read tokens, does not use network access, and does not vendor upstream project code.
 
+`specspine feature sync-plan <slug> [path] [--json] [--output FILE] [--force]` is the local review bridge before any GitHub CLI execution. It composes existing feature issue, task issue, Pull Request, metadata, status, readiness, gap, and blocker evidence into a plan of argv arrays. The command never executes `gh`, calls GitHub APIs, reads tokens, uses network access, invokes upstream CLIs, or adds dependencies.
+
+The sync plan JSON includes `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `metadata`, `summary`, `commands`, `notes`, and `recommended_commands`. Commands include stable ids, `kind` values of `issue`, `task-issue`, or `pull-request`, body source references, draft body content, argv arrays, and safety flags. Every command is marked `creates_remote=true`, `requires_token=true`, `requires_network=true`, and `safe_to_auto_run=false`; text output adds shell-quoted command lines for human review only. GitHub priority is represented as a label for compatibility, project scope is only noted, PR `--dry-run` is deliberately not used as a safety guarantee, and local `Owner:` metadata is not automatically mapped to assignees.
+
 `specspine validate --features` checks that discovered native feature bundles have valid slugs, all three peer files, matching feature ids, allowed status markers, and consistent peer-file status.
 
 `specspine agents init [path]` writes a short `AGENTS.md` file for Codex, Claude, Gemini, and similar coding agents. The file is a human-readable entry point, not a new source of truth. It points agents back to `specspine status . --json`, `specspine validate .`, native feature bundles, and the external-adapter boundary for OpenSpec, Spec Kit, and Superpowers. The command refuses to overwrite an existing `AGENTS.md` unless `--force` is passed.
@@ -176,7 +181,7 @@ SpecSpine files <-> adapter <-> external tool
 
 Adapters should not own the source of truth unless the user explicitly chooses that mode.
 
-The adapter lifecycle map is the local contract for future sync work. It aligns SpecSpine's native statuses with OpenSpec change artifacts, Spec Kit's spec -> plan -> tasks -> implement workflow, and Superpowers' brainstorming, planning, TDD, subagent, review, and completion discipline before any adapter writes remote or upstream state.
+The adapter lifecycle map and GitHub sync plan are local contracts for future sync work. They align SpecSpine's native statuses with OpenSpec change artifacts, Spec Kit's spec -> plan -> tasks -> implement workflow, Superpowers' brainstorming, planning, TDD, subagent, review, and completion discipline, and GitHub issue/PR intent before any adapter writes remote or upstream state.
 
 ## Fusion Layer
 
@@ -193,7 +198,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 
 - `specspine.workspace`: local file templates and workspace checks.
 - `specspine.agents`: project-local `AGENTS.md` generation for AI coding agents.
-- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, task issue draft export, trace export, readiness gate evaluation, handoff packet export, issue draft export, and PR draft export.
+- `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, task issue draft export, trace export, readiness gate evaluation, handoff packet export, issue draft export, PR draft export, and GitHub sync plan export.
 - `specspine.adapters`: upstream metadata, availability probes, lifecycle mappings, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, optional validation summary, and optional feature summary rendering.
