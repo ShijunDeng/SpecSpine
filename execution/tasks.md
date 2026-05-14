@@ -15,6 +15,7 @@
 - [x] Implement `specspine fuse` adapter-mode fusion generation.
 - [x] Implement `specspine status . --json`.
 - [x] Implement `specspine status . --json --validate` validation summaries.
+- [x] Implement `specspine status . --json --feature-summaries` optional native feature summaries.
 - [x] Implement `specspine validate . --fusion --features`.
 - [x] Document upstream adapter policy without vendoring upstream code.
 - [x] Initialize this repository as a complete SpecSpine fusion workspace.
@@ -24,6 +25,7 @@
 - [x] Dogfood traceability export with `feature-traceability-export`.
 - [x] Dogfood readiness gate with `feature-readiness-gate`.
 - [x] Dogfood handoff packet export with `feature-handoff-packet`.
+- [x] Dogfood workspace feature summaries with `status-feature-summaries`.
 
 ## Next
 
@@ -32,6 +34,7 @@
 - [ ] Observe whether reviewers prefer `feature trace --json` as the default traceability packet.
 - [ ] Observe whether reviewers and CI jobs prefer `feature ready --json` for per-feature release gates.
 - [ ] Monitor whether agents prefer `status --json --validate` as the default startup packet.
+- [ ] Observe whether agents use `status --json --validate --feature-summaries` only when comparing multiple features.
 - [ ] Revisit generated templates after dogfooding this workspace for one or more development cycles.
 - [ ] Add tests when template or validation behavior changes.
 - [ ] Keep README/docs aligned with any command surface changes.

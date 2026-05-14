@@ -1988,6 +1988,15 @@ class FeatureBundleTests(TestCase):
             report.next_actions,
         )
 
+    def test_dogfood_status_feature_summaries_is_validated_and_ready(self) -> None:
+        report = build_feature_ready_report(REPO_ROOT, "status-feature-summaries")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.status, "validated")
+        self.assertEqual(report.missing_files, ())
+        self.assertEqual(report.gaps, ())
+        self.assertEqual(report.summary["fail"], 0)
+
     def test_validate_cli_can_check_feature_bundles(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

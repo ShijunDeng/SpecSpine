@@ -264,6 +264,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="include a validation summary in the status output",
     )
+    status_parser.add_argument(
+        "--feature-summaries",
+        action="store_true",
+        help="include compact per-feature progress summaries and next actions",
+    )
 
     validate_parser = subcommands.add_parser("validate", help="validate SpecSpine workspace contracts")
     validate_parser.add_argument("path", nargs="?", default=".", help="workspace path")
@@ -640,7 +645,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "status":
-        status = build_status(Path(args.path), include_adapters=args.adapters)
+        if args.feature_summaries:
+            status = build_status(
+                Path(args.path),
+                include_adapters=args.adapters,
+                include_feature_summaries=True,
+            )
+        else:
+            status = build_status(Path(args.path), include_adapters=args.adapters)
         if args.validate:
             report = build_validation_report(
                 Path(args.path),

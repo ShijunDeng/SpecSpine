@@ -13,6 +13,7 @@
 - Fusion layer generation for OpenSpec, Spec Kit, and Superpowers.
 - Status JSON, validation JSON/text, adapter doctor, and install hints.
 - Optional validation summaries in `specspine status --json --validate`.
+- Optional native feature summaries in `specspine status --json --feature-summaries`.
 - Unit tests and GitHub Actions coverage for the current command surface.
 
 ## Current Milestone
@@ -23,6 +24,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 
 - Keep this repository complete under `specspine status . --json`.
 - Prefer `specspine status . --json --validate` when an agent needs both context and quality-gate summary in one packet.
+- Use `specspine status . --json --validate --feature-summaries` when an agent needs to choose or compare multiple native features; keep the default startup packet compact otherwise.
 - Use `specspine feature handoff <slug> . --json` as the default feature-level packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
 - Use `specspine feature trace <slug> . --json` when an agent or reviewer needs acceptance criteria, tasks, checks, test plan, and gaps in one packet.
@@ -42,6 +44,6 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 
 - Should future lifecycle updates enforce transition ordering, or remain manual file-native state changes?
 - Should status JSON eventually include warning details, or keep the validation summary focused on failed checks?
-- Should task summaries be added to workspace status once task export has more dogfood mileage?
+- Should optional feature summaries grow filters or sorting after multi-feature dogfooding, or remain a compact append-only view?
 - Should readiness summaries eventually be included in workspace status, or remain an explicit per-feature gate?
 - Which generated templates should be tightened based on this dogfood workspace?

@@ -109,6 +109,8 @@ The readiness report includes `feature_id`, `ready`, `status`, stable `checks`, 
 
 The handoff summary preserves the focused report counts: trace total/done/open, ready pass/fail/total, tasks total/done/open, gap count, and blocking check count. Next actions are deterministic and ordered: create or restore missing bundles, add missing peer files or sections, complete open tasks, resolve blocking checks, then review/merge/archive ready bundles. Missing bundles return `1` with a packet; invalid slugs return `2`; partial bundles return `0`. Output behavior matches other feature exporters: `--output` writes text with overwrite protection, and `--json --output` prints JSON while writing text to the file.
 
+`specspine status <path> --feature-summaries` is an opt-in workspace view for comparing native features. The default status payload intentionally stays compact for agent startup and does not include per-feature task or readiness detail. With the flag, `status` reuses `list_feature_bundles` and the existing feature handoff report to add `feature_summaries` with lifecycle status, completeness, readiness, missing files, task summary counts, ready summary counts, gap count, blocking check count, next actions, and recommended local commands. Text status adds only a short Feature summaries section. Invalid feature filenames produce not-ready summary records instead of crashing workspace status.
+
 `specspine feature issue <slug> [path]` is the local bridge from native feature bundles to GitHub issue workflows. It reads the spec, execution, and quality peer files and builds a structured issue draft with:
 
 - title from the spec file's first-line H1, falling back to slug title case.
@@ -152,6 +154,6 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 - `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, trace export, readiness gate evaluation, handoff packet export, and issue draft export.
 - `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
-- `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, and optional validation summary rendering.
+- `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, optional validation summary, and optional feature summary rendering.
 - `specspine.validation`: executable workspace, fusion, feature, optional adapter contract checks, and compact validation summaries.
 - `specspine.cli`: command-line interface.

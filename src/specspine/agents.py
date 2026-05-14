@@ -27,6 +27,7 @@ AGENTS_TEMPLATE = """
 
     ```bash
     specspine status . --json --validate
+    specspine status . --json --validate --feature-summaries
     specspine validate .
     specspine validate . --features
     specspine feature new <slug> . --title "..." --why "..."
@@ -42,6 +43,7 @@ AGENTS_TEMPLATE = """
     ## Working Rules
 
     - Read `specspine status . --json --validate` before planning or editing.
+    - Use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features.
     - For new requirements, create a feature bundle with `specspine feature new`.
     - Keep feature peer files on a consistent lifecycle status with `specspine feature status`.
     - Start feature implementation, review, and acceptance handoffs with `specspine feature handoff <slug> . --json`.

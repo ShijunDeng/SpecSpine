@@ -25,6 +25,7 @@ class DogfoodArtifactsTests(TestCase):
             "feature-status-lifecycle",
             "feature-readiness-gate",
             "feature-handoff-packet",
+            "status-feature-summaries",
             "feature-task-export",
             "feature-traceability-export",
             "status-validation-summary",
@@ -52,6 +53,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:feature-status-lifecycle", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-readiness-gate", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-handoff-packet", "pass"), checks)
+        self.assertIn(("feature.status_consistency:status-feature-summaries", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-task-export", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-traceability-export", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-validation-summary", "pass"), checks)
@@ -63,6 +65,7 @@ class DogfoodArtifactsTests(TestCase):
 
         required_snippets = [
             "PYTHONPATH=src python3 -m specspine status . --json --validate",
+            "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries",
             "PYTHONPATH=src python3 -m specspine validate . --fusion --features",
             "PYTHONPATH=src python3 -m unittest discover -s tests",
             "PYTHONPATH=src python3 -m specspine feature status <slug> . --json",
@@ -155,6 +158,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/feature-handoff-packet.md",
             "execution/features/feature-handoff-packet.md",
             "quality/features/feature-handoff-packet.md",
+            "specs/features/status-feature-summaries.md",
+            "execution/features/status-feature-summaries.md",
+            "quality/features/status-feature-summaries.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -165,6 +171,12 @@ class DogfoodArtifactsTests(TestCase):
 
     def test_feature_readiness_gate_dogfood_bundle_passes_its_gate(self) -> None:
         report = build_feature_ready_report(REPO_ROOT, "feature-readiness-gate")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.summary["fail"], 0)
+
+    def test_status_feature_summaries_dogfood_bundle_passes_its_gate(self) -> None:
+        report = build_feature_ready_report(REPO_ROOT, "status-feature-summaries")
 
         self.assertTrue(report.ready)
         self.assertEqual(report.summary["fail"], 0)

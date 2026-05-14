@@ -14,12 +14,14 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine feature trace` now exports a local traceability handoff that connects acceptance criteria, tasks, required checks, test plan entries, sources, and gaps.
 - `specspine feature ready` now evaluates a local per-feature readiness gate with blocking checks and failing exit codes.
 - `specspine feature handoff` now exports a compact feature packet that composes status, tasks, trace, readiness, release readiness, next actions, and key commands.
+- `specspine status --feature-summaries` now adds optional compact per-feature progress, readiness, gaps, blocking counts, and next actions without changing default status output.
 - No upstream code should be copied into this repository as part of fusion work.
 
 ## Decisions
 
 - Treat `specspine status . --json` as the first context packet for future agents.
 - Use `specspine status . --json --validate` when agents need context and failed quality checks together.
+- Use `specspine status . --json --validate --feature-summaries` only when agents need to choose or compare multiple native features, so default startup context stays small.
 - Treat `specspine feature handoff <slug> . --json` as the default local feature packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` as the focused execution checklist view when an agent only needs tasks.
 - Treat `specspine feature trace <slug> . --json` as the local traceability handoff when reviewers need a complete feature packet.
@@ -35,6 +37,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Future feature work should start with native feature bundles under `specs/features/`, `execution/features/`, and `quality/features/`.
 - Feature bundles support `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` statuses.
 - Status packets can now include compact validation summaries with failed checks only.
+- Status packets can now opt into compact feature summaries for multi-feature triage while omitting them by default.
 - Feature execution checklists can now be exported without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be exported as deterministic traceability packets without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be checked with deterministic readiness gates that fail on missing files, inconsistent statuses, trace gaps, incomplete checklist evidence, missing test plans, or open release readiness items.

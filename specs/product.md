@@ -14,7 +14,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Native feature handoff packets that compose status, trace, tasks, readiness, release readiness, next actions, and recommended commands.
 - Local GitHub issue draft generation from feature bundles without API calls.
 - Fusion initialization for OpenSpec, Spec Kit, and Superpowers as external adapters.
-- Status, optional status validation summaries, validation, doctor, and adapter inspection commands suitable for CI and coding agents.
+- Status, optional status validation summaries, optional feature summaries, validation, doctor, and adapter inspection commands suitable for CI and coding agents.
 
 ## Non-Goals
 
@@ -28,7 +28,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 
 - Initialize a base workspace with `specspine init .` and create agent guidance with `specspine agents init .`.
 - Initialize the full fusion layer with `specspine fuse . --agent codex`, which writes adapter contracts but does not invoke upstream tools.
-- Run `specspine status . --json` before work to understand missing artifacts, enabled upstreams, and next recommendations; add `--validate` when a single packet should also show quality-gate summary and failed check ids.
+- Run `specspine status . --json` before work to understand missing artifacts, enabled upstreams, and next recommendations; add `--validate` when a single packet should also show quality-gate summary and failed check ids; add `--feature-summaries` only when choosing or comparing multiple native features.
 - Create new requirements with `specspine feature new <slug> . --title "..." --why "..."`, then keep the spec, execution, and quality peer files aligned by `Feature ID`.
 - Move feature bundles through `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` with `specspine feature status <slug> . --set STATUS`.
 - Start implementation, acceptance, and review agent work with `specspine feature handoff <slug> . --json`.
@@ -43,6 +43,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Base and fusion workspaces can be initialized without external dependencies.
 - A complete fused workspace reports `workspace.complete=true` and `fusion.complete=true` in status JSON.
 - `status --json --validate` reports `validation.ok`, summary counts, included check groups, and failed checks without changing the report command's zero exit behavior.
+- `status --json --feature-summaries` reports compact per-feature progress, readiness, gap, blocking, next-action, and recommended-command summaries while default status JSON omits them.
 - `feature tasks <slug> --json` reports stable ordered task records from `execution/features/<slug>.md`.
 - `feature trace <slug> --json` reports sources, missing files, acceptance criteria, tasks, required checks, test plan entries, summary counts, and trace gaps without calling external services.
 - `feature ready <slug> --json` reports stable checks, blocking checks, summary counts, missing files, and gaps, returning non-zero until the feature is implemented or validated and all required evidence is complete.

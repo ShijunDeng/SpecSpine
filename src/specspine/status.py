@@ -5,7 +5,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .adapters import ADAPTER_SPECS, AdapterStatus, probe_adapters
-from .features import list_feature_bundles
+from .features import (
+    FeatureBundleNotFoundError,
+    InvalidFeatureSlug,
+    build_feature_handoff_report,
+    list_feature_bundles,
+)
 from .fusion import FUSION_REQUIRED_FILES
 from .workspace import BASE_WORKSPACE_FILES, check_workspace
 
@@ -153,6 +158,112 @@ def _adapter_statuses(statuses: list[AdapterStatus]) -> dict[str, dict[str, Any]
     }
 
 
+def _empty_count_summary() -> dict[str, int]:
+    return {
+        "done": 0,
+        "open": 0,
+        "total": 0,
+    }
+
+
+def _invalid_feature_summary(
+    feature: dict[str, object],
+    *,
+    reason: str,
+) -> dict[str, Any]:
+    slug = str(feature["slug"])
+    missing_files = [
+        str(relative_path)
+        for relative_path in feature.get("missing_files", [])
+    ]
+    return {
+        "feature_id": slug,
+        "slug": slug,
+        "status": "invalid",
+        "complete": bool(feature.get("complete", False)),
+        "ready": False,
+        "missing_files": missing_files,
+        "tasks_summary": _empty_count_summary(),
+        "ready_summary": {"fail": 1, "pass": 0, "total": 1},
+        "gaps": max(1, len(missing_files)),
+        "blocking_checks": 1,
+        "next_actions": [reason],
+        "recommended_commands": [],
+    }
+
+
+def _missing_feature_summary(feature: dict[str, object]) -> dict[str, Any]:
+    slug = str(feature["slug"])
+    missing_files = [
+        str(relative_path)
+        for relative_path in feature.get("missing_files", [])
+    ]
+    return {
+        "feature_id": slug,
+        "slug": slug,
+        "status": str(feature.get("status") or "unknown"),
+        "complete": bool(feature.get("complete", False)),
+        "ready": False,
+        "missing_files": missing_files,
+        "tasks_summary": _empty_count_summary(),
+        "ready_summary": {"fail": 1, "pass": 0, "total": 1},
+        "gaps": max(1, len(missing_files)),
+        "blocking_checks": 1,
+        "next_actions": [
+            (
+                "Create or restore the native feature bundle: "
+                f"specspine feature new {slug} . --title \"...\" --why \"...\""
+            )
+        ],
+        "recommended_commands": [],
+    }
+
+
+def build_feature_summaries(
+    root: Path,
+    features: list[dict[str, object]] | None = None,
+) -> list[dict[str, Any]]:
+    resolved_root = root.expanduser().resolve()
+    summaries: list[dict[str, Any]] = []
+    feature_bundles = features if features is not None else list_feature_bundles(resolved_root)
+
+    for feature in feature_bundles:
+        slug = str(feature["slug"])
+        try:
+            report = build_feature_handoff_report(resolved_root, slug)
+        except InvalidFeatureSlug as error:
+            summaries.append(
+                _invalid_feature_summary(
+                    feature,
+                    reason=str(error),
+                )
+            )
+            continue
+        except FeatureBundleNotFoundError:
+            summaries.append(_missing_feature_summary(feature))
+            continue
+
+        summary = report.summary
+        summaries.append(
+            {
+                "feature_id": report.feature_id,
+                "slug": report.feature_id,
+                "status": report.status,
+                "complete": bool(feature.get("complete", False)),
+                "ready": report.ready,
+                "missing_files": list(report.missing_files),
+                "tasks_summary": dict(summary["tasks"]),
+                "ready_summary": dict(summary["ready"]),
+                "gaps": int(summary["gaps"]["total"]),
+                "blocking_checks": int(summary["blocking_checks"]["total"]),
+                "next_actions": list(report.next_actions),
+                "recommended_commands": list(report.recommended_commands),
+            }
+        )
+
+    return summaries
+
+
 def _build_recommendations(
     *,
     root: Path,
@@ -200,6 +311,7 @@ def build_status(
     path: Path,
     *,
     include_adapters: bool = False,
+    include_feature_summaries: bool = False,
     adapter_probe: AdapterProbe = probe_adapters,
 ) -> dict[str, Any]:
     root = path.expanduser().resolve()
@@ -250,6 +362,9 @@ def build_status(
 
     if adapters is not None:
         status["adapters"] = adapters
+
+    if include_feature_summaries:
+        status["feature_summaries"] = build_feature_summaries(root, features=features)
 
     return status
 
@@ -331,6 +446,27 @@ def render_status_text(status: dict[str, Any]) -> str:
             lines.append("  Failed checks:")
             for check in failed_checks:
                 lines.append(f"    - {check['id']}")
+
+    feature_summaries = status.get("feature_summaries")
+    if feature_summaries is not None:
+        lines.append("Feature summaries:")
+        if feature_summaries:
+            for summary in feature_summaries:
+                tasks = summary["tasks_summary"]
+                next_actions = summary.get("next_actions", [])
+                first_action = next_actions[0] if next_actions else "None."
+                lines.append(
+                    "  "
+                    f"{summary['slug']} - "
+                    f"status={summary['status']} "
+                    f"ready={'yes' if summary['ready'] else 'no'} "
+                    f"tasks={tasks['done']}/{tasks['open']} "
+                    f"gaps={summary['gaps']} "
+                    f"blocking={summary['blocking_checks']}"
+                )
+                lines.append(f"    next: {first_action}")
+        else:
+            lines.append("  none")
 
     lines.append("Recommended next actions:")
     for recommendation in status["recommendations"]:
