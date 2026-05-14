@@ -20,6 +20,7 @@ def write_status_feature_bundle(
     *,
     status: str = "validated",
     include_quality: bool = True,
+    include_coverage: bool = False,
     open_task: bool = False,
     priority: str | None = None,
     owner: str | None = None,
@@ -69,6 +70,18 @@ def write_status_feature_bundle(
         encoding="utf-8",
     )
     if include_quality:
+        coverage_lines: list[str] = []
+        if include_coverage:
+            target = root / "tests" / "status_coverage.py"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("# status coverage target\n", encoding="utf-8")
+            coverage_lines = [
+                "",
+                "## Test Coverage",
+                "",
+                "- [x] AC001 -> tests/status_coverage.py::test_enable_dark_mode",
+                "- [x] AC002 -> tests/status_coverage.py::test_return_to_light_mode",
+            ]
         (root / "quality" / "features" / f"{slug}.md").write_text(
             "\n".join(
                 [
@@ -90,6 +103,7 @@ def write_status_feature_bundle(
                     "",
                     "- [x] Reviewer gate passes.",
                     "- [x] No release blockers remain.",
+                    *coverage_lines,
                 ]
             )
             + "\n",
@@ -301,6 +315,110 @@ class StatusTests(TestCase):
                 summary["recommended_commands"],
             )
 
+    def test_status_json_feature_summaries_can_require_coverage(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-require-coverage",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            summary = payload["feature_summaries"][0]
+            self.assertTrue(summary["coverage_required"])
+            self.assertFalse(summary["ready"])
+            self.assertEqual(summary["ready_summary"], {"fail": 1, "pass": 9, "total": 10})
+            self.assertEqual(summary["blocking_checks"], 1)
+            self.assertTrue(
+                any(
+                    "feature.test_coverage" in action
+                    for action in summary["next_actions"]
+                )
+            )
+
+    def test_status_feature_require_coverage_ready_filter_uses_coverage_gate(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(
+                root,
+                slug="covered-feature",
+                include_coverage=True,
+            )
+            write_status_feature_bundle(root, slug="missing-coverage")
+            default_ready_output = StringIO()
+            ready_output = StringIO()
+            not_ready_output = StringIO()
+
+            with redirect_stdout(default_ready_output):
+                default_ready_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-ready",
+                        "yes",
+                        "--feature-sort",
+                        "slug",
+                    ]
+                )
+            with redirect_stdout(ready_output):
+                ready_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-require-coverage",
+                        "--feature-ready",
+                        "yes",
+                        "--feature-sort",
+                        "slug",
+                    ]
+                )
+            with redirect_stdout(not_ready_output):
+                not_ready_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-require-coverage",
+                        "--feature-ready",
+                        "no",
+                        "--feature-sort",
+                        "slug",
+                    ]
+                )
+
+            self.assertEqual(default_ready_returncode, 0)
+            self.assertEqual(ready_returncode, 0)
+            self.assertEqual(not_ready_returncode, 0)
+            self.assertEqual(
+                feature_summary_slugs(json.loads(default_ready_output.getvalue())),
+                ["covered-feature", "missing-coverage"],
+            )
+            self.assertEqual(
+                feature_summary_slugs(json.loads(ready_output.getvalue())),
+                ["covered-feature"],
+            )
+            self.assertEqual(
+                feature_summary_slugs(json.loads(not_ready_output.getvalue())),
+                ["missing-coverage"],
+            )
+
     def test_status_json_cli_validate_includes_validation_summary(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -503,7 +621,36 @@ class StatusTests(TestCase):
                 "owner=unassigned ready=yes tasks=2/0 gaps=0 blocking=0",
                 text,
             )
+            self.assertNotIn("coverage=", text)
+            self.assertNotIn("feature.test_coverage", text)
             self.assertIn("next: Review, merge, or archive the ready feature bundle.", text)
+
+    def test_status_text_feature_summaries_show_coverage_requirement(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--feature-summaries",
+                        "--feature-require-coverage",
+                    ]
+                )
+
+            text = output.getvalue()
+            self.assertEqual(returncode, 0)
+            self.assertIn(
+                "add-dark-mode - status=validated priority=unknown "
+                "owner=unassigned ready=no coverage=yes tasks=2/0 gaps=0 blocking=1",
+                text,
+            )
+            self.assertIn("feature.test_coverage", text)
+
 
     def test_status_feature_summary_reports_partial_bundle_actions(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1061,6 +1208,7 @@ class StatusTests(TestCase):
                 ["--feature-owner", "Dana"],
                 ["--feature-sort", "slug"],
                 ["--feature-sort-desc"],
+                ["--feature-require-coverage"],
             )
 
             for options in cases:
@@ -1073,6 +1221,7 @@ class StatusTests(TestCase):
                     self.assertEqual(returncode, 2)
                     self.assertEqual(stdout.getvalue(), "")
                     self.assertIn("require --feature-summaries", stderr.getvalue())
+                    self.assertIn("--feature-require-coverage", stderr.getvalue())
 
     def test_status_feature_summary_invalid_options_return_two(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1142,6 +1291,7 @@ class StatusTests(TestCase):
                 feature_summary_owners: tuple[str, ...] = (),
                 feature_summary_sort: str | None = None,
                 feature_summary_sort_desc: bool = False,
+                feature_summary_require_coverage: bool = False,
             ) -> dict[str, object]:
                 return build_status(
                     path,
@@ -1153,6 +1303,7 @@ class StatusTests(TestCase):
                     feature_summary_owners=feature_summary_owners,
                     feature_summary_sort=feature_summary_sort,
                     feature_summary_sort_desc=feature_summary_sort_desc,
+                    feature_summary_require_coverage=feature_summary_require_coverage,
                     adapter_probe=fake_available_adapters,
                 )
 
@@ -1195,6 +1346,7 @@ class StatusTests(TestCase):
                 feature_summary_owners: tuple[str, ...] = (),
                 feature_summary_sort: str | None = None,
                 feature_summary_sort_desc: bool = False,
+                feature_summary_require_coverage: bool = False,
             ) -> dict[str, object]:
                 return build_status(
                     path,
@@ -1206,6 +1358,7 @@ class StatusTests(TestCase):
                     feature_summary_owners=feature_summary_owners,
                     feature_summary_sort=feature_summary_sort,
                     feature_summary_sort_desc=feature_summary_sort_desc,
+                    feature_summary_require_coverage=feature_summary_require_coverage,
                     adapter_probe=fake_available_adapters,
                 )
 
@@ -1256,6 +1409,7 @@ class StatusTests(TestCase):
                 feature_summary_owners: tuple[str, ...] = (),
                 feature_summary_sort: str | None = None,
                 feature_summary_sort_desc: bool = False,
+                feature_summary_require_coverage: bool = False,
             ) -> dict[str, object]:
                 return build_status(
                     path,
@@ -1267,6 +1421,7 @@ class StatusTests(TestCase):
                     feature_summary_owners=feature_summary_owners,
                     feature_summary_sort=feature_summary_sort,
                     feature_summary_sort_desc=feature_summary_sort_desc,
+                    feature_summary_require_coverage=feature_summary_require_coverage,
                     adapter_probe=fake_available_adapters,
                 )
 

@@ -389,13 +389,14 @@ def _invalid_feature_summary(
     feature: dict[str, object],
     *,
     reason: str,
+    require_coverage: bool = False,
 ) -> dict[str, Any]:
     slug = str(feature["slug"])
     missing_files = [
         str(relative_path)
         for relative_path in feature.get("missing_files", [])
     ]
-    return {
+    summary = {
         "feature_id": slug,
         "slug": slug,
         "status": "invalid",
@@ -411,15 +412,22 @@ def _invalid_feature_summary(
         "next_actions": [reason],
         "recommended_commands": [],
     }
+    if require_coverage:
+        summary["coverage_required"] = True
+    return summary
 
 
-def _missing_feature_summary(feature: dict[str, object]) -> dict[str, Any]:
+def _missing_feature_summary(
+    feature: dict[str, object],
+    *,
+    require_coverage: bool = False,
+) -> dict[str, Any]:
     slug = str(feature["slug"])
     missing_files = [
         str(relative_path)
         for relative_path in feature.get("missing_files", [])
     ]
-    return {
+    summary = {
         "feature_id": slug,
         "slug": slug,
         "status": str(feature.get("status") or "unknown"),
@@ -440,6 +448,9 @@ def _missing_feature_summary(feature: dict[str, object]) -> dict[str, Any]:
         ],
         "recommended_commands": [],
     }
+    if require_coverage:
+        summary["coverage_required"] = True
+    return summary
 
 
 def build_feature_summaries(
@@ -452,6 +463,7 @@ def build_feature_summaries(
     owner_filters: tuple[str, ...] = (),
     sort_key: str | None = None,
     sort_desc: bool = False,
+    require_coverage: bool = False,
 ) -> list[dict[str, Any]]:
     resolved_root = root.expanduser().resolve()
     summaries: list[dict[str, Any]] = []
@@ -460,39 +472,50 @@ def build_feature_summaries(
     for feature in feature_bundles:
         slug = str(feature["slug"])
         try:
-            report = build_feature_handoff_report(resolved_root, slug)
+            report = build_feature_handoff_report(
+                resolved_root,
+                slug,
+                require_coverage=require_coverage,
+            )
         except InvalidFeatureSlug as error:
             summaries.append(
                 _invalid_feature_summary(
                     feature,
                     reason=str(error),
+                    require_coverage=require_coverage,
                 )
             )
             continue
         except FeatureBundleNotFoundError:
-            summaries.append(_missing_feature_summary(feature))
+            summaries.append(
+                _missing_feature_summary(
+                    feature,
+                    require_coverage=require_coverage,
+                )
+            )
             continue
 
         summary = report.summary
         metadata = read_feature_metadata(resolved_root, report.feature_id)
-        summaries.append(
-            {
-                "feature_id": report.feature_id,
-                "slug": report.feature_id,
-                "status": report.status,
-                "priority": metadata.priority,
-                "owner": metadata.owner,
-                "complete": bool(feature.get("complete", False)),
-                "ready": report.ready,
-                "missing_files": list(report.missing_files),
-                "tasks_summary": dict(summary["tasks"]),
-                "ready_summary": dict(summary["ready"]),
-                "gaps": int(summary["gaps"]["total"]),
-                "blocking_checks": int(summary["blocking_checks"]["total"]),
-                "next_actions": list(report.next_actions),
-                "recommended_commands": list(report.recommended_commands),
-            }
-        )
+        feature_summary = {
+            "feature_id": report.feature_id,
+            "slug": report.feature_id,
+            "status": report.status,
+            "priority": metadata.priority,
+            "owner": metadata.owner,
+            "complete": bool(feature.get("complete", False)),
+            "ready": report.ready,
+            "missing_files": list(report.missing_files),
+            "tasks_summary": dict(summary["tasks"]),
+            "ready_summary": dict(summary["ready"]),
+            "gaps": int(summary["gaps"]["total"]),
+            "blocking_checks": int(summary["blocking_checks"]["total"]),
+            "next_actions": list(report.next_actions),
+            "recommended_commands": list(report.recommended_commands),
+        }
+        if require_coverage:
+            feature_summary["coverage_required"] = True
+        summaries.append(feature_summary)
 
     return filter_and_sort_feature_summaries(
         summaries,
@@ -559,6 +582,7 @@ def build_status(
     feature_summary_owners: tuple[str, ...] = (),
     feature_summary_sort: str | None = None,
     feature_summary_sort_desc: bool = False,
+    feature_summary_require_coverage: bool = False,
     adapter_probe: AdapterProbe = probe_adapters,
 ) -> dict[str, Any]:
     root = path.expanduser().resolve()
@@ -620,6 +644,7 @@ def build_status(
             owner_filters=feature_summary_owners,
             sort_key=feature_summary_sort,
             sort_desc=feature_summary_sort_desc,
+            require_coverage=feature_summary_require_coverage,
         )
 
     return status
@@ -719,6 +744,11 @@ def render_status_text(status: dict[str, Any]) -> str:
                 tasks = summary["tasks_summary"]
                 next_actions = summary.get("next_actions", [])
                 first_action = next_actions[0] if next_actions else "None."
+                coverage_marker = (
+                    "coverage=yes "
+                    if summary.get("coverage_required")
+                    else ""
+                )
                 lines.append(
                     "  "
                     f"{summary['slug']} - "
@@ -726,6 +756,7 @@ def render_status_text(status: dict[str, Any]) -> str:
                     f"priority={summary['priority']} "
                     f"owner={summary['owner']} "
                     f"ready={'yes' if summary['ready'] else 'no'} "
+                    f"{coverage_marker}"
                     f"tasks={tasks['done']}/{tasks['open']} "
                     f"gaps={summary['gaps']} "
                     f"blocking={summary['blocking_checks']}"

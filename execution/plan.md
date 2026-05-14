@@ -23,7 +23,7 @@
 - Feature-specific adapter handoff packets through `specspine adapters handoff`.
 - Optional validation summaries in `specspine status --json --validate`.
 - Opt-in validation warning details in `specspine status --json --validate --validation-warnings`.
-- Optional native feature summaries in `specspine status --json --feature-summaries`, with local status/readiness filters and deterministic sorting.
+- Optional native feature summaries in `specspine status --json --feature-summaries`, with local status/readiness filters, coverage-required readiness, and deterministic sorting.
 - Repository-level quality gate definition export through `specspine gates`.
 - Unit tests and GitHub Actions coverage for the current command surface.
 
@@ -36,7 +36,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Keep this repository complete under `specspine status . --json`.
 - Prefer `specspine status . --json --validate` when an agent needs both context and quality-gate summary in one packet.
 - Add `--validation-warnings` only when an agent needs scaffold placeholder warning ids; keep default status validation focused on failed checks.
-- Use `specspine status . --json --validate --feature-summaries` when an agent needs to choose or compare multiple native features; add filters such as `--feature-status validated --feature-ready yes --feature-priority high --feature-sort priority` when a multi-feature workspace needs focused triage; keep the default startup packet compact otherwise.
+- Use `specspine status . --json --validate --feature-summaries` when an agent needs to choose or compare multiple native features; add filters such as `--feature-status validated --feature-ready yes --feature-priority high --feature-sort priority` when a multi-feature workspace needs focused triage; add `--feature-require-coverage` when candidate readiness must include checked local AC coverage links; keep the default startup packet compact otherwise.
 - Use `specspine feature handoff <slug> . --json` as the default feature-level packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
 - Use `specspine feature task-issues <slug> . --json` when an agent needs one local GitHub issue draft per execution task.

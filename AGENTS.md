@@ -9,6 +9,7 @@ PYTHONPATH=src python3 -m specspine status . --json --validate
 PYTHONPATH=src python3 -m specspine status . --json --validate --validation-warnings
 PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries
 PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug
+PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries --feature-require-coverage --feature-ready yes --feature-sort priority
 PYTHONPATH=src python3 -m specspine gates . --json
 PYTHONPATH=src python3 -m specspine adapters lifecycle . --json
 PYTHONPATH=src python3 -m specspine adapters handoff <slug> . --json
@@ -37,7 +38,7 @@ PYTHONPATH=src python3 -m specspine feature sync-plan <slug> . --output-dir .spe
 
 ## Rules
 
-- Start by reading `specspine status . --json --validate`; add `--validation-warnings` only when scaffold warning check ids are needed; use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features, and add local filters such as `--feature-status validated --feature-ready yes --feature-sort slug` for triage; use `specspine gates . --json` when repository-level quality policy is needed; use `specspine adapters lifecycle . --json` for local adapter lifecycle mappings and `specspine adapters handoff <slug> . --json` for feature-specific adapter handoff context; finish with `specspine validate . --fusion --features` and the unit test command above.
+- Start by reading `specspine status . --json --validate`; add `--validation-warnings` only when scaffold warning check ids are needed; use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features, and add local filters such as `--feature-status validated --feature-ready yes --feature-sort slug` for triage; add `--feature-require-coverage` when candidate selection must use the stricter local AC coverage gate; use `specspine gates . --json` when repository-level quality policy is needed; use `specspine adapters lifecycle . --json` for local adapter lifecycle mappings and `specspine adapters handoff <slug> . --json` for feature-specific adapter handoff context; finish with `specspine validate . --fusion --features` and the unit test command above.
 - Keep feature specs, implementation tasks, and quality checks traceable by `Feature ID`.
 - Use `specspine feature new` as the starting workflow for new requirements; the generated peer files include focused handoff, task issue drafts, tests, PR, ready, and validation guidance, plus sync-plan review.
 - Keep native feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.

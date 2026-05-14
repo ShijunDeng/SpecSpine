@@ -4475,6 +4475,25 @@ class FeatureBundleTests(TestCase):
         self.assertEqual(report.gaps, ())
         self.assertEqual(report.summary["fail"], 0)
 
+    def test_dogfood_status_coverage_readiness_summaries_is_validated_and_coverage_ready(self) -> None:
+        default_report = build_feature_ready_report(
+            REPO_ROOT,
+            "status-coverage-readiness-summaries",
+        )
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "status-coverage-readiness-summaries",
+            require_coverage=True,
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertTrue(coverage_report.ready)
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertEqual(coverage_report.missing_files, ())
+        self.assertEqual(coverage_report.gaps, ())
+        self.assertEqual(coverage_report.summary["fail"], 0)
+
     def test_dogfood_feature_transition_policy_is_validated_and_ready(self) -> None:
         report = build_feature_ready_report(REPO_ROOT, "feature-transition-policy")
 

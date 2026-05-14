@@ -42,6 +42,7 @@ class DogfoodArtifactsTests(TestCase):
             "quality-gate-definitions",
             "adapter-lifecycle-mappings",
             "adapter-feature-handoff",
+            "status-coverage-readiness-summaries",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -82,6 +83,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:quality-gate-definitions", "pass"), checks)
         self.assertIn(("feature.status_consistency:adapter-lifecycle-mappings", "pass"), checks)
         self.assertIn(("feature.status_consistency:adapter-feature-handoff", "pass"), checks)
+        self.assertIn(("feature.status_consistency:status-coverage-readiness-summaries", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -93,6 +95,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine status . --json --validate --validation-warnings",
             "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries",
             "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug",
+            "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries --feature-require-coverage --feature-ready yes --feature-sort priority",
             "PYTHONPATH=src python3 -m specspine gates . --json",
             "PYTHONPATH=src python3 -m specspine adapters lifecycle . --json",
             "PYTHONPATH=src python3 -m specspine validate . --fusion --features",
@@ -239,6 +242,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/adapter-feature-handoff.md",
             "execution/features/adapter-feature-handoff.md",
             "quality/features/adapter-feature-handoff.md",
+            "specs/features/status-coverage-readiness-summaries.md",
+            "execution/features/status-coverage-readiness-summaries.md",
+            "quality/features/status-coverage-readiness-summaries.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -355,6 +361,25 @@ class DogfoodArtifactsTests(TestCase):
         self.assertTrue(report.ready)
         self.assertEqual(report.status, "validated")
         self.assertEqual(report.summary["fail"], 0)
+
+    def test_status_coverage_readiness_summaries_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(
+            REPO_ROOT,
+            "status-coverage-readiness-summaries",
+        )
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "status-coverage-readiness-summaries",
+            require_coverage=True,
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
 
     def test_feature_test_packet_dogfood_exports_test_cases(self) -> None:
         report = build_feature_tests_report(REPO_ROOT, "feature-test-packet")

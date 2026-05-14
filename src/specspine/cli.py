@@ -417,6 +417,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="include compact per-feature progress summaries and next actions",
     )
     status_parser.add_argument(
+        "--feature-require-coverage",
+        action="store_true",
+        help="require completed local Test Coverage links when computing feature summary readiness",
+    )
+    status_parser.add_argument(
         "--feature-status",
         action="append",
         default=[],
@@ -1096,11 +1101,13 @@ def main(argv: list[str] | None = None) -> int:
             or args.feature_owner
             or args.feature_sort is not None
             or args.feature_sort_desc
+            or args.feature_require_coverage
         )
         if feature_summary_options_requested and not args.feature_summaries:
             print(
                 "--feature-status, --feature-ready, --feature-priority, "
-                "--feature-owner, --feature-sort, and --feature-sort-desc "
+                "--feature-owner, --feature-sort, --feature-sort-desc, "
+                "and --feature-require-coverage "
                 "require --feature-summaries.",
                 file=sys.stderr,
             )
@@ -1140,6 +1147,7 @@ def main(argv: list[str] | None = None) -> int:
             feature_summary_owners=feature_summary_owners,
             feature_summary_sort=feature_summary_sort,
             feature_summary_sort_desc=args.feature_sort_desc,
+            feature_summary_require_coverage=args.feature_require_coverage,
         )
         if args.validate:
             report = build_validation_report(

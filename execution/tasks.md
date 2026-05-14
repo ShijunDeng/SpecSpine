@@ -27,6 +27,7 @@
 - [x] Implement `specspine status . --json --validate --validation-warnings` warning detail summaries.
 - [x] Implement `specspine status . --json --feature-summaries` optional native feature summaries.
 - [x] Implement local feature summary filters and sorting for `specspine status --feature-summaries`.
+- [x] Implement coverage-required readiness summaries for `specspine status --feature-summaries --feature-require-coverage`.
 - [x] Implement `specspine adapters lifecycle` static adapter lifecycle mapping export.
 - [x] Implement `specspine adapters handoff` feature-specific adapter handoff export.
 - [x] Implement `specspine validate . --fusion --features`.
@@ -40,6 +41,7 @@
 - [x] Dogfood handoff packet export with `feature-handoff-packet`.
 - [x] Dogfood workspace feature summaries with `status-feature-summaries`.
 - [x] Dogfood feature summary filters and sorting with `feature-summary-filters`.
+- [x] Dogfood coverage-required status summaries with `status-coverage-readiness-summaries`.
 - [x] Dogfood enforced transition policy with `feature-transition-policy`.
 - [x] Dogfood offline Pull Request draft export with `feature-pr-draft`.
 - [x] Dogfood acceptance-test packet export with `feature-test-packet`.
@@ -65,7 +67,7 @@
 - [ ] Observe whether new feature bundles need less manual template cleanup after the focused workflow guidance.
 - [ ] Monitor whether agents prefer `status --json --validate` as the default startup packet.
 - [ ] Observe whether agents use `status --json --validate --validation-warnings` only when scaffold warning detail is needed.
-- [ ] Observe whether agents use `status --json --validate --feature-summaries` only when comparing multiple features, and whether local filters reduce follow-up handoff reads.
+- [ ] Observe whether agents use `status --json --validate --feature-summaries` only when comparing multiple features, whether local filters reduce follow-up handoff reads, and whether release triage uses `--feature-require-coverage` for stricter candidates.
 - [ ] Observe whether adapter sync work starts from `adapters lifecycle --json` before upstream or remote state is touched.
 - [ ] Observe whether adapter work starts from `adapters handoff <slug> --json` when a native feature needs upstream-specific context.
 - [ ] Revisit generated templates after dogfooding this workspace for one or more development cycles.

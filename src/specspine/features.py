@@ -2348,7 +2348,12 @@ def _handoff_next_actions(
     return tuple(actions)
 
 
-def build_feature_handoff_report(root: Path, slug: str) -> FeatureHandoffReport:
+def build_feature_handoff_report(
+    root: Path,
+    slug: str,
+    *,
+    require_coverage: bool = False,
+) -> FeatureHandoffReport:
     slug = validate_feature_slug(slug)
     resolved_root = root.expanduser().resolve()
     status_report = get_feature_status(resolved_root, slug)
@@ -2384,7 +2389,11 @@ def build_feature_handoff_report(root: Path, slug: str) -> FeatureHandoffReport:
     except FeatureBundleNotFoundError:
         task_summary = {"done": 0, "open": 0, "total": 0}
 
-    ready_report = build_feature_ready_report(resolved_root, slug)
+    ready_report = build_feature_ready_report(
+        resolved_root,
+        slug,
+        require_coverage=require_coverage,
+    )
 
     relative_paths = _relative_feature_paths(slug)
     quality_path = feature_bundle_paths(resolved_root, slug)["quality"]
