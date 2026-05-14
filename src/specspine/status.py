@@ -6,11 +6,13 @@ from typing import Any, Callable
 
 from .adapters import ADAPTER_SPECS, AdapterStatus, probe_adapters
 from .features import (
+    FEATURE_PRIORITIES,
     FEATURE_STATUSES,
     FeatureBundleNotFoundError,
     InvalidFeatureSlug,
     build_feature_handoff_report,
     list_feature_bundles,
+    read_feature_metadata,
 )
 from .fusion import FUSION_REQUIRED_FILES
 from .workspace import BASE_WORKSPACE_FILES, check_workspace
@@ -19,6 +21,7 @@ from .workspace import BASE_WORKSPACE_FILES, check_workspace
 AdapterProbe = Callable[[], list[AdapterStatus]]
 
 FEATURE_SUMMARY_STATUS_FILTERS = (*FEATURE_STATUSES, "invalid", "unknown")
+FEATURE_SUMMARY_PRIORITY_FILTERS = (*FEATURE_PRIORITIES, "unknown")
 FEATURE_SUMMARY_READY_VALUES = {
     "yes": True,
     "true": True,
@@ -34,6 +37,7 @@ FEATURE_SUMMARY_SORT_KEYS = (
     "gaps",
     "blocking",
     "tasks-open",
+    "priority",
 )
 _FEATURE_SUMMARY_STATUS_ORDER = {
     status: index
@@ -41,6 +45,12 @@ _FEATURE_SUMMARY_STATUS_ORDER = {
 }
 _FEATURE_SUMMARY_STATUS_ORDER["invalid"] = len(_FEATURE_SUMMARY_STATUS_ORDER)
 _FEATURE_SUMMARY_STATUS_ORDER["unknown"] = len(_FEATURE_SUMMARY_STATUS_ORDER)
+_FEATURE_SUMMARY_PRIORITY_ORDER = {
+    "high": 0,
+    "medium": 1,
+    "low": 2,
+    "unknown": 3,
+}
 
 
 class InvalidFeatureSummaryOption(ValueError):
@@ -224,6 +234,31 @@ def parse_feature_summary_ready_filter(value: str | None) -> bool | None:
     return FEATURE_SUMMARY_READY_VALUES[normalized]
 
 
+def parse_feature_summary_priority_filters(values: list[str] | None) -> tuple[str, ...]:
+    priorities: list[str] = []
+    for value in values or []:
+        normalized = value.strip().lower()
+        if normalized not in FEATURE_SUMMARY_PRIORITY_FILTERS:
+            allowed = ", ".join(FEATURE_SUMMARY_PRIORITY_FILTERS)
+            raise InvalidFeatureSummaryOption(
+                f"Invalid feature summary priority '{value}'. Use one of: {allowed}."
+            )
+        if normalized not in priorities:
+            priorities.append(normalized)
+
+    return tuple(priorities)
+
+
+def parse_feature_summary_owner_filters(values: list[str] | None) -> tuple[str, ...]:
+    owners: list[str] = []
+    for value in values or []:
+        normalized = value.strip().lower() or "unassigned"
+        if normalized not in owners:
+            owners.append(normalized)
+
+    return tuple(owners)
+
+
 def parse_feature_summary_sort_key(value: str | None) -> str | None:
     if value is None:
         return None
@@ -259,6 +294,28 @@ def _feature_summary_matches_status(
     return status in status_filters or status_bucket in status_filters
 
 
+def _feature_summary_matches_priority(
+    summary: dict[str, Any],
+    priority_filters: tuple[str, ...],
+) -> bool:
+    if not priority_filters:
+        return True
+
+    priority = str(summary.get("priority") or "unknown").lower()
+    return priority in priority_filters
+
+
+def _feature_summary_matches_owner(
+    summary: dict[str, Any],
+    owner_filters: tuple[str, ...],
+) -> bool:
+    if not owner_filters:
+        return True
+
+    owner = str(summary.get("owner") or "unassigned").strip().lower() or "unassigned"
+    return owner in owner_filters
+
+
 def _feature_summary_tasks_open(summary: dict[str, Any]) -> int:
     tasks = summary.get("tasks_summary", {})
     if not isinstance(tasks, dict):
@@ -283,6 +340,13 @@ def _feature_summary_sort_value(summary: dict[str, Any], sort_key: str) -> tuple
         return (int(summary.get("blocking_checks", 0)), slug)
     if sort_key == "tasks-open":
         return (_feature_summary_tasks_open(summary), slug)
+    if sort_key == "priority":
+        priority = str(summary.get("priority") or "unknown").lower()
+        order = _FEATURE_SUMMARY_PRIORITY_ORDER.get(
+            priority,
+            _FEATURE_SUMMARY_PRIORITY_ORDER["unknown"],
+        )
+        return (order, slug)
     return (slug,)
 
 
@@ -291,6 +355,8 @@ def filter_and_sort_feature_summaries(
     *,
     status_filters: tuple[str, ...] = (),
     ready_filter: bool | None = None,
+    priority_filters: tuple[str, ...] = (),
+    owner_filters: tuple[str, ...] = (),
     sort_key: str | None = None,
     sort_desc: bool = False,
 ) -> list[dict[str, Any]]:
@@ -298,6 +364,8 @@ def filter_and_sort_feature_summaries(
         summary
         for summary in summaries
         if _feature_summary_matches_status(summary, status_filters)
+        and _feature_summary_matches_priority(summary, priority_filters)
+        and _feature_summary_matches_owner(summary, owner_filters)
         and (
             ready_filter is None
             or bool(summary.get("ready", False)) is ready_filter
@@ -331,6 +399,8 @@ def _invalid_feature_summary(
         "feature_id": slug,
         "slug": slug,
         "status": "invalid",
+        "priority": "unknown",
+        "owner": "unassigned",
         "complete": bool(feature.get("complete", False)),
         "ready": False,
         "missing_files": missing_files,
@@ -353,6 +423,8 @@ def _missing_feature_summary(feature: dict[str, object]) -> dict[str, Any]:
         "feature_id": slug,
         "slug": slug,
         "status": str(feature.get("status") or "unknown"),
+        "priority": "unknown",
+        "owner": "unassigned",
         "complete": bool(feature.get("complete", False)),
         "ready": False,
         "missing_files": missing_files,
@@ -376,6 +448,8 @@ def build_feature_summaries(
     *,
     status_filters: tuple[str, ...] = (),
     ready_filter: bool | None = None,
+    priority_filters: tuple[str, ...] = (),
+    owner_filters: tuple[str, ...] = (),
     sort_key: str | None = None,
     sort_desc: bool = False,
 ) -> list[dict[str, Any]]:
@@ -400,11 +474,14 @@ def build_feature_summaries(
             continue
 
         summary = report.summary
+        metadata = read_feature_metadata(resolved_root, report.feature_id)
         summaries.append(
             {
                 "feature_id": report.feature_id,
                 "slug": report.feature_id,
                 "status": report.status,
+                "priority": metadata.priority,
+                "owner": metadata.owner,
                 "complete": bool(feature.get("complete", False)),
                 "ready": report.ready,
                 "missing_files": list(report.missing_files),
@@ -421,6 +498,8 @@ def build_feature_summaries(
         summaries,
         status_filters=status_filters,
         ready_filter=ready_filter,
+        priority_filters=priority_filters,
+        owner_filters=owner_filters,
         sort_key=sort_key,
         sort_desc=sort_desc,
     )
@@ -476,6 +555,8 @@ def build_status(
     include_feature_summaries: bool = False,
     feature_summary_statuses: tuple[str, ...] = (),
     feature_summary_ready: bool | None = None,
+    feature_summary_priorities: tuple[str, ...] = (),
+    feature_summary_owners: tuple[str, ...] = (),
     feature_summary_sort: str | None = None,
     feature_summary_sort_desc: bool = False,
     adapter_probe: AdapterProbe = probe_adapters,
@@ -535,6 +616,8 @@ def build_status(
             features=features,
             status_filters=feature_summary_statuses,
             ready_filter=feature_summary_ready,
+            priority_filters=feature_summary_priorities,
+            owner_filters=feature_summary_owners,
             sort_key=feature_summary_sort,
             sort_desc=feature_summary_sort_desc,
         )
@@ -640,6 +723,8 @@ def render_status_text(status: dict[str, Any]) -> str:
                     "  "
                     f"{summary['slug']} - "
                     f"status={summary['status']} "
+                    f"priority={summary['priority']} "
+                    f"owner={summary['owner']} "
                     f"ready={'yes' if summary['ready'] else 'no'} "
                     f"tasks={tasks['done']}/{tasks['open']} "
                     f"gaps={summary['gaps']} "

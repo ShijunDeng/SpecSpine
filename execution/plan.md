@@ -31,7 +31,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Keep this repository complete under `specspine status . --json`.
 - Prefer `specspine status . --json --validate` when an agent needs both context and quality-gate summary in one packet.
 - Add `--validation-warnings` only when an agent needs scaffold placeholder warning ids; keep default status validation focused on failed checks.
-- Use `specspine status . --json --validate --feature-summaries` when an agent needs to choose or compare multiple native features; add filters such as `--feature-status validated --feature-ready yes --feature-sort slug` when a multi-feature workspace needs focused triage; keep the default startup packet compact otherwise.
+- Use `specspine status . --json --validate --feature-summaries` when an agent needs to choose or compare multiple native features; add filters such as `--feature-status validated --feature-ready yes --feature-priority high --feature-sort priority` when a multi-feature workspace needs focused triage; keep the default startup packet compact otherwise.
 - Use `specspine feature handoff <slug> . --json` as the default feature-level packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
 - Use `specspine feature task-issues <slug> . --json` when an agent needs one local GitHub issue draft per execution task.
@@ -40,7 +40,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine feature tests <slug> . --json` when QA or testing agents need acceptance criteria mapped to pending test cases plus existing test plan, gaps, and blockers.
 - Use `specspine feature pr <slug> . --json` when a reviewer or release agent needs a local Pull Request draft without touching GitHub.
 - Use `specspine validate . --fusion --features` as the project-level gate.
-- Let `specspine feature new <slug> . --title "..." --why "..."` seed the feature's spec, execution, quality, handoff, task issue draft, tests, PR, ready, and validation workflow before implementation begins.
+- Let `specspine feature new <slug> . --title "..." --why "..."` seed the feature's spec, execution, quality, handoff, task issue draft, tests, PR, ready, validation workflow, and initial `Priority: medium` / `Owner: unassigned` metadata before implementation begins.
 - Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`; prefer `--enforce-transition` for ordered lifecycle advancement while keeping manual updates available by default.
 - Run `specspine feature ready <slug> . --json` before enforced archive updates so readiness blockers are resolved separately from transition rules.
 - Continue dogfooding generated templates and tighten them when repeated manual edits appear.
@@ -57,7 +57,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 
 - Should enforced lifecycle transitions eventually become the default, or remain opt-in for compatibility?
 - Should future warning categories beyond scaffold placeholders be exposed through the same opt-in status flag?
-- Should feature summary triage eventually need explicit user-owned priority metadata, or are lifecycle/readiness/count filters enough?
+- Should feature summary triage later need richer structured metadata beyond local `Priority:` and `Owner:`, such as milestone, target release, or remote project fields?
 - Should readiness summaries eventually be included in workspace status, or remain an explicit per-feature gate?
 - Should acceptance-test packets later include explicit user-supplied AC-to-test-file links, or remain implementation-file agnostic until that metadata exists?
 - Should the refreshed feature bundle template later grow explicit rollout-owner or implementation-file metadata, or stay minimal until a real workflow needs it?

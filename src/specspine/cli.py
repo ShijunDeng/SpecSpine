@@ -52,6 +52,8 @@ from .fusion import FUSION_REQUIRED_FILES, init_fusion_workspace
 from .status import (
     InvalidFeatureSummaryOption,
     build_status,
+    parse_feature_summary_owner_filters,
+    parse_feature_summary_priority_filters,
     parse_feature_summary_ready_filter,
     parse_feature_summary_sort_key,
     parse_feature_summary_status_filters,
@@ -373,9 +375,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="filter feature summaries by readiness: yes, no, true, false, ready, or not-ready",
     )
     status_parser.add_argument(
+        "--feature-priority",
+        action="append",
+        default=[],
+        metavar="VALUE",
+        help="filter feature summaries by priority: high, medium, low, or unknown",
+    )
+    status_parser.add_argument(
+        "--feature-owner",
+        action="append",
+        default=[],
+        metavar="VALUE",
+        help="filter feature summaries by owner; repeat to include more than one",
+    )
+    status_parser.add_argument(
         "--feature-sort",
         metavar="KEY",
-        help="sort feature summaries by slug, status, ready, gaps, blocking, or tasks-open",
+        help="sort feature summaries by slug, status, ready, gaps, blocking, tasks-open, or priority",
     )
     status_parser.add_argument(
         "--feature-sort-desc",
@@ -916,19 +932,24 @@ def main(argv: list[str] | None = None) -> int:
         feature_summary_options_requested = bool(
             args.feature_status
             or args.feature_ready is not None
+            or args.feature_priority
+            or args.feature_owner
             or args.feature_sort is not None
             or args.feature_sort_desc
         )
         if feature_summary_options_requested and not args.feature_summaries:
             print(
-                "--feature-status, --feature-ready, --feature-sort, and "
-                "--feature-sort-desc require --feature-summaries.",
+                "--feature-status, --feature-ready, --feature-priority, "
+                "--feature-owner, --feature-sort, and --feature-sort-desc "
+                "require --feature-summaries.",
                 file=sys.stderr,
             )
             return 2
 
         feature_summary_statuses: tuple[str, ...] = ()
         feature_summary_ready: bool | None = None
+        feature_summary_priorities: tuple[str, ...] = ()
+        feature_summary_owners: tuple[str, ...] = ()
         feature_summary_sort: str | None = None
         if args.feature_summaries:
             try:
@@ -937,6 +958,12 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 feature_summary_ready = parse_feature_summary_ready_filter(
                     args.feature_ready
+                )
+                feature_summary_priorities = parse_feature_summary_priority_filters(
+                    args.feature_priority
+                )
+                feature_summary_owners = parse_feature_summary_owner_filters(
+                    args.feature_owner
                 )
                 feature_summary_sort = parse_feature_summary_sort_key(args.feature_sort)
             except InvalidFeatureSummaryOption as error:
@@ -949,6 +976,8 @@ def main(argv: list[str] | None = None) -> int:
             include_feature_summaries=args.feature_summaries,
             feature_summary_statuses=feature_summary_statuses,
             feature_summary_ready=feature_summary_ready,
+            feature_summary_priorities=feature_summary_priorities,
+            feature_summary_owners=feature_summary_owners,
             feature_summary_sort=feature_summary_sort,
             feature_summary_sort_desc=args.feature_sort_desc,
         )

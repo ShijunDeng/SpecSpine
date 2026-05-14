@@ -21,10 +21,17 @@ def write_status_feature_bundle(
     status: str = "validated",
     include_quality: bool = True,
     open_task: bool = False,
+    priority: str | None = None,
+    owner: str | None = None,
 ) -> None:
     (root / "specs" / "features").mkdir(parents=True, exist_ok=True)
     (root / "execution" / "features").mkdir(parents=True, exist_ok=True)
     (root / "quality" / "features").mkdir(parents=True, exist_ok=True)
+    spec_metadata_lines = []
+    if priority is not None:
+        spec_metadata_lines.append(f"Priority: {priority}")
+    if owner is not None:
+        spec_metadata_lines.append(f"Owner: {owner}")
     (root / "specs" / "features" / f"{slug}.md").write_text(
         "\n".join(
             [
@@ -32,6 +39,7 @@ def write_status_feature_bundle(
                 "",
                 f"Feature ID: {slug}",
                 f"Status: {status}",
+                *spec_metadata_lines,
                 "",
                 "## Acceptance Criteria",
                 "",
@@ -141,14 +149,28 @@ def fake_available_adapter_probe(keys: list[str]) -> list[AdapterStatus]:
 
 
 def write_status_feature_filter_set(root: Path) -> None:
-    write_status_feature_bundle(root, slug="zeta-planned", status="planned")
-    write_status_feature_bundle(root, slug="alpha-validated", status="validated")
+    write_status_feature_bundle(
+        root,
+        slug="zeta-planned",
+        status="planned",
+        priority="low",
+        owner="Dana",
+    )
+    write_status_feature_bundle(
+        root,
+        slug="alpha-validated",
+        status="validated",
+        priority="high",
+        owner="Ada",
+    )
     write_status_feature_bundle(
         root,
         slug="middle-implemented",
         status="implemented",
         include_quality=False,
         open_task=True,
+        priority="medium",
+        owner="Dana",
     )
 
 
@@ -248,6 +270,8 @@ class StatusTests(TestCase):
                     "gaps",
                     "missing_files",
                     "next_actions",
+                    "owner",
+                    "priority",
                     "ready",
                     "ready_summary",
                     "recommended_commands",
@@ -259,6 +283,8 @@ class StatusTests(TestCase):
             self.assertEqual(summary["feature_id"], "add-dark-mode")
             self.assertEqual(summary["slug"], "add-dark-mode")
             self.assertEqual(summary["status"], "validated")
+            self.assertEqual(summary["priority"], "unknown")
+            self.assertEqual(summary["owner"], "unassigned")
             self.assertTrue(summary["complete"])
             self.assertTrue(summary["ready"])
             self.assertEqual(summary["missing_files"], [])
@@ -472,7 +498,11 @@ class StatusTests(TestCase):
             self.assertNotIn("Feature summaries:", default_output.getvalue())
             text = summary_output.getvalue()
             self.assertIn("Feature summaries:", text)
-            self.assertIn("add-dark-mode - status=validated ready=yes tasks=2/0 gaps=0 blocking=0", text)
+            self.assertIn(
+                "add-dark-mode - status=validated priority=unknown "
+                "owner=unassigned ready=yes tasks=2/0 gaps=0 blocking=0",
+                text,
+            )
             self.assertIn("next: Review, merge, or archive the ready feature bundle.", text)
 
     def test_status_feature_summary_reports_partial_bundle_actions(self) -> None:
@@ -642,6 +672,70 @@ class StatusTests(TestCase):
                         expected,
                     )
 
+    def test_status_feature_priority_and_owner_filters(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_filter_set(root)
+            write_status_feature_bundle(
+                root,
+                slug="unowned-unknown",
+                status="planned",
+                priority="urgent",
+                owner="",
+            )
+
+            cases = (
+                (
+                    ["--feature-priority", "high"],
+                    ["alpha-validated"],
+                ),
+                (
+                    ["--feature-priority", "medium", "--feature-priority", "unknown"],
+                    ["middle-implemented", "unowned-unknown"],
+                ),
+                (
+                    ["--feature-priority", "high", "--feature-priority", "HIGH"],
+                    ["alpha-validated"],
+                ),
+                (
+                    ["--feature-owner", "dana"],
+                    ["middle-implemented", "zeta-planned"],
+                ),
+                (
+                    ["--feature-owner", "dana", "--feature-owner", "ADA"],
+                    ["alpha-validated", "middle-implemented", "zeta-planned"],
+                ),
+                (
+                    ["--feature-owner", "ADA"],
+                    ["alpha-validated"],
+                ),
+                (
+                    ["--feature-owner", "unassigned"],
+                    ["unowned-unknown"],
+                ),
+            )
+
+            for options, expected in cases:
+                with self.subTest(options=options):
+                    output = StringIO()
+                    with redirect_stdout(output):
+                        returncode = main(
+                            [
+                                "status",
+                                str(root),
+                                "--json",
+                                "--feature-summaries",
+                                *options,
+                            ]
+                        )
+
+                    self.assertEqual(returncode, 0)
+                    self.assertEqual(
+                        feature_summary_slugs(json.loads(output.getvalue())),
+                        expected,
+                    )
+
     def test_status_feature_sort_keys_and_descending_order(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -678,6 +772,11 @@ class StatusTests(TestCase):
                     "alpha-validated",
                     "zeta-planned",
                     "middle-implemented",
+                ],
+                "priority": [
+                    "alpha-validated",
+                    "middle-implemented",
+                    "zeta-planned",
                 ],
             }
             for sort_key, expected in expected_by_key.items():
@@ -719,6 +818,71 @@ class StatusTests(TestCase):
             self.assertEqual(
                 feature_summary_slugs(json.loads(desc_output.getvalue())),
                 ["zeta-planned", "middle-implemented", "alpha-validated"],
+            )
+
+    def test_status_feature_priority_sort_covers_unknown_and_descending(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(
+                root,
+                slug="delta-high",
+                status="planned",
+                priority="high",
+            )
+            write_status_feature_bundle(
+                root,
+                slug="alpha-medium",
+                status="planned",
+                priority="medium",
+            )
+            write_status_feature_bundle(
+                root,
+                slug="bravo-low",
+                status="planned",
+                priority="low",
+            )
+            write_status_feature_bundle(
+                root,
+                slug="charlie-unknown",
+                status="planned",
+            )
+            output = StringIO()
+            desc_output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-sort",
+                        "priority",
+                    ]
+                )
+            with redirect_stdout(desc_output):
+                desc_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--feature-sort",
+                        "priority",
+                        "--feature-sort-desc",
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            self.assertEqual(desc_returncode, 0)
+            self.assertEqual(
+                feature_summary_slugs(json.loads(output.getvalue())),
+                ["delta-high", "alpha-medium", "bravo-low", "charlie-unknown"],
+            )
+            self.assertEqual(
+                feature_summary_slugs(json.loads(desc_output.getvalue())),
+                ["charlie-unknown", "bravo-low", "alpha-medium", "delta-high"],
             )
 
     def test_status_text_feature_summaries_apply_filters_and_sorting(self) -> None:
@@ -893,6 +1057,8 @@ class StatusTests(TestCase):
             cases = (
                 ["--feature-status", "validated"],
                 ["--feature-ready", "yes"],
+                ["--feature-priority", "high"],
+                ["--feature-owner", "Dana"],
                 ["--feature-sort", "slug"],
                 ["--feature-sort-desc"],
             )
@@ -915,7 +1081,8 @@ class StatusTests(TestCase):
             cases = (
                 (["--feature-status", "blocked"], "Invalid feature summary status"),
                 (["--feature-ready", "maybe"], "Invalid feature summary readiness"),
-                (["--feature-sort", "priority"], "Invalid feature summary sort key"),
+                (["--feature-priority", "urgent"], "Invalid feature summary priority"),
+                (["--feature-sort", "deadline"], "Invalid feature summary sort key"),
             )
 
             for options, expected_error in cases:
@@ -971,6 +1138,8 @@ class StatusTests(TestCase):
                 include_feature_summaries: bool = False,
                 feature_summary_statuses: tuple[str, ...] = (),
                 feature_summary_ready: bool | None = None,
+                feature_summary_priorities: tuple[str, ...] = (),
+                feature_summary_owners: tuple[str, ...] = (),
                 feature_summary_sort: str | None = None,
                 feature_summary_sort_desc: bool = False,
             ) -> dict[str, object]:
@@ -980,6 +1149,8 @@ class StatusTests(TestCase):
                     include_feature_summaries=include_feature_summaries,
                     feature_summary_statuses=feature_summary_statuses,
                     feature_summary_ready=feature_summary_ready,
+                    feature_summary_priorities=feature_summary_priorities,
+                    feature_summary_owners=feature_summary_owners,
                     feature_summary_sort=feature_summary_sort,
                     feature_summary_sort_desc=feature_summary_sort_desc,
                     adapter_probe=fake_available_adapters,
@@ -1020,6 +1191,8 @@ class StatusTests(TestCase):
                 include_feature_summaries: bool = False,
                 feature_summary_statuses: tuple[str, ...] = (),
                 feature_summary_ready: bool | None = None,
+                feature_summary_priorities: tuple[str, ...] = (),
+                feature_summary_owners: tuple[str, ...] = (),
                 feature_summary_sort: str | None = None,
                 feature_summary_sort_desc: bool = False,
             ) -> dict[str, object]:
@@ -1029,6 +1202,8 @@ class StatusTests(TestCase):
                     include_feature_summaries=include_feature_summaries,
                     feature_summary_statuses=feature_summary_statuses,
                     feature_summary_ready=feature_summary_ready,
+                    feature_summary_priorities=feature_summary_priorities,
+                    feature_summary_owners=feature_summary_owners,
                     feature_summary_sort=feature_summary_sort,
                     feature_summary_sort_desc=feature_summary_sort_desc,
                     adapter_probe=fake_available_adapters,
@@ -1077,6 +1252,8 @@ class StatusTests(TestCase):
                 include_feature_summaries: bool = False,
                 feature_summary_statuses: tuple[str, ...] = (),
                 feature_summary_ready: bool | None = None,
+                feature_summary_priorities: tuple[str, ...] = (),
+                feature_summary_owners: tuple[str, ...] = (),
                 feature_summary_sort: str | None = None,
                 feature_summary_sort_desc: bool = False,
             ) -> dict[str, object]:
@@ -1086,6 +1263,8 @@ class StatusTests(TestCase):
                     include_feature_summaries=include_feature_summaries,
                     feature_summary_statuses=feature_summary_statuses,
                     feature_summary_ready=feature_summary_ready,
+                    feature_summary_priorities=feature_summary_priorities,
+                    feature_summary_owners=feature_summary_owners,
                     feature_summary_sort=feature_summary_sort,
                     feature_summary_sort_desc=feature_summary_sort_desc,
                     adapter_probe=fake_available_adapters,

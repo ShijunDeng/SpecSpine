@@ -142,6 +142,8 @@ class FeatureBundleTests(TestCase):
             spec = (root / "specs" / "features" / "add-dark-mode.md").read_text(
                 encoding="utf-8"
             )
+            self.assertIn("Priority: medium", spec)
+            self.assertIn("Owner: unassigned", spec)
             self.assertIn("## Why", spec)
             self.assertIn("## Users", spec)
             self.assertIn("## Scope", spec)

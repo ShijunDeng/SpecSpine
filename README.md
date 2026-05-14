@@ -172,7 +172,7 @@ specspine status .
 specspine status . --json
 specspine status . --json --validate
 specspine status . --json --validate --validation-warnings
-specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug
+specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-priority high --feature-sort priority
 ```
 
 Validate workspace and fusion contracts for CI or agents:
@@ -299,6 +299,8 @@ Creates a native feature bundle:
 
 The slug may contain lowercase letters, numbers, and hyphens, and must start and end with a letter or number. Existing feature files are not overwritten unless `--force` is passed.
 
+The generated spec file also starts with local triage metadata: `Priority: medium` and `Owner: unassigned`. Those values are the source of truth for status feature-summary priority and owner fields; execution and quality peers do not repeat them.
+
 ```bash
 specspine feature status <slug> [path] [--set STATUS] [--enforce-transition] [--json]
 ```
@@ -382,7 +384,7 @@ JSON output includes `title`, `body`, `feature_id`, `status`, `ready`, `source_f
 Partial bundles return `0` while marking missing files, gaps, and blocking checks in the draft. If no native feature files exist for the slug, the command returns non-zero. Invalid slugs return `2`. `--output` writes the PR body to a file and refuses to overwrite an existing file unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains the text body.
 
 ```bash
-specspine status [path] [--json] [--adapters] [--validate] [--validation-warnings] [--feature-summaries] [--feature-status STATUS] [--feature-ready READY] [--feature-sort KEY] [--feature-sort-desc]
+specspine status [path] [--json] [--adapters] [--validate] [--validation-warnings] [--feature-summaries] [--feature-status STATUS] [--feature-ready READY] [--feature-priority VALUE] [--feature-owner VALUE] [--feature-sort KEY] [--feature-sort-desc]
 ```
 
 Summarizes workspace completeness, fusion completeness, core artifact status, native feature files, feature lifecycle status, enabled upstreams, and recommended next actions. `--json` emits a stable compact context packet for agents and scripts. `--adapters` also checks external OpenSpec, Spec Kit, and Superpowers availability.
@@ -391,9 +393,9 @@ Summarizes workspace completeness, fusion completeness, core artifact status, na
 
 `--validation-warnings` is valid only with `--validate`; using it alone returns code `2`. With the flag, JSON status also includes `validation.warning_checks`, and text status lists warning check ids under `Warning checks:`. Default `status --json --validate` omits warning details so startup packets stay compact. Validation warning checks currently include unchanged base workspace Markdown scaffold prompts such as product scope, execution tasks, quality gates, and review-note placeholders.
 
-`--feature-summaries` appends an optional `feature_summaries` list to JSON status and a short Feature summaries section to text status. Each entry is derived from local native feature bundle discovery and the existing feature handoff report, with `feature_id`, `slug`, `status`, `complete`, `ready`, `missing_files`, `tasks_summary`, `ready_summary`, gap count, blocking check count, deterministic `next_actions`, and `recommended_commands`. The flag is not enabled by default because startup status should stay small; use it when an agent or maintainer needs to choose or compare multiple native features before opening a focused `feature handoff` packet.
+`--feature-summaries` appends an optional `feature_summaries` list to JSON status and a short Feature summaries section to text status. Each entry is derived from local native feature bundle discovery, the spec file's `Priority:` and `Owner:` metadata, and the existing feature handoff report, with `feature_id`, `slug`, `status`, `priority`, `owner`, `complete`, `ready`, `missing_files`, `tasks_summary`, `ready_summary`, gap count, blocking check count, deterministic `next_actions`, and `recommended_commands`. Missing or unsupported priority values display as `unknown`; missing or blank owners display as `unassigned`. The flag is not enabled by default because startup status should stay small; use it when an agent or maintainer needs to choose or compare multiple native features before opening a focused `feature handoff` packet.
 
-Feature summary filters and sorting are local and deterministic. `--feature-status STATUS` can be repeated and accepts `proposed`, `planned`, `in-progress`, `implemented`, `validated`, `archived`, `invalid`, and `unknown`. `--feature-ready READY` accepts `yes`, `no`, `true`, `false`, `ready`, and `not-ready`. `--feature-sort KEY` accepts `slug`, `status`, `ready`, `gaps`, `blocking`, and `tasks-open`; `--feature-sort-desc` reverses the selected order. These options are valid only with `--feature-summaries`; unsupported values or missing `--feature-summaries` return code `2`.
+Feature summary filters and sorting are local and deterministic. `--feature-status STATUS` can be repeated and accepts `proposed`, `planned`, `in-progress`, `implemented`, `validated`, `archived`, `invalid`, and `unknown`. `--feature-ready READY` accepts `yes`, `no`, `true`, `false`, `ready`, and `not-ready`. `--feature-priority VALUE` can be repeated and accepts `high`, `medium`, `low`, and `unknown`. `--feature-owner VALUE` can be repeated and performs a case-insensitive exact match, with `unassigned` matching missing owners. `--feature-sort KEY` accepts `slug`, `status`, `ready`, `gaps`, `blocking`, `tasks-open`, and `priority`; priority sort uses `high`, `medium`, `low`, then `unknown`, and `--feature-sort-desc` reverses the selected order. These options are valid only with `--feature-summaries`; unsupported values or missing `--feature-summaries` return code `2`.
 
 ```bash
 specspine validate [path] [--fusion] [--features] [--adapters] [--json]

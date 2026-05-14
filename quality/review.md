@@ -20,7 +20,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
 - `specspine feature pr` now exports offline Pull Request drafts that compose local feature evidence without GitHub API calls, token reads, `gh`, or network access.
 - `specspine feature tests` now exports acceptance-test packets that map acceptance criteria to test cases, attach explicit local `## Test Coverage` links, and surface existing test plan, quality checks, gaps, and blockers without running tests or generating code.
-- `specspine feature new` now generates native feature bundles with focused spec, execution, quality, handoff, task issue draft, tests, PR, ready, and validation guidance instead of broad generic placeholders.
+- `specspine feature new` now generates native feature bundles with focused spec, execution, quality, handoff, task issue draft, tests, PR, ready, validation guidance, and initial spec-level priority/owner metadata instead of broad generic placeholders.
 - No upstream code should be copied into this repository as part of fusion work.
 
 ## Decisions
@@ -28,7 +28,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Treat `specspine status . --json` as the first context packet for future agents.
 - Use `specspine status . --json --validate` when agents need context and failed quality checks together.
 - Add `--validation-warnings` only when agents need warning check details for unchanged scaffold placeholders.
-- Use `specspine status . --json --validate --feature-summaries` only when agents need to choose or compare multiple native features, and add `--feature-status`, `--feature-ready`, or `--feature-sort` when the workspace has enough features to need local triage.
+- Use `specspine status . --json --validate --feature-summaries` only when agents need to choose or compare multiple native features, and add `--feature-status`, `--feature-ready`, `--feature-priority`, `--feature-owner`, or `--feature-sort` when the workspace has enough features to need local triage.
 - Treat `specspine feature handoff <slug> . --json` as the default local feature packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` as the focused execution checklist view when an agent only needs tasks.
 - Use `specspine feature task-issues <slug> . --json` when a maintainer or agent needs local task-level issue drafts before any remote GitHub issue exists.
@@ -51,7 +51,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Status packets can now include compact validation summaries with failed checks only by default, plus opt-in warning checks through `--validation-warnings`.
 - Validation can now warn on unchanged base workspace Markdown scaffold placeholders without failing warning-only workspaces.
 - Status packets can now opt into compact feature summaries for multi-feature triage while omitting them by default.
-- Feature summary packets can now be filtered by lifecycle status and readiness, sorted by local summary fields, and rejected with code `2` when summary-only options are used without `--feature-summaries`.
+- Feature summary packets can now be filtered by lifecycle status, readiness, priority, and owner, sorted by local summary fields including priority, and rejected with code `2` when summary-only options are used without `--feature-summaries`.
 - Feature execution checklists can now be exported without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be exported as deterministic traceability packets without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be checked with deterministic readiness gates that fail on missing files, inconsistent statuses, trace gaps, incomplete checklist evidence, missing test plans, or open release readiness items.

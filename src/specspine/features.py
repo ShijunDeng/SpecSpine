@@ -22,6 +22,7 @@ FEATURE_STATUSES = (
     "validated",
     "archived",
 )
+FEATURE_PRIORITIES = ("high", "medium", "low")
 FEATURE_TRANSITIONS = {
     "proposed": ("planned", "archived"),
     "planned": ("in-progress", "archived"),
@@ -42,6 +43,18 @@ class InvalidFeatureSlug(ValueError):
 
 class InvalidFeatureStatus(ValueError):
     """Raised when a feature lifecycle status is not supported."""
+
+
+@dataclass(frozen=True)
+class FeatureMetadata:
+    priority: str
+    owner: str
+
+    def as_dict(self) -> dict[str, str]:
+        return {
+            "owner": self.owner,
+            "priority": self.priority,
+        }
 
 
 @dataclass(frozen=True)
@@ -626,6 +639,30 @@ def validate_feature_status(status: str) -> str:
     )
 
 
+def normalize_feature_priority(priority: str | None) -> str:
+    if priority is None:
+        return "unknown"
+
+    normalized = priority.strip().lower()
+    if normalized in FEATURE_PRIORITIES:
+        return normalized
+
+    return "unknown"
+
+
+def normalize_feature_owner(owner: str | None) -> str:
+    if owner is None:
+        return "unassigned"
+
+    normalized = owner.strip()
+    if not normalized:
+        return "unassigned"
+    if normalized.lower() == "unassigned":
+        return "unassigned"
+
+    return normalized
+
+
 def feature_title(slug: str, title: str | None = None) -> str:
     if title and title.strip():
         return title.strip()
@@ -654,6 +691,8 @@ def build_feature_files(
 
             Feature ID: {slug}
             Status: proposed
+            Priority: medium
+            Owner: unassigned
 
             ## Why
 
@@ -1228,6 +1267,19 @@ def _extract_scalar(content: str, key: str) -> str | None:
             return value
 
     return None
+
+
+def read_feature_metadata(root: Path, slug: str) -> FeatureMetadata:
+    slug = validate_feature_slug(slug)
+    spec_path = feature_bundle_paths(root, slug)["spec"]
+    if not spec_path.exists():
+        return FeatureMetadata(priority="unknown", owner="unassigned")
+
+    content = spec_path.read_text(encoding="utf-8")
+    return FeatureMetadata(
+        priority=normalize_feature_priority(_extract_scalar(content, "Priority")),
+        owner=normalize_feature_owner(_extract_scalar(content, "Owner")),
+    )
 
 
 def _first_scalar(contents: dict[str, str], key: str) -> str | None:

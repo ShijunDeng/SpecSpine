@@ -37,6 +37,7 @@ class DogfoodArtifactsTests(TestCase):
             "feature-test-coverage-links",
             "feature-task-issue-drafts",
             "status-validation-warnings",
+            "feature-summary-metadata",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -72,6 +73,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:feature-test-coverage-links", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-task-issue-drafts", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-validation-warnings", "pass"), checks)
+        self.assertIn(("feature.status_consistency:feature-summary-metadata", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -208,6 +210,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/status-validation-warnings.md",
             "execution/features/status-validation-warnings.md",
             "quality/features/status-validation-warnings.md",
+            "specs/features/feature-summary-metadata.md",
+            "execution/features/feature-summary-metadata.md",
+            "quality/features/feature-summary-metadata.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -272,6 +277,13 @@ class DogfoodArtifactsTests(TestCase):
 
     def test_status_validation_warnings_dogfood_bundle_passes_its_gate(self) -> None:
         report = build_feature_ready_report(REPO_ROOT, "status-validation-warnings")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.status, "validated")
+        self.assertEqual(report.summary["fail"], 0)
+
+    def test_feature_summary_metadata_dogfood_bundle_passes_its_gate(self) -> None:
+        report = build_feature_ready_report(REPO_ROOT, "feature-summary-metadata")
 
         self.assertTrue(report.ready)
         self.assertEqual(report.status, "validated")
