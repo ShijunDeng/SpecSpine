@@ -25,6 +25,7 @@ This repository is an early project skeleton. It includes:
 - A workspace initializer: `specspine init`.
 - A fusion initializer: `specspine fuse`.
 - A compact workspace status packet: `specspine status --json`.
+- An executable validation layer: `specspine validate --json`.
 - Adapter metadata for OpenSpec, Spec Kit, and Superpowers.
 - Default spec templates for intent, product, architecture, features, quality, and execution.
 - A lightweight test suite and GitHub Actions CI.
@@ -80,6 +81,13 @@ Summarize the workspace for humans or downstream agents:
 ```bash
 specspine status .
 specspine status . --json
+```
+
+Validate workspace and fusion contracts for CI or agents:
+
+```bash
+specspine validate .
+specspine validate . --fusion --json
 ```
 
 Or create one in a new directory:
@@ -184,6 +192,12 @@ specspine status [path] [--json] [--adapters]
 ```
 
 Summarizes workspace completeness, fusion completeness, core artifact status, enabled upstreams, and recommended next actions. `--json` emits a stable compact context packet for agents and scripts. `--adapters` also checks external OpenSpec, Spec Kit, and Superpowers availability.
+
+```bash
+specspine validate [path] [--fusion] [--adapters] [--json]
+```
+
+Runs executable local checks over SpecSpine contracts. By default it validates required workspace files. `--fusion` also requires fusion files, verifies `integration_mode: adapter`, verifies `vendored_upstream_code: false`, and checks enabled upstream adapter docs. `--adapters` probes only enabled external upstream adapters. `--json` emits stable JSON with `root`, `ok`, `checks`, and `summary`; any `fail` check returns a non-zero exit code.
 
 ```bash
 specspine fuse [path] --agent codex

@@ -14,6 +14,12 @@ from .adapters import (
 )
 from .fusion import FUSION_REQUIRED_FILES, init_fusion_workspace
 from .status import build_status, render_status_json, render_status_text
+from .validation import (
+    build_validation_report,
+    render_validation_json,
+    render_validation_text,
+    validation_exit_code,
+)
 from .workspace import BASE_WORKSPACE_FILES, check_workspace, init_workspace
 
 
@@ -94,6 +100,24 @@ def build_parser() -> argparse.ArgumentParser:
         "--adapters",
         action="store_true",
         help="also check external adapter availability",
+    )
+
+    validate_parser = subcommands.add_parser("validate", help="validate SpecSpine workspace contracts")
+    validate_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    validate_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for CI and agents",
+    )
+    validate_parser.add_argument(
+        "--fusion",
+        action="store_true",
+        help="also require and validate SpecSpine fusion files",
+    )
+    validate_parser.add_argument(
+        "--adapters",
+        action="store_true",
+        help="also check enabled external adapter availability",
     )
 
     adapters_parser = subcommands.add_parser("adapters", help="inspect external adapter integration")
@@ -196,6 +220,18 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(render_status_text(status), end="")
         return 0
+
+    if args.command == "validate":
+        report = build_validation_report(
+            Path(args.path),
+            include_fusion=args.fusion,
+            include_adapters=args.adapters,
+        )
+        if args.json:
+            print(render_validation_json(report), end="")
+        else:
+            print(render_validation_text(report), end="")
+        return validation_exit_code(report)
 
     if args.command == "adapters":
         if args.adapters_command == "doctor":
