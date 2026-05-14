@@ -17,6 +17,7 @@
 - Refreshed native feature bundle templates with focused handoff, task issue draft, tests, PR, readiness, and validation guidance.
 - Fusion layer generation for OpenSpec, Spec Kit, and Superpowers.
 - Status JSON, validation JSON/text, adapter doctor, and install hints.
+- Static adapter lifecycle mappings through `specspine adapters lifecycle`.
 - Optional validation summaries in `specspine status --json --validate`.
 - Opt-in validation warning details in `specspine status --json --validate --validation-warnings`.
 - Optional native feature summaries in `specspine status --json --feature-summaries`, with local status/readiness filters and deterministic sorting.
@@ -41,6 +42,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine feature tests <slug> . --json` when QA or testing agents need acceptance criteria mapped to pending test cases plus existing test plan, gaps, and blockers.
 - Use `specspine feature pr <slug> . --json` when a reviewer or release agent needs a local Pull Request draft without touching GitHub.
 - Use `specspine gates . --json` when an agent, reviewer, or CI author needs repository-level quality gate definitions before running or wiring checks.
+- Use `specspine adapters lifecycle . --json` when an agent or maintainer needs local status-to-upstream phase definitions before adapter sync or upstream planning.
 - Use `specspine validate . --fusion --features` as the project-level gate.
 - Let `specspine feature new <slug> . --title "..." --why "..."` seed the feature's spec, execution, quality, handoff, task issue draft, tests, PR, ready, validation workflow, and initial `Priority: medium` / `Owner: unassigned` metadata before implementation begins.
 - Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`; prefer `--enforce-transition` for ordered lifecycle advancement while keeping manual updates available by default.

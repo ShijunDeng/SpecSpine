@@ -31,6 +31,7 @@ AGENTS_TEMPLATE = """
     specspine status . --json --validate --feature-summaries
     specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug
     specspine gates . --json
+    specspine adapters lifecycle . --json
     specspine validate .
     specspine validate . --features
     specspine validate . --fusion --features
@@ -53,6 +54,7 @@ AGENTS_TEMPLATE = """
     - Read `specspine status . --json --validate` before planning or editing; add `--validation-warnings` only when scaffold warning check ids are needed.
     - Use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features; add local filters such as `--feature-status validated --feature-ready yes --feature-sort slug` for triage.
     - Use `specspine gates . --json` when an agent or reviewer needs repository-level quality gate definitions; it exports definitions and does not execute checks.
+    - Use `specspine adapters lifecycle . --json` when adapter lifecycle definitions are needed; it exports static local mappings and does not execute upstream tools.
     - For new requirements, create a feature bundle with `specspine feature new`; the generated peer files include focused handoff, task issue drafts, tests, PR, readiness, and validation guidance.
     - Keep feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.
     - Before archiving, run `specspine feature ready <slug> . --json`, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.

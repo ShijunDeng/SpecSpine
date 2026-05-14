@@ -9,8 +9,11 @@ from .adapters import (
     ADAPTER_SPECS,
     AGENT_PROFILES,
     AdapterStatus,
+    build_adapter_lifecycle_report,
     build_upstream_init_commands,
     probe_adapters,
+    render_adapter_lifecycle_json,
+    render_adapter_lifecycle_text,
     run_upstream_initializers,
 )
 from .agents import AgentsFileExistsError, init_agents_file
@@ -440,6 +443,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     adapters_subcommands.add_parser("doctor", help="check OpenSpec, Spec Kit, and Superpowers availability")
     adapters_subcommands.add_parser("install-hints", help="print upstream install commands and links")
+    adapters_lifecycle_parser = adapters_subcommands.add_parser(
+        "lifecycle",
+        help="export local adapter lifecycle mappings",
+    )
+    adapters_lifecycle_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    adapters_lifecycle_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
 
     return parser
 
@@ -1050,6 +1063,14 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{spec.display_name}:")
                 print(f"  upstream: {spec.upstream_url}")
                 print(f"  install: {spec.install_hint}")
+            return 0
+
+        if args.adapters_command == "lifecycle":
+            report = build_adapter_lifecycle_report(Path(args.path))
+            if args.json:
+                print(render_adapter_lifecycle_json(report), end="")
+            else:
+                print(render_adapter_lifecycle_text(report), end="")
             return 0
 
     parser.print_help()

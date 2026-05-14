@@ -36,6 +36,7 @@ This repository is an early project skeleton. It includes:
 - A local GitHub Pull Request draft exporter: `specspine feature pr`.
 - A repository quality gate definition exporter: `specspine gates`.
 - A fusion initializer: `specspine fuse`.
+- A local adapter lifecycle mapping exporter: `specspine adapters lifecycle`.
 - A compact workspace status packet with optional validation, opt-in validation warning details, and filterable feature summaries: `specspine status --json --validate --validation-warnings --feature-summaries`.
 - An executable validation layer: `specspine validate --json`.
 - Adapter metadata for OpenSpec, Spec Kit, and Superpowers.
@@ -241,6 +242,12 @@ Check local adapter availability:
 specspine adapters doctor
 ```
 
+Export local adapter lifecycle mappings:
+
+```bash
+specspine adapters lifecycle . --json
+```
+
 ## Core Workflow
 
 1. **Intent**
@@ -436,6 +443,14 @@ specspine adapters install-hints
 
 Prints upstream install instructions and project links.
 
+```bash
+specspine adapters lifecycle [path] [--json]
+```
+
+Exports the local static lifecycle map between SpecSpine native feature statuses and upstream adapter phases. The report covers OpenSpec, Spec Kit, and Superpowers for `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived`. JSON output includes `root`, `native_statuses`, an `adapters` map with `display_name`, `enabled`, `config`, `config_exists`, `upstream_url`, and `mappings`, plus summary counts and recommended local commands. Each mapping includes a stable id such as `openspec:proposed`, the native status meaning, upstream phase, upstream artifacts, agent focus, and local commands.
+
+The command reads local fusion config only to determine adapter enablement and config paths, checks local config path existence, and returns `0` even when adapters are disabled or configs are missing. It does not call GitHub APIs, require `gh`, read tokens, use network access, invoke upstream CLIs, execute shell commands, or add dependencies.
+
 ## Design Principles
 
 - **Specs are living artifacts**, not one-time documents.
@@ -447,11 +462,11 @@ Prints upstream install instructions and project links.
 
 ## Roadmap
 
-- Adapter lifecycle mappings.
 - Task decomposition from specs and richer task summaries.
 - Richer adapter sync for OpenSpec, Spec Kit, Superpowers, and other workflow engines.
 - Remote GitHub issue and pull request synchronization beyond offline drafts.
 
+Completed roadmap item: adapter lifecycle mappings are covered by `specspine adapters lifecycle`.
 Completed roadmap item: repository quality gate definitions are covered by `specspine gates`.
 
 ## Development

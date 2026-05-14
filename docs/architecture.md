@@ -36,6 +36,7 @@ The CLI is intentionally thin:
 - `specspine validate` turns workspace and fusion contracts into executable checks for CI and agents.
 - `specspine adapters doctor` checks whether external tools are installed.
 - `specspine adapters install-hints` prints upstream install guidance.
+- `specspine adapters lifecycle` exports static local mappings from SpecSpine lifecycle status to upstream adapter phases.
 
 Future commands should remain thin orchestration layers over explicit files so the workspace stays understandable without a server.
 
@@ -136,6 +137,10 @@ Feature summary triage stays local to the already-built summaries. `--feature-st
 
 The JSON report includes `root`, `source_file`, `source_missing`, `required_checks`, `definition_of_done`, `summary`, and `recommended_commands`. Missing sources return code `1` with empty lists; existing sources return code `0` even when gate checkboxes are open because this command exports definitions rather than evaluating completion.
 
+`specspine adapters lifecycle [path] [--json]` is the adapter lifecycle policy packet. It exports static local mappings for OpenSpec, Spec Kit, and Superpowers without probing tools, running shell commands, reading tokens, calling GitHub APIs, or using network access. It reads `.specspine/fusion.yaml` only to determine adapter enablement and configured adapter contract paths, then checks whether those local config paths exist.
+
+The JSON report includes `root`, `native_statuses`, `adapters`, `summary`, and `recommended_commands`. Each adapter record includes `display_name`, `enabled`, `config`, `config_exists`, `upstream_url`, and six mappings. Each mapping includes `id`, `status`, `specspine_meaning`, `upstream_phase`, `upstream_artifacts`, `agent_focus`, and `local_commands`. Disabled adapters and missing config files never make this command fail; they are reported as data while the command returns `0`.
+
 `specspine feature task-issues <slug> [path] [--json] [--output FILE] [--force]` composes the existing local task and trace evidence into a GitHub Markdown issue draft package without creating remote issues. One execution checklist item becomes one issue draft with a stable title, task metadata, source line, acceptance criteria context, and key local commands.
 
 The report includes `feature_id`, `status`, `source_file`, `source_missing`, `missing_files`, `issues`, `summary`, and `recommended_commands`. Each issue includes `title`, `body`, `feature_id`, `task_id`, `task_text`, `task_done`, `source_file`, and `line`. The command is extractive and deterministic: it does not call GitHub APIs, require `gh`, read tokens, use network access, invoke upstream CLIs, vendor code, or add dependencies. Partial bundles with missing execution files return zero when another peer file exists; all-files-missing returns non-zero; invalid slugs return `2`; output semantics match the other feature exporters.
@@ -171,6 +176,8 @@ SpecSpine files <-> adapter <-> external tool
 
 Adapters should not own the source of truth unless the user explicitly chooses that mode.
 
+The adapter lifecycle map is the local contract for future sync work. It aligns SpecSpine's native statuses with OpenSpec change artifacts, Spec Kit's spec -> plan -> tasks -> implement workflow, and Superpowers' brainstorming, planning, TDD, subagent, review, and completion discipline before any adapter writes remote or upstream state.
+
 ## Fusion Layer
 
 `specspine fuse` writes:
@@ -187,7 +194,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 - `specspine.workspace`: local file templates and workspace checks.
 - `specspine.agents`: project-local `AGENTS.md` generation for AI coding agents.
 - `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, task export, task issue draft export, trace export, readiness gate evaluation, handoff packet export, issue draft export, and PR draft export.
-- `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
+- `specspine.adapters`: upstream metadata, availability probes, lifecycle mappings, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, optional validation summary, and optional feature summary rendering.
 - `specspine.validation`: executable workspace, scaffold-placeholder warning, fusion, feature, optional adapter contract checks, and compact validation summaries.

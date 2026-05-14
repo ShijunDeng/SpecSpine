@@ -16,6 +16,7 @@ SpecSpine may:
 
 - Detect whether an upstream tool is installed.
 - Print official install hints.
+- Export static local lifecycle mappings for upstream adapter phases.
 - Run upstream initializer commands when the user opts in with `--run-upstream`.
 - Store adapter contracts that point to upstream artifacts and commands.
 - Map upstream outputs into the SpecSpine backbone.
@@ -47,6 +48,12 @@ specify integration list
 Superpowers:
 
 Superpowers is installed through the active AI coding agent's plugin or extension system. SpecSpine records the expected quality policy in `quality/superpowers.md` and expects the agent to load Superpowers from its installed plugin.
+
+## Lifecycle Mapping
+
+`specspine adapters lifecycle [path] [--json]` exports the local mapping between SpecSpine native feature statuses and upstream phases before any sync command touches upstream or remote state. It covers `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` for OpenSpec, Spec Kit, and Superpowers.
+
+The command is definition-only. It reads local fusion config for adapter enablement and config paths, checks whether local adapter config files exist, and returns `0` even when adapters are disabled. It does not execute `openspec`, `specify`, Superpowers, `gh`, shell commands, GitHub APIs, network calls, or token reads.
 
 ## Agent Mapping
 

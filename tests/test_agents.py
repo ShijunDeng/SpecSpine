@@ -46,6 +46,7 @@ class AgentsTests(TestCase):
             "specspine status . --json --validate --feature-summaries",
             "specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug",
             "specspine gates . --json",
+            "specspine adapters lifecycle . --json",
             "specspine validate .",
             "specspine validate . --features",
             "specspine validate . --fusion --features",
@@ -69,6 +70,7 @@ class AgentsTests(TestCase):
             "specspine feature status <slug> . --set archived --enforce-transition",
             "focused handoff, task issue drafts, tests, PR, readiness, and validation guidance",
             "repository-level quality gate definitions",
+            "adapter lifecycle definitions",
             "Use `--run-upstream` only when the user explicitly asks",
         ):
             with self.subTest(expected=expected):

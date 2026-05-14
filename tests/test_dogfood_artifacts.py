@@ -39,6 +39,7 @@ class DogfoodArtifactsTests(TestCase):
             "status-validation-warnings",
             "feature-summary-metadata",
             "quality-gate-definitions",
+            "adapter-lifecycle-mappings",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -76,6 +77,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:status-validation-warnings", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-summary-metadata", "pass"), checks)
         self.assertIn(("feature.status_consistency:quality-gate-definitions", "pass"), checks)
+        self.assertIn(("feature.status_consistency:adapter-lifecycle-mappings", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -88,6 +90,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries",
             "PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug",
             "PYTHONPATH=src python3 -m specspine gates . --json",
+            "PYTHONPATH=src python3 -m specspine adapters lifecycle . --json",
             "PYTHONPATH=src python3 -m specspine validate . --fusion --features",
             "PYTHONPATH=src python3 -m unittest discover -s tests",
             "PYTHONPATH=src python3 -m specspine feature status <slug> . --json",
@@ -99,6 +102,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine feature pr <slug> . --json",
             "Keep feature specs, implementation tasks, and quality checks traceable",
             "Use `specspine gates . --json` to export quality gate definitions only",
+            "Use `specspine adapters lifecycle . --json` to export adapter lifecycle definitions only",
             "prefer `--enforce-transition` when advancing lifecycle state",
             "Do not vendor upstream source code.",
             "Do not read or write GitHub tokens",
@@ -220,6 +224,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/quality-gate-definitions.md",
             "execution/features/quality-gate-definitions.md",
             "quality/features/quality-gate-definitions.md",
+            "specs/features/adapter-lifecycle-mappings.md",
+            "execution/features/adapter-lifecycle-mappings.md",
+            "quality/features/adapter-lifecycle-mappings.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -298,6 +305,13 @@ class DogfoodArtifactsTests(TestCase):
 
     def test_quality_gate_definitions_dogfood_bundle_passes_its_gate(self) -> None:
         report = build_feature_ready_report(REPO_ROOT, "quality-gate-definitions")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.status, "validated")
+        self.assertEqual(report.summary["fail"], 0)
+
+    def test_adapter_lifecycle_mappings_dogfood_bundle_passes_its_gate(self) -> None:
+        report = build_feature_ready_report(REPO_ROOT, "adapter-lifecycle-mappings")
 
         self.assertTrue(report.ready)
         self.assertEqual(report.status, "validated")
