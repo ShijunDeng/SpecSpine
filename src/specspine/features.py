@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,6 +34,39 @@ class FeatureBundleExistsError(FileExistsError):
             f"Feature bundle '{self.slug}' already has existing files. "
             "Use --force to overwrite them."
         )
+
+
+@dataclass(frozen=True)
+class FeatureBundleNotFoundError(FileNotFoundError):
+    slug: str
+    root: Path
+    missing_paths: tuple[Path, ...]
+
+    def __str__(self) -> str:
+        return (
+            f"No feature files found for '{self.slug}' at {self.root}. "
+            "Expected at least one native feature file."
+        )
+
+
+@dataclass(frozen=True)
+class IssueDraft:
+    title: str
+    body: str
+    feature_id: str
+    source_files: tuple[str, ...]
+    missing_files: tuple[str, ...]
+    status: str
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "body": self.body,
+            "feature_id": self.feature_id,
+            "missing_files": list(self.missing_files),
+            "source_files": list(self.source_files),
+            "status": self.status,
+            "title": self.title,
+        }
 
 
 def validate_feature_slug(slug: str) -> str:
@@ -211,3 +245,259 @@ def list_feature_bundles(root: Path) -> list[dict[str, object]]:
         )
 
     return features
+
+
+def _first_line_h1(content: str) -> str | None:
+    first_line = content.splitlines()[0].strip() if content.splitlines() else ""
+    match = re.fullmatch(r"#\s+(.+?)\s*#*", first_line)
+    if not match:
+        return None
+
+    title = match.group(1).strip()
+    return title or None
+
+
+def _markdown_heading(raw_line: str) -> tuple[int, str] | None:
+    match = re.match(r"^(#{1,6})\s+(.+?)\s*#*\s*$", raw_line.strip())
+    if not match:
+        return None
+
+    return len(match.group(1)), match.group(2).strip()
+
+
+def _extract_markdown_section(content: str, heading: str) -> str | None:
+    lines = content.splitlines()
+    section_start: int | None = None
+    section_level: int | None = None
+
+    for index, raw_line in enumerate(lines):
+        parsed = _markdown_heading(raw_line)
+        if parsed is None:
+            continue
+
+        level, text = parsed
+        if section_start is None:
+            if level >= 2 and text.lower() == heading.lower():
+                section_start = index + 1
+                section_level = level
+            continue
+
+        if section_level is not None and level <= section_level:
+            section = "\n".join(lines[section_start:index]).strip()
+            return section or None
+
+    if section_start is None:
+        return None
+
+    section = "\n".join(lines[section_start:]).strip()
+    return section or None
+
+
+def _extract_scalar(content: str, key: str) -> str | None:
+    for raw_line in content.splitlines():
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#") or ":" not in stripped:
+            continue
+
+        current_key, value = stripped.split(":", 1)
+        if current_key.strip().lower() != key.lower():
+            continue
+
+        value = value.strip()
+        if value:
+            return value
+
+    return None
+
+
+def _first_scalar(contents: dict[str, str], key: str) -> str | None:
+    for kind in FEATURE_FILE_PATHS:
+        content = contents.get(kind)
+        if content is None:
+            continue
+
+        value = _extract_scalar(content, key)
+        if value:
+            return value
+
+    return None
+
+
+def _section_placeholder(kind: str, heading: str, relative_path: str) -> str:
+    if kind == "missing_file":
+        return f"TODO: Add `{relative_path}` with a `## {heading}` section."
+    return f"TODO: Add a `## {heading}` section to `{relative_path}`."
+
+
+def _section_or_placeholder(
+    contents: dict[str, str],
+    *,
+    kind: str,
+    heading: str,
+    relative_path: str,
+) -> str:
+    content = contents.get(kind)
+    if content is None:
+        return _section_placeholder("missing_file", heading, relative_path)
+
+    section = _extract_markdown_section(content, heading)
+    if section:
+        return section
+
+    return _section_placeholder(kind, heading, relative_path)
+
+
+def _why_or_placeholder(
+    contents: dict[str, str],
+    *,
+    relative_path: str,
+) -> str:
+    spec = contents.get("spec")
+    if spec is not None:
+        section = _extract_markdown_section(spec, "Why")
+        if section:
+            return section
+
+    scalar = _first_scalar(contents, "Why")
+    if scalar:
+        return scalar
+
+    if spec is None:
+        return _section_placeholder("missing_file", "Why", relative_path)
+
+    return _section_placeholder("spec", "Why", relative_path)
+
+
+def _render_issue_body(
+    *,
+    feature_id: str,
+    status: str,
+    why: str,
+    acceptance_criteria: str,
+    tasks: str,
+    test_plan: str,
+    source_files: tuple[str, ...],
+    missing_files: tuple[str, ...],
+) -> str:
+    lines = [
+        "## Feature",
+        "",
+        f"- Feature ID: `{feature_id}`",
+        f"- Status: {status}",
+        "",
+        "## Why",
+        "",
+        why,
+        "",
+        "## Acceptance Criteria",
+        "",
+        acceptance_criteria,
+        "",
+        "## Tasks",
+        "",
+        tasks,
+        "",
+        "## Test Plan",
+        "",
+        test_plan,
+        "",
+        "## Source Files",
+        "",
+    ]
+
+    lines.extend(f"- {relative_path}" for relative_path in source_files)
+    lines.extend(["", "## Missing Files", ""])
+    if missing_files:
+        lines.append(
+            "This draft was generated from an incomplete feature bundle. "
+            "Add these files before treating the issue as ready:"
+        )
+        lines.append("")
+        lines.extend(f"- {relative_path}" for relative_path in missing_files)
+    else:
+        lines.append("None.")
+
+    return "\n".join(lines).strip() + "\n"
+
+
+def build_issue_draft(root: Path, slug: str) -> IssueDraft:
+    slug = validate_feature_slug(slug)
+    resolved_root = root.expanduser().resolve()
+    paths = feature_bundle_paths(resolved_root, slug)
+    relative_paths = {
+        kind: relative_path.format(slug=slug)
+        for kind, relative_path in FEATURE_FILE_PATHS.items()
+    }
+
+    contents: dict[str, str] = {}
+    source_files: list[str] = []
+    missing_files: list[str] = []
+    missing_paths: list[Path] = []
+
+    for kind in FEATURE_FILE_PATHS:
+        path = paths[kind]
+        relative_path = relative_paths[kind]
+        if path.exists():
+            contents[kind] = path.read_text(encoding="utf-8")
+            source_files.append(relative_path)
+            continue
+
+        missing_files.append(relative_path)
+        missing_paths.append(path)
+
+    if not contents:
+        raise FeatureBundleNotFoundError(
+            slug=slug,
+            root=resolved_root,
+            missing_paths=tuple(missing_paths),
+        )
+
+    spec_content = contents.get("spec", "")
+    title = _first_line_h1(spec_content) or feature_title(slug)
+    status = _first_scalar(contents, "Status") or "TODO: Confirm feature status."
+    why = _why_or_placeholder(contents, relative_path=relative_paths["spec"])
+    acceptance_criteria = _section_or_placeholder(
+        contents,
+        kind="spec",
+        heading="Acceptance Criteria",
+        relative_path=relative_paths["spec"],
+    )
+    tasks = _section_or_placeholder(
+        contents,
+        kind="execution",
+        heading="Tasks",
+        relative_path=relative_paths["execution"],
+    )
+    test_plan = _section_or_placeholder(
+        contents,
+        kind="quality",
+        heading="Test Plan",
+        relative_path=relative_paths["quality"],
+    )
+    body = _render_issue_body(
+        feature_id=slug,
+        status=status,
+        why=why,
+        acceptance_criteria=acceptance_criteria,
+        tasks=tasks,
+        test_plan=test_plan,
+        source_files=tuple(source_files),
+        missing_files=tuple(missing_files),
+    )
+
+    return IssueDraft(
+        title=title,
+        body=body,
+        feature_id=slug,
+        source_files=tuple(source_files),
+        missing_files=tuple(missing_files),
+        status=status,
+    )
+
+
+def render_issue_json(draft: IssueDraft) -> str:
+    return json.dumps(draft.as_dict(), indent=2, sort_keys=True) + "\n"
+
+
+def render_issue_text(draft: IssueDraft) -> str:
+    return f"Title: {draft.title}\n\n{draft.body}"

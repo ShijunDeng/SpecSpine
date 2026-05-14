@@ -19,6 +19,7 @@ The CLI is intentionally thin:
 
 - `specspine init` creates the default workspace structure.
 - `specspine feature new` creates a traceable native feature bundle.
+- `specspine feature issue` exports a local GitHub issue draft from a native feature bundle.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
 - `specspine status` emits a compact status packet for humans, agents, and scripts.
@@ -53,6 +54,15 @@ Validation is local-first and zero-dependency. The default mode validates base w
 
 Each file records the same `Feature ID: <slug>` and starts at `Status: proposed`. The command refuses to overwrite existing feature files unless `--force` is passed.
 
+`specspine feature issue <slug> [path]` is the local bridge from native feature bundles to GitHub issue workflows. It reads the spec, execution, and quality peer files and builds a structured issue draft with:
+
+- title from the spec file's first-line H1, falling back to slug title case.
+- body sections for Feature ID, Status, Why, Acceptance Criteria, Tasks, Test Plan, Source Files, and Missing Files.
+- stable JSON output through `--json`.
+- body file export through `--output`, with overwrite protection unless `--force` is passed.
+
+The command is intentionally offline. It does not call GitHub APIs, does not require `gh`, and does not read tokens. Missing peer files are reported in the draft; if all three feature files are missing, the command fails clearly.
+
 `specspine validate --features` checks that discovered native feature bundles have valid slugs, all three peer files, matching feature ids, and proposed status markers.
 
 ## Adapter Direction
@@ -81,7 +91,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 ## Modules
 
 - `specspine.workspace`: local file templates and workspace checks.
-- `specspine.features`: native feature slug validation, bundle templates, file creation, and discovery.
+- `specspine.features`: native feature slug validation, bundle templates, file creation, discovery, and issue draft export.
 - `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, and recommendation summaries.

@@ -4,11 +4,13 @@ from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
+from unittest.mock import patch
 
 from specspine.cli import main
 from specspine.features import (
     FeatureBundleExistsError,
     InvalidFeatureSlug,
+    build_issue_draft,
     create_feature_bundle,
 )
 from specspine.status import build_status
@@ -338,4 +340,352 @@ class FeatureBundleTests(TestCase):
                     and check["status"] == "fail"
                     for check in report["checks"]
                 )
+            )
+
+    def test_feature_issue_cli_generates_text_for_complete_bundle(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(
+                root,
+                "add-dark-mode",
+                title="Add dark mode",
+                why="Reduce eye strain",
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["feature", "issue", "add-dark-mode", str(root)])
+
+            text = output.getvalue()
+            self.assertEqual(returncode, 0)
+            self.assertIn("Title: Add dark mode", text)
+            self.assertIn("- Feature ID: `add-dark-mode`", text)
+            self.assertIn("- Status: proposed", text)
+            self.assertIn("## Why", text)
+            self.assertIn("Reduce eye strain", text)
+            self.assertIn("## Acceptance Criteria", text)
+            self.assertIn("## Tasks", text)
+            self.assertIn("## Test Plan", text)
+            self.assertIn("## Source Files", text)
+            self.assertIn("specs/features/add-dark-mode.md", text)
+            self.assertIn("execution/features/add-dark-mode.md", text)
+            self.assertIn("quality/features/add-dark-mode.md", text)
+            self.assertIn("## Missing Files\n\nNone.", text)
+
+    def test_feature_issue_cli_json_output_is_parseable(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(
+                root,
+                "add-dark-mode",
+                title="Add dark mode",
+                why="Reduce eye strain",
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "issue", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["title"], "Add dark mode")
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertEqual(payload["missing_files"], [])
+            self.assertEqual(
+                payload["source_files"],
+                [
+                    "specs/features/add-dark-mode.md",
+                    "execution/features/add-dark-mode.md",
+                    "quality/features/add-dark-mode.md",
+                ],
+            )
+            self.assertIn("Reduce eye strain", payload["body"])
+
+    def test_feature_issue_title_falls_back_to_slug_title_without_spec_h1(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            (root / "specs" / "features" / "add-dark-mode.md").write_text(
+                "\n".join(
+                    [
+                        "Feature ID: add-dark-mode",
+                        "Status: proposed",
+                        "",
+                        "## Why",
+                        "",
+                        "Make evening use comfortable.",
+                        "",
+                        "## Acceptance Criteria",
+                        "",
+                        "- [ ] Users can switch to a dark color scheme.",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            draft = build_issue_draft(root, "add-dark-mode")
+
+            self.assertEqual(draft.title, "Add Dark Mode")
+            self.assertIn("Make evening use comfortable.", draft.body)
+
+    def test_feature_issue_partial_bundle_marks_missing_files(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            (root / "quality" / "features" / "add-dark-mode.md").unlink()
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "issue", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(
+                payload["missing_files"],
+                ["quality/features/add-dark-mode.md"],
+            )
+            self.assertEqual(
+                payload["source_files"],
+                [
+                    "specs/features/add-dark-mode.md",
+                    "execution/features/add-dark-mode.md",
+                ],
+            )
+            self.assertIn("quality/features/add-dark-mode.md", payload["body"])
+            self.assertIn(
+                "TODO: Add `quality/features/add-dark-mode.md` with a `## Test Plan` section.",
+                payload["body"],
+            )
+
+    def test_feature_issue_partial_bundle_text_lists_missing_files(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            (root / "quality" / "features" / "add-dark-mode.md").unlink()
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["feature", "issue", "add-dark-mode", str(root)])
+
+            text = output.getvalue()
+            self.assertEqual(returncode, 0)
+            self.assertIn("## Missing Files", text)
+            self.assertIn(
+                "This draft was generated from an incomplete feature bundle.",
+                text,
+            )
+            self.assertIn("- quality/features/add-dark-mode.md", text)
+            self.assertIn(
+                "TODO: Add `quality/features/add-dark-mode.md` with a `## Test Plan` section.",
+                text,
+            )
+
+    def test_feature_issue_all_files_missing_returns_nonzero(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            stdout = StringIO()
+            stderr = StringIO()
+
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                returncode = main(["feature", "issue", "add-dark-mode", str(root)])
+
+            self.assertEqual(returncode, 1)
+            self.assertEqual(stdout.getvalue(), "")
+            self.assertIn("No feature files found", stderr.getvalue())
+            self.assertIn("missing specs/features/add-dark-mode.md", stderr.getvalue())
+            self.assertIn(
+                "missing execution/features/add-dark-mode.md",
+                stderr.getvalue(),
+            )
+            self.assertIn(
+                "missing quality/features/add-dark-mode.md",
+                stderr.getvalue(),
+            )
+
+    def test_feature_issue_output_file_does_not_overwrite_by_default(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            target = root / "issue.md"
+            target.write_text("existing draft\n", encoding="utf-8")
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(
+                    [
+                        "feature",
+                        "issue",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(target),
+                    ]
+                )
+
+            self.assertEqual(returncode, 1)
+            self.assertIn("Output file already exists", stderr.getvalue())
+            self.assertEqual(target.read_text(encoding="utf-8"), "existing draft\n")
+
+    def test_feature_issue_output_file_force_overwrites(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            target = root / "issue.md"
+            target.write_text("existing draft\n", encoding="utf-8")
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "issue",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(target),
+                        "--force",
+                    ]
+                )
+
+            content = target.read_text(encoding="utf-8")
+            self.assertEqual(returncode, 0)
+            self.assertIn("Wrote GitHub issue draft body", output.getvalue())
+            self.assertNotIn("Title:", content)
+            self.assertIn("- Feature ID: `add-dark-mode`", content)
+
+    def test_feature_issue_output_creates_missing_parent_directories(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            target = root / "drafts" / "github" / "issue.md"
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "issue",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(target),
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            self.assertIn("Wrote GitHub issue draft body", output.getvalue())
+            self.assertTrue(target.exists())
+            self.assertIn(
+                "- Feature ID: `add-dark-mode`",
+                target.read_text(encoding="utf-8"),
+            )
+
+    def test_feature_issue_json_with_output_writes_body_and_prints_json(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(
+                root,
+                "add-dark-mode",
+                title="Add dark mode",
+                why="Reduce eye strain",
+            )
+            target = root / "issue.md"
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "feature",
+                        "issue",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(target),
+                        "--json",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["title"], "Add dark mode")
+            self.assertEqual(target.read_text(encoding="utf-8"), payload["body"])
+            self.assertNotIn("Wrote GitHub issue draft body", output.getvalue())
+
+    def test_feature_issue_does_not_need_gh_or_token(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            output = StringIO()
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "GH_TOKEN": "secret-gh-token",
+                    "GITHUB_TOKEN": "secret-github-token",
+                    "PATH": "",
+                },
+            ):
+                with redirect_stdout(output):
+                    returncode = main(
+                        ["feature", "issue", "add-dark-mode", str(root), "--json"]
+                    )
+
+            self.assertEqual(returncode, 0)
+            self.assertNotIn("secret-gh-token", output.getvalue())
+            self.assertNotIn("secret-github-token", output.getvalue())
+            payload = json.loads(output.getvalue())
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+
+    def test_feature_issue_section_missing_uses_placeholders(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            (root / "specs" / "features" / "add-dark-mode.md").write_text(
+                "# Add dark mode\n\nFeature ID: add-dark-mode\nStatus: proposed\n",
+                encoding="utf-8",
+            )
+            (root / "execution" / "features" / "add-dark-mode.md").write_text(
+                "# Add dark mode Execution\n\nFeature ID: add-dark-mode\nStatus: proposed\n",
+                encoding="utf-8",
+            )
+            (root / "quality" / "features" / "add-dark-mode.md").write_text(
+                "# Add dark mode Quality\n\nFeature ID: add-dark-mode\nStatus: proposed\n",
+                encoding="utf-8",
+            )
+
+            draft = build_issue_draft(root, "add-dark-mode")
+
+            self.assertEqual(draft.title, "Add dark mode")
+            self.assertIn(
+                "TODO: Add a `## Why` section to `specs/features/add-dark-mode.md`.",
+                draft.body,
+            )
+            self.assertIn(
+                "TODO: Add a `## Acceptance Criteria` section to `specs/features/add-dark-mode.md`.",
+                draft.body,
+            )
+            self.assertIn(
+                "TODO: Add a `## Tasks` section to `execution/features/add-dark-mode.md`.",
+                draft.body,
+            )
+            self.assertIn(
+                "TODO: Add a `## Test Plan` section to `quality/features/add-dark-mode.md`.",
+                draft.body,
             )

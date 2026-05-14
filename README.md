@@ -24,6 +24,7 @@ This repository is an early project skeleton. It includes:
 - A zero-dependency Python CLI.
 - A workspace initializer: `specspine init`.
 - A native feature bundle creator: `specspine feature new`.
+- A local GitHub issue draft exporter: `specspine feature issue`.
 - A fusion initializer: `specspine fuse`.
 - A compact workspace status packet: `specspine status --json`.
 - An executable validation layer: `specspine validate --json`.
@@ -69,6 +70,13 @@ Create a traceable feature bundle:
 
 ```bash
 specspine feature new add-dark-mode . --title "Add dark mode" --why "Reduce eye strain"
+```
+
+Draft a local GitHub issue from the feature bundle:
+
+```bash
+specspine feature issue add-dark-mode .
+specspine feature issue add-dark-mode . --json
 ```
 
 Create the full OpenSpec + Spec Kit + Superpowers fusion layer:
@@ -207,6 +215,12 @@ Creates a native feature bundle:
 - `quality/features/<slug>.md`
 
 The slug may contain lowercase letters, numbers, and hyphens, and must start and end with a letter or number. Existing feature files are not overwritten unless `--force` is passed.
+
+```bash
+specspine feature issue <slug> [path] [--json] [--output FILE] [--force]
+```
+
+Creates a local GitHub issue draft from a native feature bundle without calling the GitHub API, reading tokens, or requiring `gh`. Text output includes the issue title and body. `--json` emits stable JSON with `title`, `body`, `feature_id`, `source_files`, `missing_files`, and `status`. `--output` writes the issue body to a file and refuses to overwrite an existing file unless `--force` is passed.
 
 ```bash
 specspine status [path] [--json] [--adapters]
