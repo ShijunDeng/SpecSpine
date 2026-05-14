@@ -9,8 +9,8 @@ SpecSpine is a small Python package under `src/specspine` with a command-line en
 - `features` creates and reads native feature bundles, updates lifecycle status, and exports offline issue drafts.
 - `adapters` describes external upstream tools and probes local availability.
 - `fusion` writes the OpenSpec + Spec Kit + Superpowers adapter layer.
-- `status` builds machine-readable workspace summaries and recommendations.
-- `validation` turns workspace, fusion, adapter, and feature contracts into checks.
+- `status` builds machine-readable workspace summaries, recommendations, and optional validation summaries.
+- `validation` turns workspace, fusion, adapter, and feature contracts into checks and compact summary records.
 - `cli` maps command-line arguments to those modules.
 
 ## Data And Interfaces
@@ -20,7 +20,7 @@ SpecSpine is a small Python package under `src/specspine` with a command-line en
 - `.specspine/fusion-map.md` and `.specspine/adapters/*.md` document the human-facing integration contract.
 - `specs/`, `execution/`, and `quality/` carry the repository-owned source of truth.
 - Native feature bundles use peer files with matching `Feature ID: <slug>` markers and one allowed lifecycle `Status`.
-- The main machine interfaces are `specspine status . --json` and `specspine validate . --fusion --features`.
+- The main machine interfaces are `specspine status . --json`, `specspine status . --json --validate`, and `specspine validate . --fusion --features`.
 
 ## Decisions
 
@@ -28,6 +28,7 @@ SpecSpine is a small Python package under `src/specspine` with a command-line en
 - Treat upstream tools as adapters. SpecSpine can print install hints and optionally run public initializer commands, but it does not copy or own upstream code.
 - Keep GitHub issue support offline by drafting structured text/JSON instead of requiring `gh`, tokens, or API access.
 - Make validation executable and local so agents can detect missing files and broken contracts before and after edits.
+- Keep `status --validate` as a report surface that summarizes failed checks while `validate` remains the failing gate command.
 
 ## Risks
 

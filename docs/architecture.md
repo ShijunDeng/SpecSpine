@@ -40,6 +40,15 @@ Future commands should remain thin orchestration layers over explicit files so t
 - recommended next actions.
 - optional external adapter availability when `--adapters` is passed.
 
+`specspine status --json --validate` adds a compact `validation` object to that context packet. The summary includes:
+
+- whether validation is ok.
+- summary counts for `pass`, `fail`, `warn`, `skip`, and `total`.
+- failed checks with stable `id`, `message`, `severity`, and `status` fields.
+- an `included` map showing whether workspace, fusion, feature, and adapter checks were included.
+
+Status validation checks workspace, fusion, and native feature bundles by default. It runs external adapter availability probes only when `--adapters` is also passed. The command is still a report command and returns `0`; CI gates should continue to use `specspine validate`.
+
 `specspine validate --json` is the preferred machine-readable quality gate. It reports:
 
 - the resolved workspace root.
@@ -111,6 +120,6 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 - `specspine.features`: native feature slug/status validation, bundle templates, file creation, discovery, lifecycle status updates, and issue draft export.
 - `specspine.adapters`: upstream metadata, availability probes, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
-- `specspine.status`: compact workspace, fusion, artifact, upstream, and recommendation summaries.
-- `specspine.validation`: executable workspace, fusion, and optional adapter contract checks.
+- `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, and optional validation summary rendering.
+- `specspine.validation`: executable workspace, fusion, feature, optional adapter contract checks, and compact validation summaries.
 - `specspine.cli`: command-line interface.

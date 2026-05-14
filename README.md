@@ -28,7 +28,7 @@ This repository is an early project skeleton. It includes:
 - A native feature lifecycle status command: `specspine feature status`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
 - A fusion initializer: `specspine fuse`.
-- A compact workspace status packet: `specspine status --json`.
+- A compact workspace status packet with optional validation summaries: `specspine status --json --validate`.
 - An executable validation layer: `specspine validate --json`.
 - Adapter metadata for OpenSpec, Spec Kit, and Superpowers.
 - Default spec templates for intent, product, architecture, features, quality, and execution.
@@ -111,6 +111,7 @@ Summarize the workspace for humans or downstream agents:
 ```bash
 specspine status .
 specspine status . --json
+specspine status . --json --validate
 ```
 
 Validate workspace and fusion contracts for CI or agents:
@@ -250,10 +251,12 @@ specspine feature issue <slug> [path] [--json] [--output FILE] [--force]
 Creates a local GitHub issue draft from a native feature bundle without calling the GitHub API, reading tokens, or requiring `gh`. Text output includes the issue title and body. `--json` emits stable JSON with `title`, `body`, `feature_id`, `source_files`, `missing_files`, and `status`. `--output` writes the issue body to a file and refuses to overwrite an existing file unless `--force` is passed.
 
 ```bash
-specspine status [path] [--json] [--adapters]
+specspine status [path] [--json] [--adapters] [--validate]
 ```
 
 Summarizes workspace completeness, fusion completeness, core artifact status, native feature files, feature lifecycle status, enabled upstreams, and recommended next actions. `--json` emits a stable compact context packet for agents and scripts. `--adapters` also checks external OpenSpec, Spec Kit, and Superpowers availability.
+
+`--validate` appends a compact `validation` summary to the status payload with `ok`, `summary`, `failed_checks`, and `included`. It checks workspace, fusion, and native feature bundles by default. External adapter availability checks are included only when `--adapters` is also passed. Text output adds a short Validation section with result, summary counts, and failed check ids only. `status` remains a report command and returns `0` even when the validation summary reports failures.
 
 ```bash
 specspine validate [path] [--fusion] [--features] [--adapters] [--json]

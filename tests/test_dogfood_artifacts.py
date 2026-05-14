@@ -16,12 +16,15 @@ class DogfoodArtifactsTests(TestCase):
         self.assertTrue(status["fusion"]["complete"])
         self.assertEqual(status["workspace"]["missing"], [])
         self.assertEqual(status["fusion"]["missing"], [])
-        dogfood = {
+        features = {
             feature["slug"]: feature
             for feature in status["features"]
-        }["feature-status-lifecycle"]
-        self.assertEqual(dogfood["status"], "validated")
-        self.assertTrue(dogfood["status_consistent"])
+        }
+        for slug in ("feature-status-lifecycle", "status-validation-summary"):
+            with self.subTest(slug=slug):
+                dogfood = features[slug]
+                self.assertEqual(dogfood["status"], "validated")
+                self.assertTrue(dogfood["status_consistent"])
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertTrue(status["upstreams"][upstream]["enabled"])
             self.assertTrue(status["upstreams"][upstream]["config_exists"])
@@ -39,6 +42,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("fusion.integration_mode", "pass"), checks)
         self.assertIn(("fusion.vendored_upstream_code", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-status-lifecycle", "pass"), checks)
+        self.assertIn(("feature.status_consistency:status-validation-summary", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -46,7 +50,7 @@ class DogfoodArtifactsTests(TestCase):
         content = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
 
         required_snippets = [
-            "PYTHONPATH=src python3 -m specspine status . --json",
+            "PYTHONPATH=src python3 -m specspine status . --json --validate",
             "PYTHONPATH=src python3 -m specspine validate . --fusion --features",
             "PYTHONPATH=src python3 -m unittest discover -s tests",
             "PYTHONPATH=src python3 -m specspine feature status <slug> . --json",
@@ -125,6 +129,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/feature-status-lifecycle.md",
             "execution/features/feature-status-lifecycle.md",
             "quality/features/feature-status-lifecycle.md",
+            "specs/features/status-validation-summary.md",
+            "execution/features/status-validation-summary.md",
+            "quality/features/status-validation-summary.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")

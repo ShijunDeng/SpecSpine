@@ -30,6 +30,7 @@ from .fusion import FUSION_REQUIRED_FILES, init_fusion_workspace
 from .status import build_status, render_status_json, render_status_text
 from .validation import (
     build_validation_report,
+    build_validation_summary,
     render_validation_json,
     render_validation_text,
     validation_exit_code,
@@ -170,6 +171,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--adapters",
         action="store_true",
         help="also check external adapter availability",
+    )
+    status_parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="include a validation summary in the status output",
     )
 
     validate_parser = subcommands.add_parser("validate", help="validate SpecSpine workspace contracts")
@@ -410,6 +416,23 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "status":
         status = build_status(Path(args.path), include_adapters=args.adapters)
+        if args.validate:
+            report = build_validation_report(
+                Path(args.path),
+                include_fusion=True,
+                include_features=True,
+                include_adapters=args.adapters,
+                adapter_probe=probe_adapters,
+            )
+            status["validation"] = build_validation_summary(
+                report,
+                included={
+                    "workspace": True,
+                    "fusion": True,
+                    "features": True,
+                    "adapters": bool(args.adapters),
+                },
+            )
         if args.json:
             print(render_status_json(status), end="")
         else:

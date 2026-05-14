@@ -529,6 +529,24 @@ def build_validation_report(
     }
 
 
+def build_validation_summary(
+    report: dict[str, Any],
+    *,
+    included: dict[str, bool],
+) -> dict[str, Any]:
+    failed_checks = [
+        check
+        for check in report["checks"]
+        if check["status"] == "fail"
+    ]
+    return {
+        "ok": report["ok"],
+        "summary": report["summary"],
+        "failed_checks": failed_checks,
+        "included": included,
+    }
+
+
 def render_validation_json(report: dict[str, Any]) -> str:
     return json.dumps(report, indent=2, sort_keys=True) + "\n"
 

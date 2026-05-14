@@ -5,7 +5,7 @@ SpecSpine is a zero-dependency Python CLI for spec-driven AI development. Treat 
 ## Commands
 
 ```bash
-PYTHONPATH=src python3 -m specspine status . --json
+PYTHONPATH=src python3 -m specspine status . --json --validate
 PYTHONPATH=src python3 -m specspine validate . --fusion --features
 PYTHONPATH=src python3 -m unittest discover -s tests
 ```
@@ -20,7 +20,7 @@ PYTHONPATH=src python3 -m specspine feature issue <slug> . --json
 
 ## Rules
 
-- Start by reading `specspine status . --json`; finish with `specspine validate . --fusion --features` and the unit test command above.
+- Start by reading `specspine status . --json --validate`; finish with `specspine validate . --fusion --features` and the unit test command above.
 - Keep feature specs, implementation tasks, and quality checks traceable by `Feature ID`.
 - Keep native feature peer files on a consistent lifecycle status with `specspine feature status`.
 - OpenSpec, Spec Kit, and Superpowers are external adapters only. Do not vendor upstream source code.

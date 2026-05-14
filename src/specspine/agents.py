@@ -26,7 +26,7 @@ AGENTS_TEMPLATE = """
     ## Common Commands
 
     ```bash
-    specspine status . --json
+    specspine status . --json --validate
     specspine validate .
     specspine validate . --features
     specspine feature new <slug> . --title "..." --why "..."
@@ -37,7 +37,7 @@ AGENTS_TEMPLATE = """
 
     ## Working Rules
 
-    - Read `specspine status . --json` before planning or editing.
+    - Read `specspine status . --json --validate` before planning or editing.
     - For new requirements, create a feature bundle with `specspine feature new`.
     - Keep feature peer files on a consistent lifecycle status with `specspine feature status`.
     - Run `specspine validate .` before and after edits; add `--features` when feature bundles are involved.

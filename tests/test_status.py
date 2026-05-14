@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
-from specspine.adapters import AdapterStatus
+from specspine.adapters import ADAPTER_SPECS, AdapterStatus
 from specspine.cli import main
 from specspine.fusion import init_fusion_workspace
 from specspine.status import build_status, render_status_text
@@ -45,6 +45,22 @@ def fake_available_adapters() -> list[AdapterStatus]:
             install_hint="install superpowers",
             upstream_url="https://example.test/superpowers",
         ),
+    ]
+
+
+def fake_available_adapter_probe(keys: list[str]) -> list[AdapterStatus]:
+    return [
+        AdapterStatus(
+            key=key,
+            display_name=ADAPTER_SPECS[key].display_name,
+            available=True,
+            detail=f"fake {key} available",
+            version="1.0.0",
+            command=ADAPTER_SPECS[key].command,
+            install_hint=ADAPTER_SPECS[key].install_hint,
+            upstream_url=ADAPTER_SPECS[key].upstream_url,
+        )
+        for key in keys
     ]
 
 
@@ -110,6 +126,120 @@ class StatusTests(TestCase):
             self.assertIn("artifacts", payload)
             self.assertIn("recommendations", payload)
             self.assertNotIn("adapters", payload)
+            self.assertNotIn("validation", payload)
+
+    def test_status_json_cli_validate_includes_validation_summary(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            output = StringIO()
+
+            def fail_probe(keys: list[str]) -> list[AdapterStatus]:
+                raise AssertionError("adapter probe should not run")
+
+            with patch("specspine.cli.probe_adapters", side_effect=fail_probe):
+                with redirect_stdout(output):
+                    returncode = main(["status", str(root), "--json", "--validate"])
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertIn("validation", payload)
+            validation = payload["validation"]
+            self.assertTrue(validation["ok"])
+            self.assertIn("summary", validation)
+            self.assertIn("failed_checks", validation)
+            self.assertEqual(validation["failed_checks"], [])
+            self.assertEqual(
+                validation["included"],
+                {
+                    "workspace": True,
+                    "fusion": True,
+                    "features": True,
+                    "adapters": False,
+                },
+            )
+
+    def test_status_text_cli_validate_includes_brief_summary(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["status", str(root), "--validate"])
+
+            text = output.getvalue()
+            self.assertEqual(returncode, 0)
+            self.assertIn("Validation:", text)
+            self.assertIn("Result: failed", text)
+            self.assertIn("Summary: pass=", text)
+            self.assertIn("fusion.required_file:.specspine/fusion.yaml", text)
+            self.assertNotIn("workspace.required_file:.specspine/spine.yaml", text)
+            self.assertNotIn("fusion.integration_mode", text)
+
+    def test_status_validate_reports_failed_checks_but_returns_zero(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            (root / "quality" / "checklist.md").unlink()
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["status", str(root), "--json", "--validate"])
+
+            payload = json.loads(output.getvalue())
+            failed_ids = {
+                check["id"]
+                for check in payload["validation"]["failed_checks"]
+            }
+            self.assertEqual(returncode, 0)
+            self.assertFalse(payload["validation"]["ok"])
+            self.assertIn("workspace.required_file:quality/checklist.md", failed_ids)
+            self.assertNotIn("fusion.integration_mode", failed_ids)
+            for check in payload["validation"]["failed_checks"]:
+                self.assertEqual(check["status"], "fail")
+                self.assertGreaterEqual(
+                    set(check),
+                    {"id", "message", "severity", "status"},
+                )
+
+    def test_status_validate_with_adapters_uses_mock_probe(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            output = StringIO()
+            probed: list[str] = []
+
+            def build_status_with_fake_probe(
+                path: Path,
+                *,
+                include_adapters: bool = False,
+            ) -> dict[str, object]:
+                return build_status(
+                    path,
+                    include_adapters=include_adapters,
+                    adapter_probe=fake_available_adapters,
+                )
+
+            def fake_probe(keys: list[str]) -> list[AdapterStatus]:
+                probed.extend(keys)
+                return fake_available_adapter_probe(keys)
+
+            with patch(
+                "specspine.cli.build_status",
+                side_effect=build_status_with_fake_probe,
+            ), patch("specspine.cli.probe_adapters", side_effect=fake_probe):
+                with redirect_stdout(output):
+                    returncode = main(
+                        ["status", str(root), "--adapters", "--json", "--validate"]
+                    )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(sorted(probed), ["openspec", "speckit", "superpowers"])
+            self.assertIn("adapters", payload)
+            self.assertTrue(payload["validation"]["included"]["adapters"])
+            self.assertEqual(payload["validation"]["summary"]["fail"], 0)
 
     def test_status_json_cli_output_can_include_adapter_probe_results(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -138,6 +268,7 @@ class StatusTests(TestCase):
             payload = json.loads(output.getvalue())
             self.assertEqual(returncode, 0)
             self.assertIn("adapters", payload)
+            self.assertNotIn("validation", payload)
             self.assertEqual(
                 sorted(payload["adapters"]),
                 ["openspec", "speckit", "superpowers"],

@@ -312,6 +312,26 @@ def render_status_text(status: dict[str, Any]) -> str:
             )
             lines.append(f"      {adapter['detail']}")
 
+    validation = status.get("validation")
+    if validation is not None:
+        result = "ok" if validation["ok"] else "failed"
+        summary = validation["summary"]
+        lines.append("Validation:")
+        lines.append(f"  Result: {result}")
+        lines.append(
+            "  Summary: "
+            f"pass={summary['pass']} "
+            f"fail={summary['fail']} "
+            f"warn={summary['warn']} "
+            f"skip={summary['skip']} "
+            f"total={summary['total']}"
+        )
+        failed_checks = validation.get("failed_checks", [])
+        if failed_checks:
+            lines.append("  Failed checks:")
+            for check in failed_checks:
+                lines.append(f"    - {check['id']}")
+
     lines.append("Recommended next actions:")
     for recommendation in status["recommendations"]:
         lines.append(f"  - {recommendation}")
