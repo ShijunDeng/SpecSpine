@@ -27,7 +27,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine gates` now exports repository-level quality gate definitions from `quality/checklist.md` without executing commands, reading tokens, requiring `gh`, or calling network services.
 - Repository quality gates can carry optional `[severity: ...]`, `[owner: ...]`, and `[ci: ...]` labels; unlabeled gates keep stable defaults, invalid severities become gate-level warnings, and CI labels are never executed by the exporter.
 - `specspine adapters lifecycle` now exports local lifecycle mappings for OpenSpec, Spec Kit, and Superpowers without probing upstream tools, reading tokens, calling GitHub, or using network services.
-- `specspine adapters handoff` now exports a feature-specific OpenSpec, Spec Kit, and Superpowers handoff packet without executing upstream tools, probing adapters, reading tokens, or using network services.
+- `specspine adapters handoff` now exports a feature-specific OpenSpec, Spec Kit, and Superpowers handoff packet and optional per-adapter review artifacts without executing upstream tools, probing adapters, reading tokens, or using network services.
 - No upstream code should be copied into this repository as part of fusion work.
 
 ## Decisions
@@ -46,7 +46,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Treat `specspine feature sync-plan <slug> . --json` as the local review packet for GitHub CLI sync intent, and `specspine feature sync-plan <slug> . --output-dir .specspine/sync-plan/<slug>` as the local body-file and manifest materialization step before a human runs any remote command.
 - Treat `specspine gates . --json` as the repository-level quality policy packet before implementation, review, or CI wiring; it exports definitions, metadata, and coverage counts, and does not run checks.
 - Treat `specspine adapters lifecycle . --json` as the local adapter lifecycle policy packet before future adapter sync, upstream planning, or remote issue/PR mapping work.
-- Treat `specspine adapters handoff <slug> . --json` as the feature-specific adapter packet before handing a native feature to OpenSpec, Spec Kit, or Superpowers workflows.
+- Treat `specspine adapters handoff <slug> . --json` as the feature-specific adapter packet before handing a native feature to OpenSpec, Spec Kit, or Superpowers workflows; use `--output-dir .specspine/adapter-handoff/<slug>` when separate focused Markdown files and a safety manifest are easier to review.
 - Treat `specspine validate . --fusion --features` plus the unit test suite as the local completion gate.
 - Treat generated feature templates as the starting workflow contract for new requirements: keep acceptance criteria testable, tasks traceable, quality gates unchecked until evidence exists, and handoff/task-issues/tests/pr/ready commands visible.
 - Keep GitHub issue and Pull Request draft generation offline and token-free by default.
@@ -75,6 +75,6 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Feature bundles can now be exported as acceptance-test packets with GitHub Markdown checklist test cases, explicit local coverage links, and existing local quality evidence.
 - Repository-level quality checklists can now be exported as stable `GATE###` and `DOD###` definition records with summary counts and recommended local commands.
 - Adapter lifecycle mappings can now be exported as stable OpenSpec, Spec Kit, and Superpowers records for every native feature status.
-- Adapter feature handoffs can now be exported with selected lifecycle mappings and safe unexecuted upstream step recommendations for one native feature.
+- Adapter feature handoffs can now be exported with selected lifecycle mappings and safe unexecuted upstream step recommendations for one native feature, and can be materialized as local `manifest.json`, `combined.md`, and focused per-adapter Markdown artifacts.
 - GitHub CLI sync plans can now be exported as stable local argv arrays with safety flags and notes, then materialized into review-only local body files, manifest, and `commands.sh` before any remote issue or Pull Request is created.
 - New feature bundles now include edge cases, constraints, traceability notes, dependencies, open questions, agent handoff commands, acceptance-test guidance, PR draft guidance, readiness checks, and validation gates from creation time.

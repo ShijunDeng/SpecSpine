@@ -358,6 +358,37 @@ class AdapterFeatureHandoffReport:
         }
 
 
+@dataclass(frozen=True)
+class AdapterHandoffArtifactExistsError(FileExistsError):
+    output_dir: Path
+    existing_paths: tuple[Path, ...]
+
+    def __str__(self) -> str:
+        return (
+            f"Adapter handoff artifact files already exist in {self.output_dir}. "
+            "Use --force to overwrite files written by this command."
+        )
+
+
+@dataclass(frozen=True)
+class AdapterHandoffArtifacts:
+    output_dir: Path
+    manifest_path: Path
+    combined_path: Path
+    adapter_paths: tuple[Path, ...]
+    written_paths: tuple[Path, ...]
+    manifest: dict[str, object]
+
+
+ADAPTER_HANDOFF_SAFETY_FLAGS: dict[str, bool] = {
+    "creates_remote": False,
+    "executed": False,
+    "requires_network": False,
+    "requires_token": False,
+    "safe_to_auto_run": False,
+}
+
+
 def _lifecycle_mapping(
     adapter: str,
     status: str,
@@ -997,6 +1028,174 @@ def render_adapter_feature_handoff_text(
     lines.extend(f"- `{command}`" for command in report.recommended_commands)
 
     return "\n".join(lines).rstrip() + "\n"
+
+
+def render_adapter_feature_handoff_adapter_text(
+    report: AdapterFeatureHandoffReport,
+    adapter_key: str,
+) -> str:
+    adapter = report.adapters[adapter_key]
+    lines = [
+        f"# {adapter.display_name} Adapter Handoff: {report.feature_id}",
+        "",
+        "## Feature",
+        "",
+        f"- Status: {report.status}",
+        f"- Ready: {'yes' if report.ready else 'no'}",
+        f"- Missing files: {len(report.missing_files)}",
+        f"- Gaps: {len(report.gaps)}",
+        f"- Blocking checks: {len(report.blocking_checks)}",
+        "",
+        "## Adapter Focus",
+        "",
+        f"- Adapter: {adapter.display_name} ({adapter.key})",
+        f"- Enabled: {'yes' if adapter.enabled else 'no'}",
+        f"- Config: {adapter.config} (exists: {'yes' if adapter.config_exists else 'no'})",
+        f"- Upstream: {adapter.upstream_url}",
+        f"- Integration surface: {adapter.integration_surface}",
+        f"- Native status: {adapter.native_status}",
+        f"- Upstream phase: {adapter.upstream_phase}",
+        f"- Agent focus: {adapter.agent_focus}",
+        "",
+        "## Upstream Artifacts",
+        "",
+    ]
+    if adapter.upstream_artifacts:
+        lines.extend(f"- {artifact}" for artifact in adapter.upstream_artifacts)
+    else:
+        lines.append("- None.")
+
+    lines.extend(["", "## Local Commands", ""])
+    if adapter.local_commands:
+        lines.extend(f"- `{command}`" for command in adapter.local_commands)
+    else:
+        lines.append("- None.")
+
+    lines.extend(["", "## Recommended Upstream Steps", ""])
+    if adapter.recommended_upstream_steps:
+        lines.extend(_render_step_line(step) for step in adapter.recommended_upstream_steps)
+    else:
+        lines.append("- None.")
+
+    lines.extend(
+        [
+            "",
+            "## Safety",
+            "",
+            "- executed=false",
+            "- requires_network=false",
+            "- requires_token=false",
+            "- creates_remote=false",
+            "- safe_to_auto_run=false",
+            (
+                "- Artifact export does not execute upstream tools, subprocesses, "
+                "network calls, GitHub operations, or token reads."
+            ),
+            "",
+            "## Notes",
+            "",
+        ]
+    )
+    lines.extend(f"- {note}" for note in adapter.notes)
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _adapter_handoff_artifact_manifest(
+    report: AdapterFeatureHandoffReport,
+) -> dict[str, object]:
+    adapter_artifacts = {
+        key: f"adapters/{key}.md"
+        for key in ADAPTER_SPECS
+    }
+    return {
+        "artifact_version": 1,
+        "artifact_root": ".",
+        "artifacts": {
+            "manifest": "manifest.json",
+            "combined": "combined.md",
+            "adapters": adapter_artifacts,
+        },
+        "blocking_checks": [
+            check.as_dict() if hasattr(check, "as_dict") else dict(check)
+            for check in report.blocking_checks
+        ],
+        "feature_id": report.feature_id,
+        "gaps": [dict(gap) for gap in report.gaps],
+        "missing_files": list(report.missing_files),
+        "ready": report.ready,
+        "safety_flags": dict(ADAPTER_HANDOFF_SAFETY_FLAGS),
+        "safety_notes": [
+            (
+                "Artifact export does not execute upstream tools, subprocesses, "
+                "network calls, GitHub operations, or token reads."
+            ),
+            "Recommended upstream steps are review data only.",
+        ],
+        "source_files": list(report.source_files),
+        "status": report.status,
+        "summary": report.summary,
+    }
+
+
+def write_adapter_feature_handoff_artifacts(
+    report: AdapterFeatureHandoffReport,
+    output_dir: Path,
+    *,
+    force: bool = False,
+) -> AdapterHandoffArtifacts:
+    resolved_output_dir = output_dir.expanduser().resolve()
+    if resolved_output_dir.exists() and not resolved_output_dir.is_dir():
+        raise NotADirectoryError(f"Output path is not a directory: {resolved_output_dir}")
+
+    manifest = _adapter_handoff_artifact_manifest(report)
+    manifest_path = resolved_output_dir / "manifest.json"
+    combined_path = resolved_output_dir / "combined.md"
+    adapter_paths = tuple(
+        resolved_output_dir / "adapters" / f"{key}.md"
+        for key in ADAPTER_SPECS
+    )
+    write_targets = (manifest_path, combined_path, *adapter_paths)
+
+    parent_conflicts = tuple(
+        path.parent
+        for path in write_targets
+        if path.parent.exists() and not path.parent.is_dir()
+    )
+    if parent_conflicts:
+        first_conflict = parent_conflicts[0]
+        raise NotADirectoryError(f"Output artifact parent is not a directory: {first_conflict}")
+
+    existing_paths = tuple(path for path in write_targets if path.exists())
+    if existing_paths and not force:
+        raise AdapterHandoffArtifactExistsError(
+            output_dir=resolved_output_dir,
+            existing_paths=existing_paths,
+        )
+
+    resolved_output_dir.mkdir(parents=True, exist_ok=True)
+    (resolved_output_dir / "adapters").mkdir(parents=True, exist_ok=True)
+    combined_path.write_text(
+        render_adapter_feature_handoff_text(report),
+        encoding="utf-8",
+    )
+    for key in ADAPTER_SPECS:
+        (resolved_output_dir / "adapters" / f"{key}.md").write_text(
+            render_adapter_feature_handoff_adapter_text(report, key),
+            encoding="utf-8",
+        )
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    return AdapterHandoffArtifacts(
+        output_dir=resolved_output_dir,
+        manifest_path=manifest_path,
+        combined_path=combined_path,
+        adapter_paths=adapter_paths,
+        written_paths=write_targets,
+        manifest=manifest,
+    )
 
 
 @dataclass(frozen=True)

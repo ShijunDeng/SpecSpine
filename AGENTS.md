@@ -13,6 +13,7 @@ PYTHONPATH=src python3 -m specspine status . --json --validate --feature-summari
 PYTHONPATH=src python3 -m specspine gates . --json
 PYTHONPATH=src python3 -m specspine adapters lifecycle . --json
 PYTHONPATH=src python3 -m specspine adapters handoff <slug> . --json
+PYTHONPATH=src python3 -m specspine adapters handoff <slug> . --output-dir .specspine/adapter-handoff/<slug>
 PYTHONPATH=src python3 -m specspine validate . --fusion --features
 PYTHONPATH=src python3 -m unittest discover -s tests
 ```
@@ -25,6 +26,7 @@ PYTHONPATH=src python3 -m specspine feature status <slug> . --json
 PYTHONPATH=src python3 -m specspine feature status <slug> . --set planned --enforce-transition --json
 PYTHONPATH=src python3 -m specspine feature handoff <slug> . --json
 PYTHONPATH=src python3 -m specspine adapters handoff <slug> . --json
+PYTHONPATH=src python3 -m specspine adapters handoff <slug> . --output-dir .specspine/adapter-handoff/<slug>
 PYTHONPATH=src python3 -m specspine feature tasks <slug> . --json
 PYTHONPATH=src python3 -m specspine feature task-issues <slug> . --json
 PYTHONPATH=src python3 -m specspine feature trace <slug> . --json
@@ -38,7 +40,7 @@ PYTHONPATH=src python3 -m specspine feature sync-plan <slug> . --output-dir .spe
 
 ## Rules
 
-- Start by reading `specspine status . --json --validate`; add `--validation-warnings` only when scaffold warning check ids are needed; use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features, and add local filters such as `--feature-status validated --feature-ready yes --feature-sort slug` for triage; add `--feature-require-coverage` when candidate selection must use the stricter local AC coverage gate; use `specspine gates . --json` when repository-level quality policy is needed; use `specspine adapters lifecycle . --json` for local adapter lifecycle mappings and `specspine adapters handoff <slug> . --json` for feature-specific adapter handoff context; finish with `specspine validate . --fusion --features` and the unit test command above.
+- Start by reading `specspine status . --json --validate`; add `--validation-warnings` only when scaffold warning check ids are needed; use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features, and add local filters such as `--feature-status validated --feature-ready yes --feature-sort slug` for triage; add `--feature-require-coverage` when candidate selection must use the stricter local AC coverage gate; use `specspine gates . --json` when repository-level quality policy is needed; use `specspine adapters lifecycle . --json` for local adapter lifecycle mappings and `specspine adapters handoff <slug> . --json` or `--output-dir .specspine/adapter-handoff/<slug>` for feature-specific adapter handoff context; finish with `specspine validate . --fusion --features` and the unit test command above.
 - Keep feature specs, implementation tasks, and quality checks traceable by `Feature ID`.
 - Use `specspine feature new` as the starting workflow for new requirements; the generated peer files include focused handoff, task issue drafts, tests, PR, ready, and validation guidance, plus sync-plan review.
 - Keep native feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.
@@ -48,7 +50,7 @@ PYTHONPATH=src python3 -m specspine feature sync-plan <slug> . --output-dir .spe
 - Use `specspine feature sync-plan <slug> . --json` to review GitHub CLI sync intent without executing `gh`, reading tokens, or calling GitHub; use `--output-dir .specspine/sync-plan/<slug>` when maintainers need local body files, manifest, and review-only `commands.sh`.
 - Use `specspine gates . --json` to export quality gate definitions and optional severity/owner/CI metadata only; do not treat it as executing tests, CI, or status checks.
 - Use `specspine adapters lifecycle . --json` to export adapter lifecycle definitions only; do not treat it as invoking upstream tools.
-- Use `specspine adapters handoff <slug> . --json` to export feature-specific OpenSpec, Spec Kit, and Superpowers adapter handoff data only; do not treat recommended upstream steps as executed commands.
+- Use `specspine adapters handoff <slug> . --json` to export feature-specific OpenSpec, Spec Kit, and Superpowers adapter handoff data only; use `--output-dir .specspine/adapter-handoff/<slug>` to write local `manifest.json`, `combined.md`, and focused per-adapter Markdown files. Do not treat recommended upstream steps as executed commands.
 - OpenSpec, Spec Kit, and Superpowers are external adapters only. Do not vendor upstream source code.
 - Do not read or write GitHub tokens, and do not call GitHub APIs by default.
 - Use `--run-upstream` only when the user explicitly asks to invoke upstream tools.

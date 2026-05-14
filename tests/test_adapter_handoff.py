@@ -116,6 +116,7 @@ class AdapterFeatureHandoffTests(TestCase):
             root = Path(tmp)
             init_fusion_workspace(root, agent="codex")
             write_feature_bundle(root)
+            output_dir = root / "adapter-artifacts"
             output = StringIO()
 
             with redirect_stdout(output):
@@ -207,6 +208,7 @@ class AdapterFeatureHandoffTests(TestCase):
             root = Path(tmp)
             init_fusion_workspace(root, agent="codex")
             write_feature_bundle(root)
+            output_dir = root / "adapter-artifacts"
             output = StringIO()
 
             with redirect_stdout(output):
@@ -281,6 +283,319 @@ class AdapterFeatureHandoffTests(TestCase):
             self.assertEqual(payload["feature_id"], "add-dark-mode")
             self.assertIn("# Adapter Feature Handoff: add-dark-mode", output_file.read_text(encoding="utf-8"))
             self.assertNotIn("Wrote adapter feature handoff", stdout.getvalue())
+
+    def test_output_dir_writes_reviewable_adapter_artifacts(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            write_feature_bundle(root)
+            output_dir = root / "adapter-artifacts"
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "adapters",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--output-dir",
+                        str(output_dir),
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            self.assertIn("Wrote adapter handoff artifacts", stdout.getvalue())
+            expected_files = {
+                "manifest.json",
+                "combined.md",
+                "adapters/openspec.md",
+                "adapters/speckit.md",
+                "adapters/superpowers.md",
+            }
+            self.assertEqual(
+                {
+                    str(path.relative_to(output_dir))
+                    for path in output_dir.rglob("*")
+                    if path.is_file()
+                },
+                expected_files,
+            )
+            self.assertIn(
+                "# Adapter Feature Handoff: add-dark-mode",
+                (output_dir / "combined.md").read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                "openspec instructions apply --change add-dark-mode --json",
+                (output_dir / "adapters" / "openspec.md").read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                "Spec Kit's Plan phase",
+                (output_dir / "adapters" / "speckit.md").read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                "superpowers.verification-before-completion",
+                (output_dir / "adapters" / "superpowers.md").read_text(encoding="utf-8"),
+            )
+            adapter_texts = {
+                key: (output_dir / "adapters" / f"{key}.md").read_text(encoding="utf-8")
+                for key in ("openspec", "speckit", "superpowers")
+            }
+            self.assertIn("# OpenSpec Adapter Handoff: add-dark-mode", adapter_texts["openspec"])
+            self.assertNotIn("# Spec Kit Adapter Handoff", adapter_texts["openspec"])
+            self.assertNotIn("# Superpowers Adapter Handoff", adapter_texts["openspec"])
+            self.assertIn("# Spec Kit Adapter Handoff: add-dark-mode", adapter_texts["speckit"])
+            self.assertNotIn("# OpenSpec Adapter Handoff", adapter_texts["speckit"])
+            self.assertNotIn("# Superpowers Adapter Handoff", adapter_texts["speckit"])
+            self.assertIn("# Superpowers Adapter Handoff: add-dark-mode", adapter_texts["superpowers"])
+            self.assertNotIn("# OpenSpec Adapter Handoff", adapter_texts["superpowers"])
+            self.assertNotIn("# Spec Kit Adapter Handoff", adapter_texts["superpowers"])
+
+    def test_output_dir_creates_nested_non_existing_directory(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            write_feature_bundle(root)
+            output_dir = root / "nested" / "non-existing" / "adapter-artifacts"
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "adapters",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--output-dir",
+                        str(output_dir),
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            self.assertIn("Wrote adapter handoff artifacts", stdout.getvalue())
+            self.assertTrue((output_dir / "manifest.json").exists())
+            self.assertTrue((output_dir / "combined.md").exists())
+            self.assertTrue((output_dir / "adapters" / "openspec.md").exists())
+
+    def test_output_dir_manifest_shape_safety_flags_and_artifact_paths(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            write_feature_bundle(root)
+            output_dir = root / "adapter-artifacts"
+
+            with redirect_stdout(StringIO()):
+                returncode = main(
+                    [
+                        "adapters",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--output-dir",
+                        str(output_dir),
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["feature_id"], "add-dark-mode")
+            self.assertEqual(manifest["status"], "validated")
+            self.assertTrue(manifest["ready"])
+            self.assertEqual(manifest["artifact_version"], 1)
+            self.assertEqual(manifest["artifacts"]["manifest"], "manifest.json")
+            self.assertEqual(manifest["artifacts"]["combined"], "combined.md")
+            self.assertEqual(
+                manifest["artifacts"]["adapters"],
+                {
+                    "openspec": "adapters/openspec.md",
+                    "speckit": "adapters/speckit.md",
+                    "superpowers": "adapters/superpowers.md",
+                },
+            )
+            self.assertEqual(
+                manifest["safety_flags"],
+                {
+                    "creates_remote": False,
+                    "executed": False,
+                    "requires_network": False,
+                    "requires_token": False,
+                    "safe_to_auto_run": False,
+                },
+            )
+            self.assertIn(
+                "does not execute upstream tools, subprocesses, network calls, GitHub operations, or token reads",
+                " ".join(manifest["safety_notes"]),
+            )
+            self.assertEqual(manifest["missing_files"], [])
+            self.assertEqual(manifest["gaps"], [])
+            self.assertEqual(manifest["blocking_checks"], [])
+            artifact_paths = [
+                manifest["artifacts"]["manifest"],
+                manifest["artifacts"]["combined"],
+                *manifest["artifacts"]["adapters"].values(),
+            ]
+            self.assertEqual(len(artifact_paths), len(set(artifact_paths)))
+            for artifact_path in artifact_paths:
+                self.assertFalse(os.path.isabs(artifact_path))
+                self.assertNotIn("..", Path(artifact_path).parts)
+                self.assertTrue((output_dir / artifact_path).exists())
+
+    def test_output_dir_overwrite_requires_force_and_preserves_unknown_files(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            write_feature_bundle(root)
+            output_dir = root / "adapter-artifacts"
+            (output_dir / "adapters").mkdir(parents=True)
+            unknown_file = output_dir / "local-note.txt"
+            unknown_file.write_text("keep me\n", encoding="utf-8")
+            managed_paths = [
+                output_dir / "manifest.json",
+                output_dir / "combined.md",
+                output_dir / "adapters" / "openspec.md",
+                output_dir / "adapters" / "speckit.md",
+                output_dir / "adapters" / "superpowers.md",
+            ]
+            for path in managed_paths:
+                path.write_text(f"stale {path.name}\n", encoding="utf-8")
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(
+                    [
+                        "adapters",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--output-dir",
+                        str(output_dir),
+                    ]
+                )
+
+            self.assertEqual(returncode, 1)
+            self.assertIn("Adapter handoff artifact files already exist", stderr.getvalue())
+            for path in managed_paths:
+                self.assertIn(str(path), stderr.getvalue())
+                self.assertEqual(path.read_text(encoding="utf-8"), f"stale {path.name}\n")
+            self.assertNotIn("local-note.txt", stderr.getvalue())
+            self.assertEqual(unknown_file.read_text(encoding="utf-8"), "keep me\n")
+
+            with redirect_stdout(StringIO()):
+                returncode = main(
+                    [
+                        "adapters",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--output-dir",
+                        str(output_dir),
+                        "--force",
+                    ]
+            )
+
+            self.assertEqual(returncode, 0)
+            self.assertEqual(
+                json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))["feature_id"],
+                "add-dark-mode",
+            )
+            self.assertIn(
+                "OpenSpec Adapter Handoff",
+                (output_dir / "adapters" / "openspec.md").read_text(encoding="utf-8"),
+            )
+            self.assertEqual(unknown_file.read_text(encoding="utf-8"), "keep me\n")
+
+    def test_json_output_dir_stdout_remains_parseable_full_report(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            write_feature_bundle(root)
+            output_dir = root / "adapter-artifacts"
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "adapters",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--output-dir",
+                        str(output_dir),
+                    ]
+                )
+
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertIn("adapters", payload)
+            self.assertIn("recommended_commands", payload)
+            self.assertEqual(payload["artifacts"]["combined"], "combined.md")
+            self.assertEqual(payload["artifacts"]["adapters"]["openspec"], "adapters/openspec.md")
+            self.assertTrue((output_dir / "manifest.json").exists())
+
+    def test_output_file_and_output_dir_can_be_used_together(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            write_feature_bundle(root)
+            output_file = root / "reports" / "adapter-handoff.md"
+            output_dir = root / "adapter-artifacts"
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "adapters",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(output_file),
+                        "--output-dir",
+                        str(output_dir),
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            self.assertIn("Wrote adapter feature handoff packet", stdout.getvalue())
+            self.assertTrue(output_file.exists())
+            self.assertTrue((output_dir / "manifest.json").exists())
+
+    def test_json_output_file_and_output_dir_stdout_remains_full_report(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            write_feature_bundle(root)
+            output_file = root / "reports" / "adapter-handoff.md"
+            output_dir = root / "adapter-artifacts"
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "adapters",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--output",
+                        str(output_file),
+                        "--output-dir",
+                        str(output_dir),
+                    ]
+                )
+
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertEqual(payload["artifacts"]["manifest"], "manifest.json")
+            self.assertEqual(payload["artifacts"]["combined"], "combined.md")
+            self.assertEqual(payload["artifacts"]["adapters"]["superpowers"], "adapters/superpowers.md")
+            self.assertNotIn("Wrote adapter feature handoff", stdout.getvalue())
+            self.assertNotIn("Wrote adapter handoff artifacts", stdout.getvalue())
+            self.assertIn("# Adapter Feature Handoff: add-dark-mode", output_file.read_text(encoding="utf-8"))
+            self.assertTrue((output_dir / "manifest.json").exists())
 
     def test_current_status_selects_each_adapter_mapping(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -413,6 +728,41 @@ class AdapterFeatureHandoffTests(TestCase):
             self.assertGreater(payload["summary"]["blocking_checks"]["total"], 0)
             self.assertEqual(payload["adapters"]["openspec"]["native_status"], "implemented")
 
+    def test_single_native_file_still_returns_zero_but_missing_all_returns_one(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_fusion_workspace(root, agent="codex")
+            write_feature_bundle(root, status="implemented")
+            (root / "execution" / "features" / "add-dark-mode.md").unlink()
+            (root / "quality" / "features" / "add-dark-mode.md").unlink()
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                partial_returncode = main(
+                    ["adapters", "handoff", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(partial_returncode, 0)
+            self.assertEqual(
+                payload["missing_files"],
+                [
+                    "execution/features/add-dark-mode.md",
+                    "quality/features/add-dark-mode.md",
+                ],
+            )
+            self.assertFalse(payload["ready"])
+
+            (root / "specs" / "features" / "add-dark-mode.md").unlink()
+            stderr = StringIO()
+            with redirect_stderr(stderr):
+                missing_returncode = main(
+                    ["adapters", "handoff", "add-dark-mode", str(root), "--json"]
+                )
+
+            self.assertEqual(missing_returncode, 1)
+            self.assertIn("No feature files found", stderr.getvalue())
+
     def test_missing_bundle_and_invalid_slug_exit_codes(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -437,6 +787,7 @@ class AdapterFeatureHandoffTests(TestCase):
             root = Path(tmp)
             init_fusion_workspace(root, agent="codex")
             write_feature_bundle(root)
+            output_dir = root / "adapter-artifacts"
             output = StringIO()
             token_names = {
                 "GH_TOKEN",
@@ -491,13 +842,24 @@ class AdapterFeatureHandoffTests(TestCase):
                     patch.object(socket, "socket", side_effect=AssertionError("network called")),
                     redirect_stdout(output),
                 ):
-                    returncode = main(["adapters", "handoff", "add-dark-mode", str(root), "--json"])
+                    returncode = main(
+                        [
+                            "adapters",
+                            "handoff",
+                            "add-dark-mode",
+                            str(root),
+                            "--json",
+                            "--output-dir",
+                            str(output_dir),
+                        ]
+                    )
 
             self.assertEqual(returncode, 0)
             self.assertNotIn("secret-gh-token", output.getvalue())
             self.assertNotIn("secret-github-api-token", output.getvalue())
             self.assertNotIn("secret-github-pat", output.getvalue())
             self.assertNotIn("secret-github-token", output.getvalue())
+            self.assertTrue((output_dir / "manifest.json").exists())
 
     def test_adapter_feature_handoff_dogfood_bundle_passes_readiness_and_validation(self) -> None:
         readiness = build_feature_ready_report(REPO_ROOT, "adapter-feature-handoff")

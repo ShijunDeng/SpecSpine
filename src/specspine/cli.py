@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from . import __version__
 from .adapters import (
     ADAPTER_SPECS,
     AGENT_PROFILES,
+    AdapterHandoffArtifactExistsError,
     AdapterStatus,
     build_adapter_feature_handoff_report,
     build_adapter_lifecycle_report,
@@ -18,6 +20,7 @@ from .adapters import (
     render_adapter_lifecycle_json,
     render_adapter_lifecycle_text,
     run_upstream_initializers,
+    write_adapter_feature_handoff_artifacts,
 )
 from .agents import AgentsFileExistsError, init_agents_file
 from .features import (
@@ -510,6 +513,10 @@ def build_parser() -> argparse.ArgumentParser:
     adapters_handoff_parser.add_argument(
         "--output",
         help="write the Markdown handoff packet to a file instead of printing it",
+    )
+    adapters_handoff_parser.add_argument(
+        "--output-dir",
+        help="write reviewable adapter handoff artifacts to a directory",
     )
     adapters_handoff_parser.add_argument(
         "--force",
@@ -1224,6 +1231,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
 
             text_body = render_adapter_feature_handoff_text(report)
+            output_path = None
             if args.output:
                 output_path = Path(args.output).expanduser().resolve()
                 if output_path.exists() and not args.force:
@@ -1234,6 +1242,25 @@ def main(argv: list[str] | None = None) -> int:
                     )
                     return 1
 
+            artifact_output = None
+            if args.output_dir:
+                output_dir = Path(args.output_dir).expanduser().resolve()
+                try:
+                    artifact_output = write_adapter_feature_handoff_artifacts(
+                        report,
+                        output_dir,
+                        force=args.force,
+                    )
+                except AdapterHandoffArtifactExistsError as error:
+                    print(str(error), file=sys.stderr)
+                    for path in error.existing_paths:
+                        print(f"  existing {path}", file=sys.stderr)
+                    return 1
+                except OSError as error:
+                    print(f"Could not write adapter handoff artifacts: {error}", file=sys.stderr)
+                    return 1
+
+            if output_path is not None:
                 try:
                     output_path.parent.mkdir(parents=True, exist_ok=True)
                     output_path.write_text(text_body, encoding="utf-8")
@@ -1242,9 +1269,17 @@ def main(argv: list[str] | None = None) -> int:
                     return 1
 
             if args.json:
-                print(render_adapter_feature_handoff_json(report), end="")
-            elif args.output:
+                if artifact_output is None:
+                    print(render_adapter_feature_handoff_json(report), end="")
+                else:
+                    payload = report.as_dict()
+                    payload["artifacts"] = artifact_output.manifest["artifacts"]
+                    payload["artifact_dir"] = str(artifact_output.output_dir)
+                    print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
+            elif output_path is not None:
                 print(f"Wrote adapter feature handoff packet to {output_path}")
+            elif artifact_output is not None:
+                print(f"Wrote adapter handoff artifacts to {artifact_output.output_dir}")
             else:
                 print(text_body, end="")
             return 0

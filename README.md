@@ -264,6 +264,7 @@ Export the adapter handoff packet for a native feature:
 ```bash
 specspine adapters handoff add-dark-mode .
 specspine adapters handoff add-dark-mode . --json
+specspine adapters handoff add-dark-mode . --output-dir .specspine/adapter-handoff/add-dark-mode
 ```
 
 ## Core Workflow
@@ -488,14 +489,16 @@ Exports the local static lifecycle map between SpecSpine native feature statuses
 The command reads local fusion config only to determine adapter enablement and config paths, checks local config path existence, and returns `0` even when adapters are disabled or configs are missing. It does not call GitHub APIs, require `gh`, read tokens, use network access, invoke upstream CLIs, execute shell commands, or add dependencies.
 
 ```bash
-specspine adapters handoff <slug> [path] [--json] [--output FILE] [--force]
+specspine adapters handoff <slug> [path] [--json] [--output FILE] [--output-dir DIR] [--force]
 ```
 
 Exports a feature-specific OpenSpec + Spec Kit + Superpowers adapter handoff packet. It composes existing native feature evidence from `feature handoff` with the current-status mapping from `adapters lifecycle`, then emits local JSON or Markdown only.
 
 JSON output includes feature id, status, readiness, source files, missing files, gaps, blocking checks, summary counts, adapter entries, and recommended local commands. Each adapter entry includes config state, upstream URL, integration surface, native status, selected upstream phase, upstream artifacts, agent focus, local commands, notes, and recommended upstream steps. OpenSpec steps are argv arrays such as `openspec status --json`, `openspec instructions apply --change <slug> --json`, and `openspec validate --all --json`; Spec Kit and Superpowers steps are agent-action instructions. Every step is marked `creates_remote=false`, `requires_network=false`, `requires_token=false`, `safe_to_auto_run=false`, and `executed=false`.
 
-Partial bundles return `0` while recording missing files, gaps, and blockers. Missing bundles return `1`; invalid slugs return `2`. `--output` writes Markdown with overwrite protection, and `--json --output` keeps stdout as JSON while writing Markdown to the file. The command does not call `probe_adapters`, subprocesses, upstream CLIs, GitHub APIs, network services, token reads, or add dependencies.
+`--output-dir` materializes reviewable local artifacts: `manifest.json`, `combined.md`, and focused `adapters/openspec.md`, `adapters/speckit.md`, and `adapters/superpowers.md`. The manifest includes feature id, status, readiness, summary, source files, missing files, gaps, blocking checks, artifact paths, and explicit safety flags: `executed=false`, `requires_network=false`, `requires_token=false`, `creates_remote=false`, and `safe_to_auto_run=false`. With `--json --output-dir`, stdout remains parseable full JSON report data with top-level artifact metadata.
+
+Partial bundles return `0` while recording missing files, gaps, and blockers. Missing bundles return `1`; invalid slugs return `2`. `--output` writes Markdown with overwrite protection, and `--json --output` keeps stdout as JSON while writing Markdown to the file. `--output` and `--output-dir` may be used together. Existing command-managed artifact files are not overwritten unless `--force` is passed; unknown files in the directory are preserved. The command does not call `probe_adapters`, subprocesses, upstream CLIs, GitHub APIs, network services, token reads, or add dependencies.
 
 ## Design Principles
 

@@ -17,7 +17,7 @@ SpecSpine may:
 - Detect whether an upstream tool is installed.
 - Print official install hints.
 - Export static local lifecycle mappings for upstream adapter phases.
-- Export feature-specific adapter handoff packets from local SpecSpine evidence and lifecycle mappings.
+- Export feature-specific adapter handoff packets and optional local per-adapter artifact directories from local SpecSpine evidence and lifecycle mappings.
 - Export local GitHub CLI sync plans and artifact directories for human review before remote issue or PR creation.
 - Run upstream initializer commands when the user opts in with `--run-upstream`.
 - Store adapter contracts that point to upstream artifacts and commands.
@@ -59,9 +59,11 @@ The command is definition-only. It reads local fusion config for adapter enablem
 
 ## Feature Adapter Handoff
 
-`specspine adapters handoff <slug> [path] [--json] [--output FILE] [--force]` exports the local adapter handoff for one native feature. It combines native feature status, readiness, sources, gaps, and blockers with the selected OpenSpec, Spec Kit, and Superpowers lifecycle mapping.
+`specspine adapters handoff <slug> [path] [--json] [--output FILE] [--output-dir DIR] [--force]` exports the local adapter handoff for one native feature. It combines native feature status, readiness, sources, gaps, and blockers with the selected OpenSpec, Spec Kit, and Superpowers lifecycle mapping.
 
 The handoff is plan data only. OpenSpec recommendations are argv arrays for agent-friendly commands such as `openspec status --json`, `openspec instructions apply --change <slug> --json`, and `openspec validate --all --json`. Spec Kit recommendations follow the Spec -> Plan -> Tasks -> Implement artifact flow as agent actions. Superpowers recommendations name skill actions such as brainstorming, writing-plans, test-driven-development, subagent-driven-development, requesting-code-review, and verification-before-completion. SpecSpine does not execute these steps, probe adapter tools, read tokens, or call the network.
+
+With `--output-dir`, SpecSpine writes reviewable local artifacts only: `manifest.json`, `combined.md`, and focused `adapters/openspec.md`, `adapters/speckit.md`, and `adapters/superpowers.md`. The manifest records artifact paths and safety flags with `executed=false`, `requires_network=false`, `requires_token=false`, `creates_remote=false`, and `safe_to_auto_run=false`, plus a note that artifact export does not execute upstream tools, subprocesses, network calls, GitHub operations, or token reads. Existing managed artifact files require `--force`; unknown files are preserved.
 
 ## GitHub Sync Planning
 

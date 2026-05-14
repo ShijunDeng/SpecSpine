@@ -38,7 +38,7 @@ The CLI is intentionally thin:
 - `specspine adapters doctor` checks whether external tools are installed.
 - `specspine adapters install-hints` prints upstream install guidance.
 - `specspine adapters lifecycle` exports static local mappings from SpecSpine lifecycle status to upstream adapter phases.
-- `specspine adapters handoff` exports a feature-specific adapter handoff packet without executing upstream tools.
+- `specspine adapters handoff` exports a feature-specific adapter handoff packet and can materialize per-adapter review artifacts without executing upstream tools.
 
 Future commands should remain thin orchestration layers over explicit files so the workspace stays understandable without a server.
 
@@ -122,7 +122,9 @@ With `--require-coverage`, readiness also appends `feature.test_coverage`. That 
 
 The readiness report includes `feature_id`, `ready`, `status`, stable `checks`, `blocking_checks`, `summary`, `missing_files`, and `gaps`; coverage-required JSON also includes `coverage_required: true`. It is local and deterministic. Ready returns `0`; not-ready and missing bundles return `1`; invalid slugs return `2`.
 
-`specspine adapters handoff <slug> [path] [--json] [--output FILE] [--force]` composes the existing native feature handoff with the adapter lifecycle mapping selected for the feature's current status. The packet includes feature id, status, readiness, source files, missing files, gaps, blockers, adapter config state, upstream phase, upstream artifacts, agent focus, local commands, notes, and recommended upstream steps. Recommended upstream steps are plan data only: OpenSpec uses argv arrays, Spec Kit and Superpowers use agent instructions, and every step is marked not executed, not safe to auto-run, no remote creation, no network, and no token requirement. Partial bundles return `0`; missing bundles return `1`; invalid slugs return `2`.
+`specspine adapters handoff <slug> [path] [--json] [--output FILE] [--output-dir DIR] [--force]` composes the existing native feature handoff with the adapter lifecycle mapping selected for the feature's current status. The packet includes feature id, status, readiness, source files, missing files, gaps, blockers, adapter config state, upstream phase, upstream artifacts, agent focus, local commands, notes, and recommended upstream steps. Recommended upstream steps are plan data only: OpenSpec uses argv arrays, Spec Kit and Superpowers use agent instructions, and every step is marked not executed, not safe to auto-run, no remote creation, no network, and no token requirement. Partial bundles return `0`; missing bundles return `1`; invalid slugs return `2`.
+
+`--output-dir` materializes the adapter handoff into local review files: `manifest.json`, `combined.md`, and focused `adapters/openspec.md`, `adapters/speckit.md`, and `adapters/superpowers.md`. The manifest includes artifact paths, feature evidence, summary, gaps, blockers, and explicit false safety flags for execution, network, token, remote creation, and auto-run. Existing managed files require `--force`; unknown files in the directory are preserved. Artifact export writes local files only and does not execute upstream tools, subprocesses, network calls, GitHub operations, or token reads.
 
 `specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]` composes the existing local feature status, trace, tasks, readiness, and release readiness evidence into one minimal packet for agents. JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Its recommended commands match the generated execution template's focused `handoff`, `tasks`, `task-issues`, `trace`, `tests`, `ready`, `pr`, and `validate . --fusion --features` workflow.
 

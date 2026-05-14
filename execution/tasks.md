@@ -30,6 +30,7 @@
 - [x] Implement coverage-required readiness summaries for `specspine status --feature-summaries --feature-require-coverage`.
 - [x] Implement `specspine adapters lifecycle` static adapter lifecycle mapping export.
 - [x] Implement `specspine adapters handoff` feature-specific adapter handoff export.
+- [x] Implement `specspine adapters handoff --output-dir` local per-adapter artifact materialization.
 - [x] Implement optional severity, owner, and CI metadata export for `specspine gates`.
 - [x] Implement `specspine validate . --fusion --features`.
 - [x] Document upstream adapter policy without vendoring upstream code.
@@ -53,6 +54,7 @@
 - [x] Dogfood quality gate metadata with `quality-gate-metadata`.
 - [x] Dogfood adapter lifecycle mappings with `adapter-lifecycle-mappings`.
 - [x] Dogfood adapter feature handoff with `adapter-feature-handoff`.
+- [x] Dogfood adapter handoff artifacts with `adapter-handoff-artifacts`.
 
 ## Next
 
@@ -71,7 +73,7 @@
 - [ ] Observe whether agents use `status --json --validate --validation-warnings` only when scaffold warning detail is needed.
 - [ ] Observe whether agents use `status --json --validate --feature-summaries` only when comparing multiple features, whether local filters reduce follow-up handoff reads, and whether release triage uses `--feature-require-coverage` for stricter candidates.
 - [ ] Observe whether adapter sync work starts from `adapters lifecycle --json` before upstream or remote state is touched.
-- [ ] Observe whether adapter work starts from `adapters handoff <slug> --json` when a native feature needs upstream-specific context.
+- [ ] Observe whether adapter work starts from `adapters handoff <slug> --json` or `adapters handoff <slug> --output-dir .specspine/adapter-handoff/<slug>` when a native feature needs upstream-specific context.
 - [ ] Revisit generated templates after dogfooding this workspace for one or more development cycles.
 - [ ] Add tests when template or validation behavior changes.
 - [ ] Keep README/docs aligned with any command surface changes.

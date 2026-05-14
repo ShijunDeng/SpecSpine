@@ -44,6 +44,7 @@ class DogfoodArtifactsTests(TestCase):
             "adapter-lifecycle-mappings",
             "adapter-feature-handoff",
             "status-coverage-readiness-summaries",
+            "adapter-handoff-artifacts",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -86,6 +87,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:adapter-lifecycle-mappings", "pass"), checks)
         self.assertIn(("feature.status_consistency:adapter-feature-handoff", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-coverage-readiness-summaries", "pass"), checks)
+        self.assertIn(("feature.status_consistency:adapter-handoff-artifacts", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -250,6 +252,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/status-coverage-readiness-summaries.md",
             "execution/features/status-coverage-readiness-summaries.md",
             "quality/features/status-coverage-readiness-summaries.md",
+            "specs/features/adapter-handoff-artifacts.md",
+            "execution/features/adapter-handoff-artifacts.md",
+            "quality/features/adapter-handoff-artifacts.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -391,6 +396,25 @@ class DogfoodArtifactsTests(TestCase):
         coverage_report = build_feature_ready_report(
             REPO_ROOT,
             "status-coverage-readiness-summaries",
+            require_coverage=True,
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+
+    def test_adapter_handoff_artifacts_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(
+            REPO_ROOT,
+            "adapter-handoff-artifacts",
+        )
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "adapter-handoff-artifacts",
             require_coverage=True,
         )
 
