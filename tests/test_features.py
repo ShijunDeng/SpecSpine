@@ -12,10 +12,14 @@ from specspine.features import (
     FEATURE_STATUSES,
     FeatureBundleExistsError,
     InvalidFeatureSlug,
+    build_feature_trace_report,
     build_issue_draft,
     build_feature_tasks_report,
     create_feature_bundle,
+    parse_acceptance_criteria,
     parse_feature_tasks,
+    parse_quality_checks,
+    parse_test_plan,
     set_feature_status,
 )
 from specspine.status import build_status
@@ -325,6 +329,74 @@ class FeatureBundleTests(TestCase):
         self.assertEqual([task.done for task in tasks], [False, True])
         self.assertEqual([task.line for task in tasks], [5, 9])
 
+    def test_trace_parsers_extract_checklists_and_test_plan(self) -> None:
+        spec_content = "\n".join(
+            [
+                "# Add dark mode",
+                "",
+                "## Acceptance Criteria",
+                "",
+                "- [ ] Users can enable dark mode.",
+                "* [x] The setting persists.",
+                "- plain bullet ignored",
+                "",
+                "## Scope",
+                "",
+                "- [ ] Not acceptance.",
+            ]
+        )
+        quality_content = "\n".join(
+            [
+                "# Add dark mode Quality",
+                "",
+                "## Required Checks",
+                "",
+                "- [x] Unit tests cover theme selection.",
+                "* [ ] Documentation names the setting.",
+                "",
+                "## Test Plan",
+                "",
+                "- Run unit tests.",
+                "Manual check in a browser.",
+                "",
+                "## Review Notes",
+                "",
+                "- Not part of test plan.",
+            ]
+        )
+
+        acceptance_criteria = parse_acceptance_criteria(
+            spec_content,
+            source_file="specs/features/add-dark-mode.md",
+        )
+        quality_checks = parse_quality_checks(
+            quality_content,
+            source_file="quality/features/add-dark-mode.md",
+        )
+        test_plan = parse_test_plan(
+            quality_content,
+            source_file="quality/features/add-dark-mode.md",
+        )
+
+        self.assertEqual(
+            [item.id for item in acceptance_criteria],
+            ["AC001", "AC002"],
+        )
+        self.assertEqual(
+            [item.text for item in acceptance_criteria],
+            ["Users can enable dark mode.", "The setting persists."],
+        )
+        self.assertEqual([item.done for item in acceptance_criteria], [False, True])
+        self.assertEqual([item.line for item in acceptance_criteria], [5, 6])
+        self.assertEqual([item.id for item in quality_checks], ["Q001", "Q002"])
+        self.assertEqual([item.done for item in quality_checks], [True, False])
+        self.assertEqual([item.id for item in test_plan], ["TP001", "TP002"])
+        self.assertEqual(
+            [item.text for item in test_plan],
+            ["- Run unit tests.", "Manual check in a browser."],
+        )
+        self.assertEqual([item.line for item in test_plan], [10, 11])
+
     def test_feature_tasks_cli_text_and_json_outputs(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -621,6 +693,262 @@ class FeatureBundleTests(TestCase):
             self.assertEqual(report.summary["total"], 1)
             self.assertEqual(report.tasks[0].id, "T001")
 
+    def test_feature_trace_cli_text_and_json_outputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            set_feature_status(root, "add-dark-mode", "validated")
+            (root / "specs" / "features" / "add-dark-mode.md").write_text(
+                "\n".join(
+                    [
+                        "# Add dark mode",
+                        "",
+                        "Feature ID: add-dark-mode",
+                        "Status: validated",
+                        "",
+                        "## Acceptance Criteria",
+                        "- [x] Users can enable dark mode.",
+                        "- [ ] Users can return to light mode.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (root / "execution" / "features" / "add-dark-mode.md").write_text(
+                "\n".join(
+                    [
+                        "# Add dark mode Execution",
+                        "",
+                        "Feature ID: add-dark-mode",
+                        "Status: validated",
+                        "",
+                        "## Tasks",
+                        "- [x] Implement theme storage.",
+                        "- [ ] Add theme tests.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (root / "quality" / "features" / "add-dark-mode.md").write_text(
+                "\n".join(
+                    [
+                        "# Add dark mode Quality",
+                        "",
+                        "Feature ID: add-dark-mode",
+                        "Status: validated",
+                        "",
+                        "## Required Checks",
+                        "- [x] Unit tests pass.",
+                        "- [ ] Documentation updated.",
+                        "",
+                        "## Test Plan",
+                        "- Run `python -m unittest`.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            text_output = StringIO()
+            with redirect_stdout(text_output):
+                text_returncode = main(
+                    ["feature", "trace", "add-dark-mode", str(root)]
+                )
+
+            text = text_output.getvalue()
+            self.assertEqual(text_returncode, 0)
+            self.assertIn("Feature trace: add-dark-mode", text)
+            self.assertIn("Status: validated", text)
+            self.assertIn("Summary: total=6 done=3 open=3", text)
+            self.assertIn("Counts: ac=2 tasks=2 quality=2 test_plan=1", text)
+            self.assertIn(
+                "- [x] AC001 specs/features/add-dark-mode.md:7 Users can enable dark mode.",
+                text,
+            )
+            self.assertIn(
+                "- [ ] T002 execution/features/add-dark-mode.md:8 Add theme tests.",
+                text,
+            )
+            self.assertIn(
+                "- [ ] Q002 quality/features/add-dark-mode.md:8 Documentation updated.",
+                text,
+            )
+            self.assertIn(
+                "- TP001 quality/features/add-dark-mode.md:11 - Run `python -m unittest`.",
+                text,
+            )
+            self.assertIn("- None.", text)
+
+            json_output = StringIO()
+            with redirect_stdout(json_output):
+                json_returncode = main(
+                    ["feature", "trace", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(json_output.getvalue())
+            self.assertEqual(json_returncode, 0)
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertEqual(payload["status"], "validated")
+            self.assertEqual(payload["missing_files"], [])
+            self.assertEqual(payload["gaps"], [])
+            self.assertEqual(payload["summary"]["total"], 6)
+            self.assertEqual(payload["summary"]["done"], 3)
+            self.assertEqual(payload["summary"]["open"], 3)
+            self.assertEqual(payload["summary"]["test_plan"], {"total": 1})
+            self.assertEqual(payload["acceptance_criteria"][0]["id"], "AC001")
+            self.assertEqual(payload["tasks"][1]["id"], "T002")
+            self.assertEqual(payload["quality_checks"][0]["id"], "Q001")
+            self.assertEqual(payload["test_plan"][0]["id"], "TP001")
+            self.assertEqual(
+                payload["sources"]["spec"],
+                {"exists": True, "path": "specs/features/add-dark-mode.md"},
+            )
+
+    def test_feature_trace_cli_reports_partial_bundle_gaps(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            (root / "quality" / "features" / "add-dark-mode.md").unlink()
+            (root / "specs" / "features" / "add-dark-mode.md").write_text(
+                "# Add dark mode\n\nFeature ID: add-dark-mode\nStatus: proposed\n",
+                encoding="utf-8",
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "trace", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            gap_ids = {gap["id"] for gap in payload["gaps"]}
+            self.assertEqual(returncode, 0)
+            self.assertEqual(
+                payload["missing_files"],
+                ["quality/features/add-dark-mode.md"],
+            )
+            self.assertIn("missing_file", gap_ids)
+            self.assertIn("missing_acceptance_criteria", gap_ids)
+            self.assertIn("missing_required_checks", gap_ids)
+            self.assertIn("missing_test_plan", gap_ids)
+
+    def test_feature_trace_cli_all_files_missing_returns_nonzero(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(["feature", "trace", "add-dark-mode", str(root)])
+
+            self.assertEqual(returncode, 1)
+            self.assertIn("No feature files found", stderr.getvalue())
+            self.assertIn("missing specs/features/add-dark-mode.md", stderr.getvalue())
+
+    def test_feature_trace_cli_output_file_overwrite_force_and_json_output(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            output_file = root / "trace.txt"
+            output_file.write_text("existing\n", encoding="utf-8")
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(
+                    [
+                        "feature",
+                        "trace",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(output_file),
+                    ]
+                )
+
+            self.assertEqual(returncode, 1)
+            self.assertIn("Output file already exists", stderr.getvalue())
+            self.assertEqual(output_file.read_text(encoding="utf-8"), "existing\n")
+
+            stdout = StringIO()
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "feature",
+                        "trace",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--output",
+                        str(output_file),
+                        "--force",
+                    ]
+                )
+
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertIn("Feature trace: add-dark-mode", output_file.read_text(encoding="utf-8"))
+            self.assertNotIn("Wrote feature trace handoff", stdout.getvalue())
+
+    def test_feature_trace_cli_output_file_text_mode_writes_handoff(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            output_file = root / "artifacts" / "trace.txt"
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "feature",
+                        "trace",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(output_file),
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            self.assertEqual(
+                stdout.getvalue(),
+                f"Wrote feature trace handoff to {output_file.resolve()}\n",
+            )
+            text = output_file.read_text(encoding="utf-8")
+            self.assertIn("Feature trace: add-dark-mode", text)
+            self.assertIn("Sources:", text)
+            self.assertNotIn("Feature trace: add-dark-mode", stdout.getvalue())
+
+    def test_feature_trace_cli_does_not_require_gh_or_github_tokens(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            output = StringIO()
+
+            with patch.dict(
+                os.environ,
+                {
+                    "GH_TOKEN": "secret-gh-token",
+                    "GITHUB_TOKEN": "secret-github-token",
+                    "PATH": "",
+                },
+            ):
+                with patch("subprocess.run", side_effect=AssertionError("gh called")):
+                    with redirect_stdout(output):
+                        returncode = main(
+                            ["feature", "trace", "add-dark-mode", str(root), "--json"]
+                        )
+
+            self.assertEqual(returncode, 0)
+            self.assertNotIn("secret-gh-token", output.getvalue())
+            self.assertNotIn("secret-github-token", output.getvalue())
+
     def test_status_json_lists_feature_files(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -902,6 +1230,24 @@ class FeatureBundleTests(TestCase):
         self.assertEqual(report.status, "validated")
         self.assertGreater(report.summary["total"], 0)
         self.assertTrue(all(task.source_file == "execution/features/feature-task-export.md" for task in report.tasks))
+        self.assertTrue(all("TODO" not in task.text for task in report.tasks))
+
+    def test_dogfood_feature_traceability_export_is_validated_and_complete(self) -> None:
+        report = build_feature_trace_report(REPO_ROOT, "feature-traceability-export")
+
+        self.assertEqual(report.status, "validated")
+        self.assertEqual(report.missing_files, ())
+        self.assertEqual(report.gaps, ())
+        self.assertGreater(report.summary["acceptance_criteria"]["total"], 0)
+        self.assertGreater(report.summary["tasks"]["total"], 0)
+        self.assertGreater(report.summary["quality_checks"]["total"], 0)
+        self.assertGreater(report.summary["test_plan"]["total"], 0)
+        self.assertTrue(
+            all(
+                item.source_file == "specs/features/feature-traceability-export.md"
+                for item in report.acceptance_criteria
+            )
+        )
         self.assertTrue(all("TODO" not in task.text for task in report.tasks))
 
     def test_validate_cli_can_check_feature_bundles(self) -> None:

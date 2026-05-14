@@ -100,6 +100,106 @@ class FeatureTask:
 
 
 @dataclass(frozen=True)
+class FeatureTraceChecklistItem:
+    id: str
+    text: str
+    done: bool
+    source_file: str
+    line: int
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "done": self.done,
+            "id": self.id,
+            "line": self.line,
+            "source_file": self.source_file,
+            "text": self.text,
+        }
+
+
+@dataclass(frozen=True)
+class FeatureTraceTestPlanItem:
+    id: str
+    text: str
+    source_file: str
+    line: int
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "id": self.id,
+            "line": self.line,
+            "source_file": self.source_file,
+            "text": self.text,
+        }
+
+
+@dataclass(frozen=True)
+class FeatureTraceReport:
+    feature_id: str
+    status: str
+    sources: dict[str, dict[str, object]]
+    missing_files: tuple[str, ...]
+    acceptance_criteria: tuple[FeatureTraceChecklistItem, ...]
+    tasks: tuple[FeatureTask, ...]
+    quality_checks: tuple[FeatureTraceChecklistItem, ...]
+    test_plan: tuple[FeatureTraceTestPlanItem, ...]
+    gaps: tuple[dict[str, str], ...]
+
+    @property
+    def summary(self) -> dict[str, object]:
+        def checklist_counts(
+            items: tuple[FeatureTraceChecklistItem, ...] | tuple[FeatureTask, ...],
+        ) -> dict[str, int]:
+            done = sum(1 for item in items if item.done)
+            total = len(items)
+            return {
+                "done": done,
+                "open": total - done,
+                "total": total,
+            }
+
+        acceptance_criteria = checklist_counts(self.acceptance_criteria)
+        tasks = checklist_counts(self.tasks)
+        quality_checks = checklist_counts(self.quality_checks)
+        total = (
+            acceptance_criteria["total"]
+            + tasks["total"]
+            + quality_checks["total"]
+        )
+        done = (
+            acceptance_criteria["done"]
+            + tasks["done"]
+            + quality_checks["done"]
+        )
+
+        return {
+            "acceptance_criteria": acceptance_criteria,
+            "done": done,
+            "open": total - done,
+            "quality_checks": quality_checks,
+            "tasks": tasks,
+            "test_plan": {"total": len(self.test_plan)},
+            "total": total,
+        }
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "acceptance_criteria": [
+                item.as_dict() for item in self.acceptance_criteria
+            ],
+            "feature_id": self.feature_id,
+            "gaps": [dict(gap) for gap in self.gaps],
+            "missing_files": list(self.missing_files),
+            "quality_checks": [item.as_dict() for item in self.quality_checks],
+            "sources": self.sources,
+            "status": self.status,
+            "summary": self.summary,
+            "tasks": [task.as_dict() for task in self.tasks],
+            "test_plan": [item.as_dict() for item in self.test_plan],
+        }
+
+
+@dataclass(frozen=True)
 class FeatureTasksReport:
     feature_id: str
     status: str
@@ -765,6 +865,47 @@ def build_issue_draft(root: Path, slug: str) -> IssueDraft:
 CHECKBOX_TASK_RE = re.compile(r"^\s*[-*]\s+\[([ xX])\]\s+(.+?)\s*$")
 
 
+def _parse_trace_checklist_items(
+    content: str,
+    *,
+    heading: str,
+    prefix: str,
+    source_file: str,
+) -> tuple[FeatureTraceChecklistItem, ...]:
+    items: list[FeatureTraceChecklistItem] = []
+
+    for line_number, raw_line in _extract_markdown_section_lines(content, heading):
+        match = CHECKBOX_TASK_RE.match(raw_line)
+        if match is None:
+            continue
+
+        marker, text = match.groups()
+        items.append(
+            FeatureTraceChecklistItem(
+                id=f"{prefix}{len(items) + 1:03d}",
+                text=text.strip(),
+                done=marker.lower() == "x",
+                source_file=source_file,
+                line=line_number,
+            )
+        )
+
+    return tuple(items)
+
+
+def parse_acceptance_criteria(
+    content: str,
+    *,
+    source_file: str,
+) -> tuple[FeatureTraceChecklistItem, ...]:
+    return _parse_trace_checklist_items(
+        content,
+        heading="Acceptance Criteria",
+        prefix="AC",
+        source_file=source_file,
+    )
+
+
 def parse_feature_tasks(
     content: str,
     *,
@@ -790,6 +931,43 @@ def parse_feature_tasks(
         )
 
     return tuple(tasks)
+
+
+def parse_quality_checks(
+    content: str,
+    *,
+    source_file: str,
+) -> tuple[FeatureTraceChecklistItem, ...]:
+    return _parse_trace_checklist_items(
+        content,
+        heading="Required Checks",
+        prefix="Q",
+        source_file=source_file,
+    )
+
+
+def parse_test_plan(
+    content: str,
+    *,
+    source_file: str,
+) -> tuple[FeatureTraceTestPlanItem, ...]:
+    items: list[FeatureTraceTestPlanItem] = []
+
+    for line_number, raw_line in _extract_markdown_section_lines(content, "Test Plan"):
+        text = raw_line.strip()
+        if not text:
+            continue
+
+        items.append(
+            FeatureTraceTestPlanItem(
+                id=f"TP{len(items) + 1:03d}",
+                text=text,
+                source_file=source_file,
+                line=line_number,
+            )
+        )
+
+    return tuple(items)
 
 
 def build_feature_tasks_report(root: Path, slug: str) -> FeatureTasksReport:
@@ -835,6 +1013,218 @@ def build_feature_tasks_report(root: Path, slug: str) -> FeatureTasksReport:
         tasks=tasks,
         missing_files=tuple(missing_files),
     )
+
+
+def _trace_gap(gap_id: str, source_file: str, message: str) -> dict[str, str]:
+    return {
+        "id": gap_id,
+        "message": message,
+        "source_file": source_file,
+    }
+
+
+def build_feature_trace_report(root: Path, slug: str) -> FeatureTraceReport:
+    slug = validate_feature_slug(slug)
+    resolved_root = root.expanduser().resolve()
+    paths = feature_bundle_paths(resolved_root, slug)
+    relative_paths = _relative_feature_paths(slug)
+
+    contents: dict[str, str] = {}
+    missing_files: list[str] = []
+    missing_paths: list[Path] = []
+    sources: dict[str, dict[str, object]] = {}
+
+    for kind in FEATURE_FILE_PATHS:
+        path = paths[kind]
+        relative_path = relative_paths[kind]
+        exists = path.exists()
+        sources[kind] = {
+            "exists": exists,
+            "path": relative_path,
+        }
+        if exists:
+            contents[kind] = path.read_text(encoding="utf-8")
+            continue
+
+        missing_files.append(relative_path)
+        missing_paths.append(path)
+
+    if not contents:
+        raise FeatureBundleNotFoundError(
+            slug=slug,
+            root=resolved_root,
+            missing_paths=tuple(missing_paths),
+        )
+
+    spec_file = relative_paths["spec"]
+    execution_file = relative_paths["execution"]
+    quality_file = relative_paths["quality"]
+
+    acceptance_criteria: tuple[FeatureTraceChecklistItem, ...] = ()
+    tasks: tuple[FeatureTask, ...] = ()
+    quality_checks: tuple[FeatureTraceChecklistItem, ...] = ()
+    test_plan: tuple[FeatureTraceTestPlanItem, ...] = ()
+
+    spec_content = contents.get("spec")
+    if spec_content is not None:
+        acceptance_criteria = parse_acceptance_criteria(
+            spec_content,
+            source_file=spec_file,
+        )
+
+    execution_content = contents.get("execution")
+    if execution_content is not None:
+        tasks = parse_feature_tasks(execution_content, source_file=execution_file)
+
+    quality_content = contents.get("quality")
+    if quality_content is not None:
+        quality_checks = parse_quality_checks(
+            quality_content,
+            source_file=quality_file,
+        )
+        test_plan = parse_test_plan(quality_content, source_file=quality_file)
+
+    gaps: list[dict[str, str]] = []
+    for relative_path in missing_files:
+        gaps.append(
+            _trace_gap(
+                "missing_file",
+                relative_path,
+                f"Missing native feature file: {relative_path}",
+            )
+        )
+    if not acceptance_criteria:
+        gaps.append(
+            _trace_gap(
+                "missing_acceptance_criteria",
+                spec_file,
+                "No acceptance criteria checklist items found.",
+            )
+        )
+    if not tasks:
+        gaps.append(
+            _trace_gap(
+                "missing_tasks",
+                execution_file,
+                "No task checklist items found.",
+            )
+        )
+    if not quality_checks:
+        gaps.append(
+            _trace_gap(
+                "missing_required_checks",
+                quality_file,
+                "No required check checklist items found.",
+            )
+        )
+    if not test_plan:
+        gaps.append(
+            _trace_gap(
+                "missing_test_plan",
+                quality_file,
+                "No non-empty test plan content found.",
+            )
+        )
+
+    status_report = get_feature_status(resolved_root, slug)
+
+    return FeatureTraceReport(
+        feature_id=slug,
+        status=status_report.status or "unknown",
+        sources=sources,
+        missing_files=tuple(missing_files),
+        acceptance_criteria=acceptance_criteria,
+        tasks=tasks,
+        quality_checks=quality_checks,
+        test_plan=test_plan,
+        gaps=tuple(gaps),
+    )
+
+
+def render_feature_trace_json(report: FeatureTraceReport) -> str:
+    return json.dumps(report.as_dict(), indent=2, sort_keys=True) + "\n"
+
+
+def _render_trace_checklist_item(
+    item: FeatureTraceChecklistItem | FeatureTask,
+) -> str:
+    marker = "x" if item.done else " "
+    return f"- [{marker}] {item.id} {item.source_file}:{item.line} {item.text}"
+
+
+def render_feature_trace_text(report: FeatureTraceReport) -> str:
+    summary = report.summary
+    lines = [
+        f"Feature trace: {report.feature_id}",
+        f"Status: {report.status}",
+        "Sources:",
+    ]
+    for kind, source in report.sources.items():
+        marker = "ok" if source["exists"] else "missing"
+        lines.append(f"- [{marker}] {kind}: {source['path']}")
+
+    lines.extend(
+        [
+            (
+                "Summary: "
+                f"total={summary['total']} "
+                f"done={summary['done']} "
+                f"open={summary['open']}"
+            ),
+            (
+                "Counts: "
+                f"ac={summary['acceptance_criteria']['total']} "
+                f"tasks={summary['tasks']['total']} "
+                f"quality={summary['quality_checks']['total']} "
+                f"test_plan={summary['test_plan']['total']}"
+            ),
+            "",
+            "Gaps:",
+        ]
+    )
+
+    if report.gaps:
+        lines.extend(
+            f"- {gap['id']}: {gap['source_file']} - {gap['message']}"
+            for gap in report.gaps
+        )
+    else:
+        lines.append("- None.")
+
+    lines.extend(["", "Acceptance Criteria:"])
+    if report.acceptance_criteria:
+        lines.extend(
+            _render_trace_checklist_item(item)
+            for item in report.acceptance_criteria
+        )
+    else:
+        lines.append("- None found.")
+
+    lines.extend(["", "Tasks:"])
+    if report.tasks:
+        lines.extend(_render_trace_checklist_item(task) for task in report.tasks)
+    else:
+        lines.append("- None found.")
+
+    lines.extend(["", "Quality Checks:"])
+    if report.quality_checks:
+        lines.extend(
+            _render_trace_checklist_item(item)
+            for item in report.quality_checks
+        )
+    else:
+        lines.append("- None found.")
+
+    lines.extend(["", "Test Plan:"])
+    if report.test_plan:
+        lines.extend(
+            f"- {item.id} {item.source_file}:{item.line} {item.text}"
+            for item in report.test_plan
+        )
+    else:
+        lines.append("- None found.")
+
+    return "\n".join(lines) + "\n"
 
 
 def render_feature_tasks_json(report: FeatureTasksReport) -> str:

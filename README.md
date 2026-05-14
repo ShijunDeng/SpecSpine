@@ -27,6 +27,7 @@ This repository is an early project skeleton. It includes:
 - A native feature bundle creator: `specspine feature new`.
 - A native feature lifecycle status command: `specspine feature status`.
 - A native feature task exporter: `specspine feature tasks`.
+- A native feature traceability exporter: `specspine feature trace`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
 - A fusion initializer: `specspine fuse`.
 - A compact workspace status packet with optional validation summaries: `specspine status --json --validate`.
@@ -93,6 +94,13 @@ Export implementation tasks from the feature execution file:
 ```bash
 specspine feature tasks add-dark-mode .
 specspine feature tasks add-dark-mode . --json
+```
+
+Export a full traceability handoff from the feature bundle:
+
+```bash
+specspine feature trace add-dark-mode .
+specspine feature trace add-dark-mode . --json
 ```
 
 Advance the feature lifecycle when the bundle moves forward:
@@ -259,6 +267,14 @@ specspine feature tasks <slug> [path] [--json] [--output FILE] [--force]
 Exports Markdown checklist items from `execution/features/<slug>.md` under `## Tasks`. Supported item forms are `- [ ] task`, `- [x] task`, `* [ ] task`, and `* [x] task`. Text output is a short agent handoff with feature id, status, source, summary, and ordered task list. `--json` emits stable JSON with `feature_id`, `status`, `source_file`, `source_missing`, `tasks`, `summary`, and `missing_files`; each task includes `id`, `text`, `done`, `source_file`, and `line`.
 
 If the execution file exists but has no checklist items, the command returns an empty task list and says no tasks were found. If spec or quality files exist but the execution file is missing, the command still returns `0` with empty tasks, `source_missing=true`, and the missing execution file recorded. If no native feature files exist for the slug, it returns non-zero. `--output` writes the text handoff to a file and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout is JSON and the file contains text.
+
+```bash
+specspine feature trace <slug> [path] [--json] [--output FILE] [--force]
+```
+
+Exports a native feature traceability handoff that connects acceptance criteria, execution tasks, required quality checks, and test plan evidence. It reads checklist items from `specs/features/<slug>.md` under `## Acceptance Criteria`, reuses the task checklist parser for `execution/features/<slug>.md` under `## Tasks`, and reads checklist items plus non-empty test plan lines from `quality/features/<slug>.md` under `## Required Checks` and `## Test Plan`.
+
+JSON output includes `feature_id`, `status`, `sources`, `missing_files`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `summary`, and `gaps`. Text output is a short agent handoff with source summary, counts, gaps, and ordered trace content. Partial bundles return `0` while reporting missing files and gaps. If no native feature files exist for the slug, the command returns non-zero. `--output` writes the text handoff and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
 
 ```bash
 specspine feature issue <slug> [path] [--json] [--output FILE] [--force]

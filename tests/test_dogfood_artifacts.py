@@ -23,6 +23,7 @@ class DogfoodArtifactsTests(TestCase):
         for slug in (
             "feature-status-lifecycle",
             "feature-task-export",
+            "feature-traceability-export",
             "status-validation-summary",
         ):
             with self.subTest(slug=slug):
@@ -47,6 +48,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("fusion.vendored_upstream_code", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-status-lifecycle", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-task-export", "pass"), checks)
+        self.assertIn(("feature.status_consistency:feature-traceability-export", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-validation-summary", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)

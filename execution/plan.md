@@ -8,6 +8,7 @@
 - Native feature bundle creation and offline GitHub issue draft export.
 - Native feature status lifecycle query/update through `specspine feature status`.
 - Native feature execution checklist export through `specspine feature tasks`.
+- Native feature traceability export through `specspine feature trace`.
 - Fusion layer generation for OpenSpec, Spec Kit, and Superpowers.
 - Status JSON, validation JSON/text, adapter doctor, and install hints.
 - Optional validation summaries in `specspine status --json --validate`.
@@ -22,6 +23,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Keep this repository complete under `specspine status . --json`.
 - Prefer `specspine status . --json --validate` when an agent needs both context and quality-gate summary in one packet.
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
+- Use `specspine feature trace <slug> . --json` when an agent or reviewer needs acceptance criteria, tasks, checks, test plan, and gaps in one packet.
 - Use `specspine validate . --fusion --features` as the project-level gate.
 - Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`.
 - Improve templates when dogfooding reveals repeated manual edits.
