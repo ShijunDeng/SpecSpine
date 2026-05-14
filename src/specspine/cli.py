@@ -9,9 +9,12 @@ from .adapters import (
     ADAPTER_SPECS,
     AGENT_PROFILES,
     AdapterStatus,
+    build_adapter_feature_handoff_report,
     build_adapter_lifecycle_report,
     build_upstream_init_commands,
     probe_adapters,
+    render_adapter_feature_handoff_json,
+    render_adapter_feature_handoff_text,
     render_adapter_lifecycle_json,
     render_adapter_lifecycle_text,
     run_upstream_initializers,
@@ -482,6 +485,26 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="print stable JSON for agents and scripts",
+    )
+    adapters_handoff_parser = adapters_subcommands.add_parser(
+        "handoff",
+        help="export adapter execution handoff data for one native feature",
+    )
+    adapters_handoff_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    adapters_handoff_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    adapters_handoff_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    adapters_handoff_parser.add_argument(
+        "--output",
+        help="write the Markdown handoff packet to a file instead of printing it",
+    )
+    adapters_handoff_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite an existing output file",
     )
 
     return parser
@@ -1165,6 +1188,48 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_adapter_lifecycle_json(report), end="")
             else:
                 print(render_adapter_lifecycle_text(report), end="")
+            return 0
+
+        if args.adapters_command == "handoff":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                report = build_adapter_feature_handoff_report(root, args.slug)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not read adapter feature handoff: {error}", file=sys.stderr)
+                return 1
+
+            text_body = render_adapter_feature_handoff_text(report)
+            if args.output:
+                output_path = Path(args.output).expanduser().resolve()
+                if output_path.exists() and not args.force:
+                    print(
+                        f"Output file already exists: {output_path}. "
+                        "Use --force to overwrite it.",
+                        file=sys.stderr,
+                    )
+                    return 1
+
+                try:
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(text_body, encoding="utf-8")
+                except OSError as error:
+                    print(f"Could not write adapter feature handoff: {error}", file=sys.stderr)
+                    return 1
+
+            if args.json:
+                print(render_adapter_feature_handoff_json(report), end="")
+            elif args.output:
+                print(f"Wrote adapter feature handoff packet to {output_path}")
+            else:
+                print(text_body, end="")
             return 0
 
     parser.print_help()

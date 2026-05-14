@@ -853,6 +853,7 @@ def build_feature_files(
             ## Agent Handoff
 
             - Run `specspine feature handoff {slug} . --json` before implementation or review handoff.
+            - Run `specspine adapters handoff {slug} . --json` when OpenSpec, Spec Kit, or Superpowers adapter context is needed.
             - Run `specspine feature tasks {slug} . --json` for the focused implementation checklist.
             - Run `specspine feature task-issues {slug} . --json` to draft one local GitHub issue per execution task.
             - Run `specspine feature trace {slug} . --json` to inspect acceptance, tasks, quality checks, test plan, and gaps.

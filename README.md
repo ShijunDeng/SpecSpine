@@ -38,6 +38,7 @@ This repository is an early project skeleton. It includes:
 - A repository quality gate definition exporter: `specspine gates`.
 - A fusion initializer: `specspine fuse`.
 - A local adapter lifecycle mapping exporter: `specspine adapters lifecycle`.
+- A feature-specific adapter handoff exporter: `specspine adapters handoff`.
 - A compact workspace status packet with optional validation, opt-in validation warning details, and filterable feature summaries: `specspine status --json --validate --validation-warnings --feature-summaries`.
 - An executable validation layer: `specspine validate --json`.
 - Adapter metadata for OpenSpec, Spec Kit, and Superpowers.
@@ -257,6 +258,13 @@ Export local adapter lifecycle mappings:
 specspine adapters lifecycle . --json
 ```
 
+Export the adapter handoff packet for a native feature:
+
+```bash
+specspine adapters handoff add-dark-mode .
+specspine adapters handoff add-dark-mode . --json
+```
+
 ## Core Workflow
 
 1. **Intent**
@@ -473,6 +481,16 @@ specspine adapters lifecycle [path] [--json]
 Exports the local static lifecycle map between SpecSpine native feature statuses and upstream adapter phases. The report covers OpenSpec, Spec Kit, and Superpowers for `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived`. JSON output includes `root`, `native_statuses`, an `adapters` map with `display_name`, `enabled`, `config`, `config_exists`, `upstream_url`, and `mappings`, plus summary counts and recommended local commands. Each mapping includes a stable id such as `openspec:proposed`, the native status meaning, upstream phase, upstream artifacts, agent focus, and local commands.
 
 The command reads local fusion config only to determine adapter enablement and config paths, checks local config path existence, and returns `0` even when adapters are disabled or configs are missing. It does not call GitHub APIs, require `gh`, read tokens, use network access, invoke upstream CLIs, execute shell commands, or add dependencies.
+
+```bash
+specspine adapters handoff <slug> [path] [--json] [--output FILE] [--force]
+```
+
+Exports a feature-specific OpenSpec + Spec Kit + Superpowers adapter handoff packet. It composes existing native feature evidence from `feature handoff` with the current-status mapping from `adapters lifecycle`, then emits local JSON or Markdown only.
+
+JSON output includes feature id, status, readiness, source files, missing files, gaps, blocking checks, summary counts, adapter entries, and recommended local commands. Each adapter entry includes config state, upstream URL, integration surface, native status, selected upstream phase, upstream artifacts, agent focus, local commands, notes, and recommended upstream steps. OpenSpec steps are argv arrays such as `openspec status --json`, `openspec instructions apply --change <slug> --json`, and `openspec validate --all --json`; Spec Kit and Superpowers steps are agent-action instructions. Every step is marked `creates_remote=false`, `requires_network=false`, `requires_token=false`, `safe_to_auto_run=false`, and `executed=false`.
+
+Partial bundles return `0` while recording missing files, gaps, and blockers. Missing bundles return `1`; invalid slugs return `2`. `--output` writes Markdown with overwrite protection, and `--json --output` keeps stdout as JSON while writing Markdown to the file. The command does not call `probe_adapters`, subprocesses, upstream CLIs, GitHub APIs, network services, token reads, or add dependencies.
 
 ## Design Principles
 

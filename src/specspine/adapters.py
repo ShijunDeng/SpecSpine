@@ -3,12 +3,18 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import shlex
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
-from .features import FEATURE_STATUSES
+from .features import (
+    FEATURE_STATUSES,
+    FeatureBundleNotFoundError,
+    build_feature_handoff_report,
+    feature_bundle_paths,
+)
 
 
 CommandRunner = Callable[[Sequence[str], Path], subprocess.CompletedProcess[str]]
@@ -219,6 +225,135 @@ class AdapterLifecycleReport:
             "native_statuses": list(self.native_statuses),
             "recommended_commands": list(self.recommended_commands),
             "root": str(self.root),
+            "summary": self.summary,
+        }
+
+
+@dataclass(frozen=True)
+class AdapterHandoffStep:
+    id: str
+    kind: str
+    description: str
+    argv: tuple[str, ...] = ()
+    instruction: str = ""
+    creates_remote: bool = False
+    requires_network: bool = False
+    requires_token: bool = False
+    safe_to_auto_run: bool = False
+    executed: bool = False
+
+    def as_dict(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "creates_remote": self.creates_remote,
+            "description": self.description,
+            "executed": self.executed,
+            "id": self.id,
+            "kind": self.kind,
+            "requires_network": self.requires_network,
+            "requires_token": self.requires_token,
+            "safe_to_auto_run": self.safe_to_auto_run,
+        }
+        if self.argv:
+            payload["argv"] = list(self.argv)
+        if self.instruction:
+            payload["instruction"] = self.instruction
+        return payload
+
+
+@dataclass(frozen=True)
+class AdapterFeatureHandoffEntry:
+    key: str
+    display_name: str
+    enabled: bool
+    config: str
+    config_exists: bool
+    upstream_url: str
+    integration_surface: str
+    native_status: str
+    upstream_phase: str
+    upstream_artifacts: tuple[str, ...]
+    agent_focus: str
+    local_commands: tuple[str, ...]
+    recommended_upstream_steps: tuple[AdapterHandoffStep, ...]
+    notes: tuple[str, ...]
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "agent_focus": self.agent_focus,
+            "config": self.config,
+            "config_exists": self.config_exists,
+            "display_name": self.display_name,
+            "enabled": self.enabled,
+            "integration_surface": self.integration_surface,
+            "key": self.key,
+            "local_commands": list(self.local_commands),
+            "native_status": self.native_status,
+            "notes": list(self.notes),
+            "recommended_upstream_steps": [
+                step.as_dict() for step in self.recommended_upstream_steps
+            ],
+            "upstream_artifacts": list(self.upstream_artifacts),
+            "upstream_phase": self.upstream_phase,
+            "upstream_url": self.upstream_url,
+        }
+
+
+@dataclass(frozen=True)
+class AdapterFeatureHandoffReport:
+    root: Path
+    feature_id: str
+    status: str
+    ready: bool
+    sources: dict[str, dict[str, object]]
+    source_files: tuple[str, ...]
+    missing_files: tuple[str, ...]
+    gaps: tuple[dict[str, str], ...]
+    blocking_checks: tuple[Any, ...]
+    feature_summary: dict[str, object]
+    adapters: dict[str, AdapterFeatureHandoffEntry]
+    recommended_commands: tuple[str, ...]
+
+    @property
+    def summary(self) -> dict[str, object]:
+        steps_total = sum(
+            len(adapter.recommended_upstream_steps)
+            for adapter in self.adapters.values()
+        )
+        return {
+            "adapters": {
+                "config_exists": sum(
+                    1 for adapter in self.adapters.values() if adapter.config_exists
+                ),
+                "enabled": sum(
+                    1 for adapter in self.adapters.values() if adapter.enabled
+                ),
+                "total": len(self.adapters),
+            },
+            "blocking_checks": {"total": len(self.blocking_checks)},
+            "feature": dict(self.feature_summary),
+            "gaps": {"total": len(self.gaps)},
+            "steps": {"total": steps_total},
+        }
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "adapters": {
+                key: adapter.as_dict()
+                for key, adapter in self.adapters.items()
+            },
+            "blocking_checks": [
+                check.as_dict() if hasattr(check, "as_dict") else dict(check)
+                for check in self.blocking_checks
+            ],
+            "feature_id": self.feature_id,
+            "gaps": [dict(gap) for gap in self.gaps],
+            "missing_files": list(self.missing_files),
+            "ready": self.ready,
+            "recommended_commands": list(self.recommended_commands),
+            "root": str(self.root),
+            "source_files": list(self.source_files),
+            "sources": self.sources,
+            "status": self.status,
             "summary": self.summary,
         }
 
@@ -451,6 +586,15 @@ def _adapter_lifecycle_recommended_commands() -> tuple[str, ...]:
     )
 
 
+def _adapter_handoff_recommended_commands(slug: str) -> tuple[str, ...]:
+    return (
+        f"specspine feature handoff {slug} . --json",
+        "specspine adapters lifecycle . --json",
+        f"specspine feature ready {slug} . --json",
+        "specspine validate . --fusion --features",
+    )
+
+
 def build_adapter_lifecycle_report(root: Path) -> AdapterLifecycleReport:
     resolved_root = root.expanduser().resolve()
     fusion_upstreams = _read_fusion_upstreams(resolved_root)
@@ -481,6 +625,222 @@ def build_adapter_lifecycle_report(root: Path) -> AdapterLifecycleReport:
         native_statuses=FEATURE_STATUSES,
         adapters=adapters,
         recommended_commands=_adapter_lifecycle_recommended_commands(),
+    )
+
+
+def _replace_slug(commands: Iterable[str], slug: str) -> tuple[str, ...]:
+    return tuple(command.replace("<slug>", slug) for command in commands)
+
+
+def _mapping_for_status(
+    adapter_key: str,
+    status: str,
+) -> AdapterLifecycleMapping | None:
+    for mapping in ADAPTER_LIFECYCLE_MAPPINGS[adapter_key]:
+        if mapping.status == status:
+            return mapping
+    return None
+
+
+def _openspec_steps(slug: str) -> tuple[AdapterHandoffStep, ...]:
+    return (
+        AdapterHandoffStep(
+            id="openspec.status-json",
+            kind="cli-command",
+            description="Review OpenSpec change and spec status as JSON.",
+            argv=("openspec", "status", "--json"),
+        ),
+        AdapterHandoffStep(
+            id="openspec.instructions-apply",
+            kind="cli-command",
+            description="Apply OpenSpec agent instructions for the matching change id.",
+            argv=(
+                "openspec",
+                "instructions",
+                "apply",
+                "--change",
+                slug,
+                "--json",
+            ),
+        ),
+        AdapterHandoffStep(
+            id="openspec.validate-all-json",
+            kind="cli-command",
+            description="Validate all OpenSpec artifacts and return JSON findings.",
+            argv=("openspec", "validate", "--all", "--json"),
+        ),
+    )
+
+
+def _speckit_steps(slug: str) -> tuple[AdapterHandoffStep, ...]:
+    return (
+        AdapterHandoffStep(
+            id="speckit.spec",
+            kind="agent-action",
+            description="Prepare or review the Spec Kit spec artifact for this feature.",
+            instruction=(
+                f"Use Spec Kit's Spec phase for `{slug}` to capture scenarios, "
+                "acceptance criteria, constraints, and user value from the local "
+                "SpecSpine feature bundle."
+            ),
+        ),
+        AdapterHandoffStep(
+            id="speckit.plan",
+            kind="agent-action",
+            description="Prepare or review the Spec Kit plan artifact.",
+            instruction=(
+                f"Use Spec Kit's Plan phase for `{slug}` to turn the spec into "
+                "architecture, research, contracts, and implementation shape."
+            ),
+        ),
+        AdapterHandoffStep(
+            id="speckit.tasks",
+            kind="agent-action",
+            description="Prepare or review the Spec Kit tasks artifact.",
+            instruction=(
+                f"Use Spec Kit's Tasks phase for `{slug}` to produce an ordered "
+                "task list that traces back to the spec and plan artifacts."
+            ),
+        ),
+        AdapterHandoffStep(
+            id="speckit.implement",
+            kind="agent-action",
+            description="Hand the Spec Kit implement phase to an agent without running it from SpecSpine.",
+            instruction=(
+                f"Use Spec Kit's Implement phase for `{slug}` only after the "
+                "Spec, Plan, and Tasks artifacts are reviewed as local context."
+            ),
+        ),
+    )
+
+
+def _superpowers_steps(_slug: str) -> tuple[AdapterHandoffStep, ...]:
+    return (
+        AdapterHandoffStep(
+            id="superpowers.brainstorming",
+            kind="agent-action",
+            description="Use brainstorming to clarify intent and unresolved questions.",
+            instruction="Apply the brainstorming skill before locking requirements or scope.",
+        ),
+        AdapterHandoffStep(
+            id="superpowers.writing-plans",
+            kind="agent-action",
+            description="Use writing-plans to produce an executable implementation plan.",
+            instruction="Apply the writing-plans skill and keep risks, tasks, and validation explicit.",
+        ),
+        AdapterHandoffStep(
+            id="superpowers.test-driven-development",
+            kind="agent-action",
+            description="Use test-driven-development for behavior changes.",
+            instruction="Apply test-driven-development so tests lead implementation where practical.",
+        ),
+        AdapterHandoffStep(
+            id="superpowers.subagent-driven-development",
+            kind="agent-action",
+            description="Use subagent-driven-development for parallel review or implementation slices.",
+            instruction="Apply subagent-driven-development when focused subagent handoffs reduce risk.",
+        ),
+        AdapterHandoffStep(
+            id="superpowers.requesting-code-review",
+            kind="agent-action",
+            description="Use requesting-code-review before completion.",
+            instruction="Apply requesting-code-review and capture findings in local review evidence.",
+        ),
+        AdapterHandoffStep(
+            id="superpowers.verification-before-completion",
+            kind="agent-action",
+            description="Use verification-before-completion before marking the feature done.",
+            instruction="Apply verification-before-completion and record the checks that passed.",
+        ),
+    )
+
+
+def _recommended_steps(adapter_key: str, slug: str) -> tuple[AdapterHandoffStep, ...]:
+    if adapter_key == "openspec":
+        return _openspec_steps(slug)
+    if adapter_key == "speckit":
+        return _speckit_steps(slug)
+    if adapter_key == "superpowers":
+        return _superpowers_steps(slug)
+    return ()
+
+
+def build_adapter_feature_handoff_report(
+    root: Path,
+    slug: str,
+) -> AdapterFeatureHandoffReport:
+    feature_report = build_feature_handoff_report(root, slug)
+    resolved_root = root.expanduser().resolve()
+    if not feature_report.has_native_files:
+        missing_paths = tuple(feature_bundle_paths(resolved_root, slug).values())
+        raise FeatureBundleNotFoundError(
+            slug=slug,
+            root=resolved_root,
+            missing_paths=missing_paths,
+        )
+
+    lifecycle_report = build_adapter_lifecycle_report(resolved_root)
+    source_files = tuple(
+        str(source["path"])
+        for source in feature_report.sources.values()
+        if source["exists"]
+    )
+
+    adapters: dict[str, AdapterFeatureHandoffEntry] = {}
+    for key in ADAPTER_SPECS:
+        lifecycle_adapter = lifecycle_report.adapters[key]
+        mapping = _mapping_for_status(key, feature_report.status)
+        if mapping is None:
+            upstream_phase = "No mapping selected"
+            upstream_artifacts: tuple[str, ...] = ()
+            agent_focus = (
+                "Resolve the native feature status before handing work to this adapter."
+            )
+            local_commands: tuple[str, ...] = ()
+            notes = (
+                f"Native status `{feature_report.status}` has no adapter lifecycle mapping.",
+                "SpecSpine did not execute upstream tools or inspect adapter runtime availability.",
+            )
+        else:
+            upstream_phase = mapping.upstream_phase
+            upstream_artifacts = mapping.upstream_artifacts
+            agent_focus = mapping.agent_focus
+            local_commands = _replace_slug(mapping.local_commands, slug)
+            notes = (
+                f"Selected mapping `{mapping.id}` for native status `{feature_report.status}`.",
+                "Recommended upstream steps are handoff data only; SpecSpine did not execute them.",
+            )
+
+        adapters[key] = AdapterFeatureHandoffEntry(
+            key=key,
+            display_name=lifecycle_adapter.display_name,
+            enabled=lifecycle_adapter.enabled,
+            config=lifecycle_adapter.config,
+            config_exists=lifecycle_adapter.config_exists,
+            upstream_url=lifecycle_adapter.upstream_url,
+            integration_surface=ADAPTER_SPECS[key].role,
+            native_status=feature_report.status,
+            upstream_phase=upstream_phase,
+            upstream_artifacts=upstream_artifacts,
+            agent_focus=agent_focus,
+            local_commands=local_commands,
+            recommended_upstream_steps=_recommended_steps(key, slug),
+            notes=notes,
+        )
+
+    return AdapterFeatureHandoffReport(
+        root=resolved_root,
+        feature_id=feature_report.feature_id,
+        status=feature_report.status,
+        ready=feature_report.ready,
+        sources=feature_report.sources,
+        source_files=source_files,
+        missing_files=feature_report.missing_files,
+        gaps=feature_report.gaps,
+        blocking_checks=feature_report.blocking_checks,
+        feature_summary=feature_report.summary,
+        adapters=adapters,
+        recommended_commands=_adapter_handoff_recommended_commands(slug),
     )
 
 
@@ -525,6 +885,118 @@ def render_adapter_lifecycle_text(report: AdapterLifecycleReport) -> str:
     lines.extend(f"- {command}" for command in report.recommended_commands)
 
     return "\n".join(lines) + "\n"
+
+
+def render_adapter_feature_handoff_json(report: AdapterFeatureHandoffReport) -> str:
+    return json.dumps(report.as_dict(), indent=2, sort_keys=True) + "\n"
+
+
+def _render_step_line(step: AdapterHandoffStep) -> str:
+    if step.argv:
+        command = " ".join(shlex.quote(part) for part in step.argv)
+        detail = f"`{command}`"
+    else:
+        detail = step.instruction
+    return (
+        f"- {step.id} ({step.kind}): {step.description} "
+        f"executed=no safe_to_auto_run=no creates_remote=no "
+        f"requires_network=no requires_token=no"
+        + (f" - {detail}" if detail else "")
+    )
+
+
+def render_adapter_feature_handoff_text(
+    report: AdapterFeatureHandoffReport,
+) -> str:
+    summary = report.summary
+    adapters_summary = summary["adapters"]
+    steps_summary = summary["steps"]
+    lines = [
+        f"# Adapter Feature Handoff: {report.feature_id}",
+        "",
+        "## Feature",
+        "",
+        f"- Status: {report.status}",
+        f"- Ready: {'yes' if report.ready else 'no'}",
+        f"- Source files: {len(report.source_files)}",
+        f"- Missing files: {len(report.missing_files)}",
+        f"- Gaps: {summary['gaps']['total']}",
+        f"- Blocking checks: {summary['blocking_checks']['total']}",
+        (
+            "- Summary: "
+            f"adapters={adapters_summary['total']} "
+            f"enabled={adapters_summary['enabled']} "
+            f"config_exists={adapters_summary['config_exists']} "
+            f"steps={steps_summary['total']}"
+        ),
+        "",
+        "## Sources",
+        "",
+    ]
+    for kind, source in report.sources.items():
+        marker = "ok" if source["exists"] else "missing"
+        lines.append(f"- [{marker}] {kind}: {source['path']}")
+
+    lines.extend(["", "## Gaps", ""])
+    if report.gaps:
+        lines.extend(
+            f"- {gap['id']}: {gap['source_file']} - {gap['message']}"
+            for gap in report.gaps
+        )
+    else:
+        lines.append("- None.")
+
+    lines.extend(["", "## Blocking Checks", ""])
+    if report.blocking_checks:
+        lines.extend(
+            f"- {check.id}: {check.message}"
+            for check in report.blocking_checks
+        )
+    else:
+        lines.append("- None.")
+
+    lines.extend(["", "## Adapters", ""])
+    for key in ADAPTER_SPECS:
+        adapter = report.adapters[key]
+        lines.extend(
+            [
+                f"### {adapter.display_name} ({adapter.key})",
+                "",
+                f"- Enabled: {'yes' if adapter.enabled else 'no'}",
+                f"- Config: {adapter.config} (exists: {'yes' if adapter.config_exists else 'no'})",
+                f"- Upstream: {adapter.upstream_url}",
+                f"- Integration surface: {adapter.integration_surface}",
+                f"- Native status: {adapter.native_status}",
+                f"- Upstream phase: {adapter.upstream_phase}",
+                f"- Agent focus: {adapter.agent_focus}",
+                "- Upstream artifacts:",
+            ]
+        )
+        if adapter.upstream_artifacts:
+            lines.extend(f"  - {artifact}" for artifact in adapter.upstream_artifacts)
+        else:
+            lines.append("  - None.")
+        lines.append("- Local commands:")
+        if adapter.local_commands:
+            lines.extend(f"  - `{command}`" for command in adapter.local_commands)
+        else:
+            lines.append("  - None.")
+        lines.append("- Recommended upstream steps:")
+        if adapter.recommended_upstream_steps:
+            lines.extend(
+                f"  {_render_step_line(step)}"
+                for step in adapter.recommended_upstream_steps
+            )
+        else:
+            lines.append("  - None.")
+        lines.append("- Notes:")
+        lines.extend(f"  - {note}" for note in adapter.notes)
+        lines.append("")
+
+    lines.extend(["## Recommended Local Commands", ""])
+    lines.extend(f"- `{command}`" for command in report.recommended_commands)
+
+    return "\n".join(lines).rstrip() + "\n"
 
 
 @dataclass(frozen=True)

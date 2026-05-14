@@ -27,6 +27,7 @@
 - [x] Implement `specspine status . --json --feature-summaries` optional native feature summaries.
 - [x] Implement local feature summary filters and sorting for `specspine status --feature-summaries`.
 - [x] Implement `specspine adapters lifecycle` static adapter lifecycle mapping export.
+- [x] Implement `specspine adapters handoff` feature-specific adapter handoff export.
 - [x] Implement `specspine validate . --fusion --features`.
 - [x] Document upstream adapter policy without vendoring upstream code.
 - [x] Initialize this repository as a complete SpecSpine fusion workspace.
@@ -45,6 +46,7 @@
 - [x] Dogfood task issue draft packages with `feature-task-issue-drafts`.
 - [x] Dogfood status validation warnings with `status-validation-warnings`.
 - [x] Dogfood adapter lifecycle mappings with `adapter-lifecycle-mappings`.
+- [x] Dogfood adapter feature handoff with `adapter-feature-handoff`.
 
 ## Next
 
@@ -62,6 +64,7 @@
 - [ ] Observe whether agents use `status --json --validate --validation-warnings` only when scaffold warning detail is needed.
 - [ ] Observe whether agents use `status --json --validate --feature-summaries` only when comparing multiple features, and whether local filters reduce follow-up handoff reads.
 - [ ] Observe whether adapter sync work starts from `adapters lifecycle --json` before upstream or remote state is touched.
+- [ ] Observe whether adapter work starts from `adapters handoff <slug> --json` when a native feature needs upstream-specific context.
 - [ ] Revisit generated templates after dogfooding this workspace for one or more development cycles.
 - [ ] Add tests when template or validation behavior changes.
 - [ ] Keep README/docs aligned with any command surface changes.

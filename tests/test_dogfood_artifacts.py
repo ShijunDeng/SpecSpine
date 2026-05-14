@@ -40,6 +40,7 @@ class DogfoodArtifactsTests(TestCase):
             "feature-summary-metadata",
             "quality-gate-definitions",
             "adapter-lifecycle-mappings",
+            "adapter-feature-handoff",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -78,6 +79,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:feature-summary-metadata", "pass"), checks)
         self.assertIn(("feature.status_consistency:quality-gate-definitions", "pass"), checks)
         self.assertIn(("feature.status_consistency:adapter-lifecycle-mappings", "pass"), checks)
+        self.assertIn(("feature.status_consistency:adapter-feature-handoff", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -227,6 +229,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/adapter-lifecycle-mappings.md",
             "execution/features/adapter-lifecycle-mappings.md",
             "quality/features/adapter-lifecycle-mappings.md",
+            "specs/features/adapter-feature-handoff.md",
+            "execution/features/adapter-feature-handoff.md",
+            "quality/features/adapter-feature-handoff.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -312,6 +317,13 @@ class DogfoodArtifactsTests(TestCase):
 
     def test_adapter_lifecycle_mappings_dogfood_bundle_passes_its_gate(self) -> None:
         report = build_feature_ready_report(REPO_ROOT, "adapter-lifecycle-mappings")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.status, "validated")
+        self.assertEqual(report.summary["fail"], 0)
+
+    def test_adapter_feature_handoff_dogfood_bundle_passes_its_gate(self) -> None:
+        report = build_feature_ready_report(REPO_ROOT, "adapter-feature-handoff")
 
         self.assertTrue(report.ready)
         self.assertEqual(report.status, "validated")

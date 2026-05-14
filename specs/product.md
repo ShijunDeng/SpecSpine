@@ -20,6 +20,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Repository-level quality gate definition export from `quality/checklist.md` without executing checks.
 - Fusion initialization for OpenSpec, Spec Kit, and Superpowers as external adapters.
 - Adapter lifecycle mapping export for OpenSpec, Spec Kit, and Superpowers without probing upstream tools.
+- Feature-specific adapter handoff export that combines native feature evidence with OpenSpec, Spec Kit, and Superpowers lifecycle context without executing upstream tools.
 - Status, optional status validation summaries, opt-in validation warning details, optional filterable feature summaries, validation, doctor, and adapter inspection commands suitable for CI and coding agents.
 
 ## Non-Goals
@@ -49,6 +50,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Review GitHub CLI synchronization intent with `specspine feature sync-plan <slug> . --json`, `--output`, or `--output-dir .specspine/sync-plan/<slug>` before any human decides to run `gh`.
 - Export repository-level completion policy with `specspine gates . --json` before implementation, review, or CI wiring; this reports gate definitions only and does not run the recommended commands.
 - Export adapter lifecycle mappings with `specspine adapters lifecycle . --json` before future adapter sync work; this reports local mapping definitions only and does not run upstream tools.
+- Export `specspine adapters handoff <slug> . --json` when an agent needs a feature-specific OpenSpec, Spec Kit, and Superpowers handoff packet; this reports recommended upstream steps as unexecuted plan data only.
 - Verify readiness with `specspine validate . --fusion --features` and the unit test suite.
 
 ## Acceptance Criteria
@@ -71,6 +73,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - `feature sync-plan <slug> --output-dir DIR` writes reviewable local artifacts including `manifest.json`, body Markdown files, and review-only `commands.sh`; it preserves JSON stdout compatibility, refuses command-owned file overwrites unless `--force` is passed, keeps PR commands draft-only, omits the PR dry-run flag, and preserves unknown files in existing directories.
 - `gates --json` reports repository quality gate definitions from `quality/checklist.md`, including stable `GATE###` required checks, stable `DOD###` Definition Of Done items, summary counts, source-missing state, and recommended local commands without executing checks, calling GitHub APIs, requiring `gh`, using network services, reading tokens, invoking upstream CLIs, or adding dependencies.
 - `adapters lifecycle --json` reports OpenSpec, Spec Kit, and Superpowers lifecycle mappings for the six native statuses, including stable ids, native status meanings, upstream phases, upstream artifacts, agent focus, local commands, adapter enablement, local config paths, config existence, summary counts, and recommended local commands without executing shell commands, calling GitHub APIs, requiring `gh`, using network services, reading tokens, invoking upstream CLIs, or adding dependencies.
+- `adapters handoff <slug> --json` reports native feature evidence plus selected OpenSpec, Spec Kit, and Superpowers mappings, adapter config state, upstream phases, artifacts, agent focus, local commands, notes, safe unexecuted recommended upstream steps, summary counts, and recommended local commands; partial bundles return `0`, missing bundles return `1`, invalid slugs return `2`, and the command does not execute subprocesses, probe tools, call network services, read tokens, invoke upstream CLIs, or add dependencies.
 - `feature new <slug>` generates spec-level priority and owner metadata plus unchecked quality and release-readiness gates so structural validation can pass while `feature ready` remains blocked until acceptance criteria, test coverage, docs or PR draft, and local validation evidence are complete.
 - Enabled upstream metadata reports OpenSpec, Spec Kit, and Superpowers as enabled when their adapter files are present.
 - Validation passes for complete workspace, fusion artifacts, and native feature bundles with consistent allowed lifecycle status; unchanged base workspace Markdown scaffold content is reported as warning checks rather than failures.
