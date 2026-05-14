@@ -32,6 +32,7 @@ The CLI is intentionally thin:
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
 - `specspine status` emits a compact status packet for humans, agents, and scripts.
+- `specspine gates` exports repository-level quality gate definitions from `quality/checklist.md`.
 - `specspine validate` turns workspace and fusion contracts into executable checks for CI and agents.
 - `specspine adapters doctor` checks whether external tools are installed.
 - `specspine adapters install-hints` prints upstream install guidance.
@@ -127,6 +128,13 @@ The tests report includes `feature_id`, `status`, `ready`, `source_files`, `miss
 `specspine status <path> --feature-summaries` is an opt-in workspace view for comparing native features. The default status payload intentionally stays compact for agent startup and does not include per-feature task or readiness detail. With the flag, `status` reuses `list_feature_bundles`, reads `Priority:` and `Owner:` from `specs/features/<slug>.md`, and uses the existing feature handoff report to add `feature_summaries` with lifecycle status, priority, owner, completeness, readiness, missing files, task summary counts, ready summary counts, gap count, blocking check count, next actions, and recommended local commands. Missing or invalid priorities are reported as `unknown`; missing or blank owners are reported as `unassigned`. Text status adds only a short Feature summaries section. Invalid feature filenames produce not-ready summary records instead of crashing workspace status.
 
 Feature summary triage stays local to the already-built summaries. `--feature-status` filters by lifecycle status and can be repeated, including abnormal `invalid` and `unknown` buckets. `--feature-ready` filters by readiness aliases. `--feature-priority` filters by `high`, `medium`, `low`, or `unknown`, and `--feature-owner` performs repeated case-insensitive exact owner matches where `unassigned` includes missing owners. `--feature-sort` orders by `slug`, `status`, `ready`, `gaps`, `blocking`, `tasks-open`, or `priority`; priority sort uses `high -> medium -> low -> unknown`, with `--feature-sort-desc` reversing the selected order. These options are rejected with code `2` unless `--feature-summaries` is present, so callers do not accidentally think the compact default status was filtered.
+
+`specspine gates [path] [--json]` is the repository-level quality policy packet. It reads only `quality/checklist.md` and exports definitions without executing tests, validation, shell commands, upstream CLIs, GitHub APIs, network requests, `gh`, or token reads. The parser is intentionally section-bounded:
+
+- `GATE001` required checks come from checkbox items under `## Required Checks`.
+- `DOD001` Definition Of Done items come from bullet items under `## Definition Of Done`.
+
+The JSON report includes `root`, `source_file`, `source_missing`, `required_checks`, `definition_of_done`, `summary`, and `recommended_commands`. Missing sources return code `1` with empty lists; existing sources return code `0` even when gate checkboxes are open because this command exports definitions rather than evaluating completion.
 
 `specspine feature task-issues <slug> [path] [--json] [--output FILE] [--force]` composes the existing local task and trace evidence into a GitHub Markdown issue draft package without creating remote issues. One execution checklist item becomes one issue draft with a stable title, task metadata, source line, acceptance criteria context, and key local commands.
 

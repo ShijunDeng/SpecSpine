@@ -49,6 +49,11 @@ from .features import (
     set_feature_status,
 )
 from .fusion import FUSION_REQUIRED_FILES, init_fusion_workspace
+from .gates import (
+    build_quality_gate_report,
+    render_quality_gate_json,
+    render_quality_gate_text,
+)
 from .status import (
     InvalidFeatureSummaryOption,
     build_status,
@@ -333,6 +338,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--adapters",
         action="store_true",
         help="also check external adapter availability",
+    )
+
+    gates_parser = subcommands.add_parser("gates", help="export repository quality gate definitions")
+    gates_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    gates_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
     )
 
     status_parser = subcommands.add_parser("status", help="summarize SpecSpine workspace status")
@@ -923,6 +936,14 @@ def main(argv: list[str] | None = None) -> int:
             _print_adapter_statuses(statuses)
             return 0 if all(status.available for status in statuses) else 1
         return 0
+
+    if args.command == "gates":
+        report = build_quality_gate_report(Path(args.path))
+        if args.json:
+            print(render_quality_gate_json(report), end="")
+        else:
+            print(render_quality_gate_text(report), end="")
+        return 1 if report.source_missing else 0
 
     if args.command == "status":
         if args.validation_warnings and not args.validate:

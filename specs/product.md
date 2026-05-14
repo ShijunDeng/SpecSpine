@@ -16,6 +16,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Native feature acceptance-test packets that map acceptance criteria to deterministic test cases, attach explicit local test coverage links, and surface existing test plans, quality checks, gaps, and blockers.
 - Local GitHub issue draft generation from feature bundles without API calls.
 - Local GitHub Pull Request draft generation from feature bundles without API calls.
+- Repository-level quality gate definition export from `quality/checklist.md` without executing checks.
 - Fusion initialization for OpenSpec, Spec Kit, and Superpowers as external adapters.
 - Status, optional status validation summaries, opt-in validation warning details, optional filterable feature summaries, validation, doctor, and adapter inspection commands suitable for CI and coding agents.
 
@@ -43,6 +44,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Hand an acceptance-test packet with explicit local test coverage links to QA or testing agents with `specspine feature tests <slug> . --json`.
 - Generate an offline issue draft with `specspine feature issue <slug> . --json` or `--output`.
 - Generate an offline Pull Request draft with `specspine feature pr <slug> . --json` or `--output`.
+- Export repository-level completion policy with `specspine gates . --json` before implementation, review, or CI wiring; this reports gate definitions only and does not run the recommended commands.
 - Verify readiness with `specspine validate . --fusion --features` and the unit test suite.
 
 ## Acceptance Criteria
@@ -61,6 +63,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - `feature handoff <slug> --json` reports a compact feature packet with status, readiness, sources, gaps, blocking checks, trace sections, release readiness, recommended commands, deterministic next actions, and summary counts without calling external services.
 - `feature tests <slug> --json` reports a QA-focused packet with status, readiness, source files, missing files, gaps, blocking checks, acceptance criteria, existing test plan, explicit `## Test Coverage` links, quality checks, deterministic `TC001 -> AC001` test cases with `covered`/`planned`/`pending` status, summary counts, and recommended local commands without running tests, generating test code, calling external services, or reading tokens.
 - `feature pr <slug> --json` reports an offline Pull Request draft with title, body, status, readiness, sources, missing files, gaps, blocking checks, summary counts, and recommended commands without calling GitHub APIs, `gh`, network services, or reading tokens.
+- `gates --json` reports repository quality gate definitions from `quality/checklist.md`, including stable `GATE###` required checks, stable `DOD###` Definition Of Done items, summary counts, source-missing state, and recommended local commands without executing checks, calling GitHub APIs, requiring `gh`, using network services, reading tokens, invoking upstream CLIs, or adding dependencies.
 - `feature new <slug>` generates spec-level priority and owner metadata plus unchecked quality and release-readiness gates so structural validation can pass while `feature ready` remains blocked until acceptance criteria, test coverage, docs or PR draft, and local validation evidence are complete.
 - Enabled upstream metadata reports OpenSpec, Spec Kit, and Superpowers as enabled when their adapter files are present.
 - Validation passes for complete workspace, fusion artifacts, and native feature bundles with consistent allowed lifecycle status; unchanged base workspace Markdown scaffold content is reported as warning checks rather than failures.

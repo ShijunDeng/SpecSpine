@@ -34,6 +34,7 @@ This repository is an early project skeleton. It includes:
 - A native feature acceptance-test packet exporter: `specspine feature tests`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
 - A local GitHub Pull Request draft exporter: `specspine feature pr`.
+- A repository quality gate definition exporter: `specspine gates`.
 - A fusion initializer: `specspine fuse`.
 - A compact workspace status packet with optional validation, opt-in validation warning details, and filterable feature summaries: `specspine status --json --validate --validation-warnings --feature-summaries`.
 - An executable validation layer: `specspine validate --json`.
@@ -398,6 +399,14 @@ Summarizes workspace completeness, fusion completeness, core artifact status, na
 Feature summary filters and sorting are local and deterministic. `--feature-status STATUS` can be repeated and accepts `proposed`, `planned`, `in-progress`, `implemented`, `validated`, `archived`, `invalid`, and `unknown`. `--feature-ready READY` accepts `yes`, `no`, `true`, `false`, `ready`, and `not-ready`. `--feature-priority VALUE` can be repeated and accepts `high`, `medium`, `low`, and `unknown`. `--feature-owner VALUE` can be repeated and performs a case-insensitive exact match, with `unassigned` matching missing owners. `--feature-sort KEY` accepts `slug`, `status`, `ready`, `gaps`, `blocking`, `tasks-open`, and `priority`; priority sort uses `high`, `medium`, `low`, then `unknown`, and `--feature-sort-desc` reverses the selected order. These options are valid only with `--feature-summaries`; unsupported values or missing `--feature-summaries` return code `2`.
 
 ```bash
+specspine gates [path] [--json]
+```
+
+Exports repository-level quality gate definitions from `quality/checklist.md` without executing checks. Required gates come only from checkbox items under `## Required Checks`, using stable `GATE001` ids with `text`, `done`, `source_file`, and `line`. Definition Of Done items come only from bullets under `## Definition Of Done`, using stable `DOD001` ids with `text`, `source_file`, and `line`.
+
+JSON output includes `root`, `source_file`, `source_missing`, `required_checks`, `definition_of_done`, `summary`, and `recommended_commands`. Text output shows the source, required done/open counts, Definition Of Done count, each gate id, each DOD id, and checkbox markers for required gates. The command returns `0` when `quality/checklist.md` exists, even if gates are open, because this is a definition export. It returns `1` when the source is missing and still emits an empty report with `source_missing=true`. It does not call GitHub APIs, require `gh`, read tokens, use network access, invoke upstream CLIs, execute recommended commands, or add dependencies.
+
+```bash
 specspine validate [path] [--fusion] [--features] [--adapters] [--json]
 ```
 
@@ -440,9 +449,10 @@ Prints upstream install instructions and project links.
 
 - Adapter lifecycle mappings.
 - Task decomposition from specs and richer task summaries.
-- Quality gate definitions.
 - Richer adapter sync for OpenSpec, Spec Kit, Superpowers, and other workflow engines.
 - Remote GitHub issue and pull request synchronization beyond offline drafts.
+
+Completed roadmap item: repository quality gate definitions are covered by `specspine gates`.
 
 ## Development
 

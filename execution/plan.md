@@ -20,6 +20,7 @@
 - Optional validation summaries in `specspine status --json --validate`.
 - Opt-in validation warning details in `specspine status --json --validate --validation-warnings`.
 - Optional native feature summaries in `specspine status --json --feature-summaries`, with local status/readiness filters and deterministic sorting.
+- Repository-level quality gate definition export through `specspine gates`.
 - Unit tests and GitHub Actions coverage for the current command surface.
 
 ## Current Milestone
@@ -39,6 +40,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine feature ready <slug> . --json` when a reviewer, agent, or CI step needs a failing per-feature release gate.
 - Use `specspine feature tests <slug> . --json` when QA or testing agents need acceptance criteria mapped to pending test cases plus existing test plan, gaps, and blockers.
 - Use `specspine feature pr <slug> . --json` when a reviewer or release agent needs a local Pull Request draft without touching GitHub.
+- Use `specspine gates . --json` when an agent, reviewer, or CI author needs repository-level quality gate definitions before running or wiring checks.
 - Use `specspine validate . --fusion --features` as the project-level gate.
 - Let `specspine feature new <slug> . --title "..." --why "..."` seed the feature's spec, execution, quality, handoff, task issue draft, tests, PR, ready, validation workflow, and initial `Priority: medium` / `Owner: unassigned` metadata before implementation begins.
 - Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`; prefer `--enforce-transition` for ordered lifecycle advancement while keeping manual updates available by default.
@@ -61,3 +63,4 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Should readiness summaries eventually be included in workspace status, or remain an explicit per-feature gate?
 - Should acceptance-test packets later include explicit user-supplied AC-to-test-file links, or remain implementation-file agnostic until that metadata exists?
 - Should the refreshed feature bundle template later grow explicit rollout-owner or implementation-file metadata, or stay minimal until a real workflow needs it?
+- Should future quality gate definitions include structured severity, owning role, or expected CI check names, or stay as Markdown-derived records until remote sync exists?
