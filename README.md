@@ -29,6 +29,7 @@ This repository is an early project skeleton. It includes:
 - A native feature task exporter: `specspine feature tasks`.
 - A native feature traceability exporter: `specspine feature trace`.
 - A native feature readiness gate: `specspine feature ready`.
+- A native feature handoff packet exporter: `specspine feature handoff`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
 - A fusion initializer: `specspine fuse`.
 - A compact workspace status packet with optional validation summaries: `specspine status --json --validate`.
@@ -83,11 +84,11 @@ Create a traceable feature bundle:
 specspine feature new add-dark-mode . --title "Add dark mode" --why "Reduce eye strain"
 ```
 
-Draft a local GitHub issue from the feature bundle:
+Export the compact implementation/review handoff packet:
 
 ```bash
-specspine feature issue add-dark-mode .
-specspine feature issue add-dark-mode . --json
+specspine feature handoff add-dark-mode .
+specspine feature handoff add-dark-mode . --json
 ```
 
 Export implementation tasks from the feature execution file:
@@ -109,6 +110,13 @@ Check whether the feature is ready for review or release:
 ```bash
 specspine feature ready add-dark-mode .
 specspine feature ready add-dark-mode . --json
+```
+
+Draft a local GitHub issue from the feature bundle:
+
+```bash
+specspine feature issue add-dark-mode .
+specspine feature issue add-dark-mode . --json
 ```
 
 Advance the feature lifecycle when the bundle moves forward:
@@ -291,6 +299,16 @@ specspine feature ready <slug> [path] [--json]
 Runs a deterministic local readiness gate for a native feature bundle. The gate requires all three peer files, consistent peer-file status, lifecycle status `implemented` or `validated`, empty trace gaps, completed acceptance criteria, completed execution tasks, completed required checks, non-empty test plan content, and a completed `## Release Readiness` checklist in `quality/features/<slug>.md`.
 
 JSON output includes `feature_id`, `ready`, `status`, `checks`, `blocking_checks`, `summary`, `missing_files`, and `gaps`. Text output is a compact reviewer/agent gate with status, readiness, summary counts, and blocking checks. Ready bundles return `0`; not-ready bundles and missing bundles return `1`; invalid slugs return `2`.
+
+```bash
+specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]
+```
+
+Exports a compact feature-level handoff packet for implementation, acceptance, and review agents. It composes existing local evidence from feature status, trace, ready, tasks, and release readiness reports. It does not call GitHub APIs, read tokens, invoke upstream CLIs, use network access, or add third-party dependencies.
+
+JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Summary includes trace total/done/open, ready pass/fail/total, task total/done/open, gap count, and blocking check count. Text output is brief and includes feature/status/ready, counts, sources, next actions, open tasks, blocking checks, and key commands.
+
+Missing bundles return `1` with create-or-restore guidance. Invalid slugs return `2`. Partial bundles return `0` and include missing files, trace gaps, and next actions. `--output` writes the text handoff and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
 
 ```bash
 specspine feature issue <slug> [path] [--json] [--output FILE] [--force]

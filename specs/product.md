@@ -11,6 +11,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Native feature task export from execution checklists.
 - Native feature traceability export across acceptance criteria, tasks, required checks, and test plans.
 - Native feature readiness gate across peer files, lifecycle status, trace gaps, completed checklists, test plan evidence, and release readiness.
+- Native feature handoff packets that compose status, trace, tasks, readiness, release readiness, next actions, and recommended commands.
 - Local GitHub issue draft generation from feature bundles without API calls.
 - Fusion initialization for OpenSpec, Spec Kit, and Superpowers as external adapters.
 - Status, optional status validation summaries, validation, doctor, and adapter inspection commands suitable for CI and coding agents.
@@ -30,6 +31,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Run `specspine status . --json` before work to understand missing artifacts, enabled upstreams, and next recommendations; add `--validate` when a single packet should also show quality-gate summary and failed check ids.
 - Create new requirements with `specspine feature new <slug> . --title "..." --why "..."`, then keep the spec, execution, and quality peer files aligned by `Feature ID`.
 - Move feature bundles through `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` with `specspine feature status <slug> . --set STATUS`.
+- Start implementation, acceptance, and review agent work with `specspine feature handoff <slug> . --json`.
 - Hand execution checklists to implementation agents with `specspine feature tasks <slug> . --json`.
 - Hand a full traceability packet to agents or reviewers with `specspine feature trace <slug> . --json`.
 - Fail or pass a per-feature readiness gate with `specspine feature ready <slug> . --json`.
@@ -44,6 +46,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - `feature tasks <slug> --json` reports stable ordered task records from `execution/features/<slug>.md`.
 - `feature trace <slug> --json` reports sources, missing files, acceptance criteria, tasks, required checks, test plan entries, summary counts, and trace gaps without calling external services.
 - `feature ready <slug> --json` reports stable checks, blocking checks, summary counts, missing files, and gaps, returning non-zero until the feature is implemented or validated and all required evidence is complete.
+- `feature handoff <slug> --json` reports a compact feature packet with status, readiness, sources, gaps, blocking checks, trace sections, release readiness, recommended commands, deterministic next actions, and summary counts without calling external services.
 - Enabled upstream metadata reports OpenSpec, Spec Kit, and Superpowers as enabled when their adapter files are present.
 - Validation passes for complete workspace, fusion artifacts, and native feature bundles with consistent allowed lifecycle status.
 - Fusion config preserves `integration_mode: adapter` and `vendored_upstream_code: false`.

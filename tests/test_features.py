@@ -12,6 +12,7 @@ from specspine.features import (
     FEATURE_STATUSES,
     FeatureBundleExistsError,
     InvalidFeatureSlug,
+    build_feature_handoff_report,
     build_feature_ready_report,
     build_feature_trace_report,
     build_issue_draft,
@@ -1116,6 +1117,285 @@ class FeatureBundleTests(TestCase):
                 ],
             )
 
+    def test_feature_handoff_cli_text_and_json_outputs_ready_bundle(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+
+            text_output = StringIO()
+            with redirect_stdout(text_output):
+                text_returncode = main(
+                    ["feature", "handoff", "add-dark-mode", str(root)]
+                )
+
+            text = text_output.getvalue()
+            self.assertEqual(text_returncode, 0)
+            self.assertIn("Feature handoff: add-dark-mode", text)
+            self.assertIn("Status: validated", text)
+            self.assertIn("Ready: yes", text)
+            self.assertIn(
+                "Counts: trace=6/6/0 ready=9/0/9 tasks=2/2/0 gaps=0 blocking=0",
+                text,
+            )
+            self.assertIn("Next actions:", text)
+            self.assertIn("Review, merge, or archive", text)
+            self.assertIn("Open tasks:\n- None.", text)
+            self.assertIn("Blocking checks:\n- None.", text)
+            self.assertIn("specspine feature handoff add-dark-mode . --json", text)
+
+            json_output = StringIO()
+            with redirect_stdout(json_output):
+                json_returncode = main(
+                    ["feature", "handoff", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(json_output.getvalue())
+            self.assertEqual(json_returncode, 0)
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertEqual(payload["status"], "validated")
+            self.assertTrue(payload["ready"])
+            self.assertEqual(payload["missing_files"], [])
+            self.assertEqual(payload["gaps"], [])
+            self.assertEqual(payload["blocking_checks"], [])
+            self.assertEqual(payload["summary"]["trace"]["total"], 6)
+            self.assertEqual(payload["summary"]["trace"]["done"], 6)
+            self.assertEqual(payload["summary"]["trace"]["open"], 0)
+            self.assertEqual(payload["summary"]["ready"], {"fail": 0, "pass": 9, "total": 9})
+            self.assertEqual(payload["summary"]["tasks"], {"done": 2, "open": 0, "total": 2})
+            self.assertEqual(payload["summary"]["gaps"], {"total": 0})
+            self.assertEqual(payload["summary"]["blocking_checks"], {"total": 0})
+            self.assertEqual(payload["acceptance_criteria"][0]["id"], "AC001")
+            self.assertEqual(payload["tasks"][0]["id"], "T001")
+            self.assertEqual(payload["quality_checks"][0]["id"], "Q001")
+            self.assertEqual(payload["test_plan"][0]["id"], "TP001")
+            self.assertEqual(payload["release_readiness"][0]["id"], "RR001")
+            self.assertEqual(
+                payload["recommended_commands"],
+                [
+                    "specspine feature handoff add-dark-mode . --json",
+                    "specspine feature tasks add-dark-mode . --json",
+                    "specspine feature trace add-dark-mode . --json",
+                    "specspine feature ready add-dark-mode . --json",
+                    "specspine validate . --features",
+                ],
+            )
+
+    def test_feature_handoff_cli_reports_partial_bundle_actions(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root, status="implemented")
+            (root / "quality" / "features" / "add-dark-mode.md").unlink()
+            execution = root / "execution" / "features" / "add-dark-mode.md"
+            execution.write_text(
+                execution.read_text(encoding="utf-8").replace(
+                    "- [x] Add theme tests.",
+                    "- [ ] Add theme tests.",
+                ),
+                encoding="utf-8",
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "handoff", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertFalse(payload["ready"])
+            self.assertEqual(
+                payload["missing_files"],
+                ["quality/features/add-dark-mode.md"],
+            )
+            self.assertEqual(payload["summary"]["tasks"], {"done": 1, "open": 1, "total": 2})
+            self.assertEqual(payload["summary"]["gaps"], {"total": 3})
+            self.assertEqual(payload["summary"]["blocking_checks"]["total"], 6)
+            self.assertEqual(
+                payload["next_actions"],
+                [
+                    "Add missing peer file(s): quality/features/add-dark-mode.md",
+                    "Fill missing trace section(s): missing_required_checks, missing_test_plan",
+                    "Complete open task(s): T002",
+                    (
+                        "Resolve blocking readiness check(s): feature.bundle_files, "
+                        "feature.trace_gaps, feature.tasks, "
+                        "feature.required_checks, feature.test_plan, "
+                        "feature.release_readiness"
+                    ),
+                ],
+            )
+
+    def test_feature_handoff_cli_text_reports_open_tasks_and_blocking_checks(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root, status="implemented")
+            execution = root / "execution" / "features" / "add-dark-mode.md"
+            execution.write_text(
+                execution.read_text(encoding="utf-8").replace(
+                    "- [x] Add theme tests.",
+                    "- [ ] Add theme tests.",
+                ),
+                encoding="utf-8",
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["feature", "handoff", "add-dark-mode", str(root)])
+
+            text = output.getvalue()
+            self.assertEqual(returncode, 0)
+            self.assertIn("Ready: no", text)
+            self.assertIn("Open tasks:\n- T002 execution/features/add-dark-mode.md:9 Add theme tests.", text)
+            self.assertIn("Blocking checks:\n- feature.tasks:", text)
+            self.assertIn("Resolve blocking readiness check(s): feature.tasks", text)
+
+    def test_feature_handoff_cli_missing_bundle_returns_packet_and_nonzero(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    ["feature", "handoff", "add-dark-mode", str(root), "--json"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 1)
+            self.assertEqual(payload["status"], "unknown")
+            self.assertFalse(payload["ready"])
+            self.assertEqual(
+                payload["missing_files"],
+                [
+                    "specs/features/add-dark-mode.md",
+                    "execution/features/add-dark-mode.md",
+                    "quality/features/add-dark-mode.md",
+                ],
+            )
+            self.assertEqual(payload["summary"]["trace"]["total"], 0)
+            self.assertEqual(payload["summary"]["tasks"], {"done": 0, "open": 0, "total": 0})
+            self.assertEqual(
+                payload["next_actions"],
+                [
+                    (
+                        "Create or restore the native feature bundle: "
+                        "specspine feature new add-dark-mode . --title \"...\" --why \"...\""
+                    )
+                ],
+            )
+
+    def test_feature_handoff_cli_invalid_slug_returns_two(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(["feature", "handoff", "BadSlug", str(root)])
+
+            self.assertEqual(returncode, 2)
+            self.assertIn("Invalid feature slug", stderr.getvalue())
+
+    def test_feature_handoff_cli_output_file_overwrite_force_and_json_output(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            output_file = root / "handoff.txt"
+            output_file.write_text("existing\n", encoding="utf-8")
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                returncode = main(
+                    [
+                        "feature",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(output_file),
+                    ]
+                )
+
+            self.assertEqual(returncode, 1)
+            self.assertIn("Output file already exists", stderr.getvalue())
+            self.assertEqual(output_file.read_text(encoding="utf-8"), "existing\n")
+
+            stdout = StringIO()
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "feature",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--json",
+                        "--output",
+                        str(output_file),
+                        "--force",
+                    ]
+                )
+
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["feature_id"], "add-dark-mode")
+            self.assertIn("Feature handoff: add-dark-mode", output_file.read_text(encoding="utf-8"))
+            self.assertNotIn("Wrote feature handoff packet", stdout.getvalue())
+
+    def test_feature_handoff_cli_text_output_writes_packet(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            output_file = root / "nested" / "handoff.txt"
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                returncode = main(
+                    [
+                        "feature",
+                        "handoff",
+                        "add-dark-mode",
+                        str(root),
+                        "--output",
+                        str(output_file),
+                    ]
+                )
+
+            self.assertEqual(returncode, 0)
+            self.assertIn("Wrote feature handoff packet", stdout.getvalue())
+            self.assertIn(
+                "Feature handoff: add-dark-mode",
+                output_file.read_text(encoding="utf-8"),
+            )
+
+    def test_feature_handoff_does_not_require_gh_or_github_tokens(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_ready_feature_bundle(root)
+            output = StringIO()
+
+            with patch.dict(
+                os.environ,
+                {
+                    "GH_TOKEN": "secret-gh-token",
+                    "GITHUB_TOKEN": "secret-github-token",
+                    "PATH": "",
+                },
+            ):
+                with patch("subprocess.run", side_effect=AssertionError("gh called")):
+                    with redirect_stdout(output):
+                        returncode = main(
+                            ["feature", "handoff", "add-dark-mode", str(root), "--json"]
+                        )
+
+            self.assertEqual(returncode, 0)
+            self.assertNotIn("secret-gh-token", output.getvalue())
+            self.assertNotIn("secret-github-token", output.getvalue())
+
     def test_feature_ready_cli_reports_non_releasable_status_only(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1692,6 +1972,21 @@ class FeatureBundleTests(TestCase):
         self.assertEqual(report.missing_files, ())
         self.assertEqual(report.gaps, ())
         self.assertEqual(report.summary["fail"], 0)
+
+    def test_dogfood_feature_handoff_packet_is_validated_and_ready(self) -> None:
+        report = build_feature_handoff_report(REPO_ROOT, "feature-handoff-packet")
+
+        self.assertTrue(report.ready)
+        self.assertEqual(report.status, "validated")
+        self.assertEqual(report.missing_files, ())
+        self.assertEqual(report.gaps, ())
+        self.assertGreater(report.summary["trace"]["total"], 0)
+        self.assertGreater(report.summary["tasks"]["total"], 0)
+        self.assertEqual(report.summary["blocking_checks"], {"total": 0})
+        self.assertIn(
+            "Review, merge, or archive the ready feature bundle.",
+            report.next_actions,
+        )
 
     def test_validate_cli_can_check_feature_bundles(self) -> None:
         with TemporaryDirectory() as tmp:

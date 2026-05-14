@@ -19,12 +19,15 @@ from .features import (
     FeatureBundleNotFoundError,
     InvalidFeatureStatus,
     InvalidFeatureSlug,
+    build_feature_handoff_report,
     build_feature_ready_report,
     build_feature_trace_report,
     build_feature_tasks_report,
     build_issue_draft,
     create_feature_bundle,
     get_feature_status,
+    render_feature_handoff_json,
+    render_feature_handoff_text,
     render_feature_ready_json,
     render_feature_ready_text,
     render_feature_trace_json,
@@ -180,6 +183,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the text trace handoff to a file instead of printing it",
     )
     feature_trace_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite an existing output file",
+    )
+
+    feature_handoff_parser = feature_subcommands.add_parser(
+        "handoff",
+        help="export a compact agent handoff packet from a native feature bundle",
+    )
+    feature_handoff_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    feature_handoff_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    feature_handoff_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    feature_handoff_parser.add_argument(
+        "--output",
+        help="write the text handoff packet to a file instead of printing it",
+    )
+    feature_handoff_parser.add_argument(
         "--force",
         action="store_true",
         help="overwrite an existing output file",
@@ -496,6 +520,43 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(text_body, end="")
             return 0
+
+        if args.feature_command == "handoff":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                report = build_feature_handoff_report(root, args.slug)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not read feature handoff: {error}", file=sys.stderr)
+                return 1
+
+            text_body = render_feature_handoff_text(report)
+            if args.output:
+                output_path = Path(args.output).expanduser().resolve()
+                if output_path.exists() and not args.force:
+                    print(
+                        f"Output file already exists: {output_path}. "
+                        "Use --force to overwrite it.",
+                        file=sys.stderr,
+                    )
+                    return 1
+
+                try:
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(text_body, encoding="utf-8")
+                except OSError as error:
+                    print(f"Could not write feature handoff: {error}", file=sys.stderr)
+                    return 1
+
+            if args.json:
+                print(render_feature_handoff_json(report), end="")
+            elif args.output:
+                print(f"Wrote feature handoff packet to {output_path}")
+            else:
+                print(text_body, end="")
+            return 0 if report.has_native_files else 1
 
         if args.feature_command == "ready":
             root = Path(args.path).expanduser().resolve()

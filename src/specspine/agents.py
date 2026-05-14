@@ -31,7 +31,10 @@ AGENTS_TEMPLATE = """
     specspine validate . --features
     specspine feature new <slug> . --title "..." --why "..."
     specspine feature status <slug> . --json
+    specspine feature handoff <slug> . --json
     specspine feature tasks <slug> . --json
+    specspine feature trace <slug> . --json
+    specspine feature ready <slug> . --json
     specspine feature issue <slug> . --json
     PYTHONPATH=src python3 -m unittest discover -s tests
     ```
@@ -41,7 +44,8 @@ AGENTS_TEMPLATE = """
     - Read `specspine status . --json --validate` before planning or editing.
     - For new requirements, create a feature bundle with `specspine feature new`.
     - Keep feature peer files on a consistent lifecycle status with `specspine feature status`.
-    - Use `specspine feature tasks <slug> . --json` to hand execution checklists to implementation agents.
+    - Start feature implementation, review, and acceptance handoffs with `specspine feature handoff <slug> . --json`.
+    - Use `specspine feature tasks`, `specspine feature trace`, and `specspine feature ready` for focused task, trace, and gate views.
     - Run `specspine validate .` before and after edits; add `--features` when feature bundles are involved.
     - Keep OpenSpec, Spec Kit, and Superpowers as external adapters. Do not vendor upstream code.
     - By default, do not read or write GitHub tokens and do not call the GitHub API.

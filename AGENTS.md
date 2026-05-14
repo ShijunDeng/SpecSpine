@@ -15,8 +15,10 @@ For new user-facing requirements, create a native bundle first:
 ```bash
 PYTHONPATH=src python3 -m specspine feature new <slug> . --title "..." --why "..."
 PYTHONPATH=src python3 -m specspine feature status <slug> . --json
+PYTHONPATH=src python3 -m specspine feature handoff <slug> . --json
 PYTHONPATH=src python3 -m specspine feature tasks <slug> . --json
-PYTHONPATH=src python3 -m specspine feature issue <slug> . --json
+PYTHONPATH=src python3 -m specspine feature trace <slug> . --json
+PYTHONPATH=src python3 -m specspine feature ready <slug> . --json
 ```
 
 ## Rules
@@ -24,7 +26,7 @@ PYTHONPATH=src python3 -m specspine feature issue <slug> . --json
 - Start by reading `specspine status . --json --validate`; finish with `specspine validate . --fusion --features` and the unit test command above.
 - Keep feature specs, implementation tasks, and quality checks traceable by `Feature ID`.
 - Keep native feature peer files on a consistent lifecycle status with `specspine feature status`.
-- Use `specspine feature tasks <slug> . --json` when handing an execution checklist to an implementation agent.
+- Start implementation, acceptance, and review handoffs with `specspine feature handoff <slug> . --json`; use `feature tasks`, `feature trace`, and `feature ready` for focused follow-up views.
 - OpenSpec, Spec Kit, and Superpowers are external adapters only. Do not vendor upstream source code.
 - Do not read or write GitHub tokens, and do not call GitHub APIs by default.
 - Use `--run-upstream` only when the user explicitly asks to invoke upstream tools.

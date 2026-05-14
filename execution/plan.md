@@ -23,6 +23,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 
 - Keep this repository complete under `specspine status . --json`.
 - Prefer `specspine status . --json --validate` when an agent needs both context and quality-gate summary in one packet.
+- Use `specspine feature handoff <slug> . --json` as the default feature-level packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
 - Use `specspine feature trace <slug> . --json` when an agent or reviewer needs acceptance criteria, tasks, checks, test plan, and gaps in one packet.
 - Use `specspine feature ready <slug> . --json` when a reviewer, agent, or CI step needs a failing per-feature release gate.

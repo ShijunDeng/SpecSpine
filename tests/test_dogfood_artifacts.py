@@ -24,6 +24,7 @@ class DogfoodArtifactsTests(TestCase):
         for slug in (
             "feature-status-lifecycle",
             "feature-readiness-gate",
+            "feature-handoff-packet",
             "feature-task-export",
             "feature-traceability-export",
             "status-validation-summary",
@@ -50,6 +51,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("fusion.vendored_upstream_code", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-status-lifecycle", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-readiness-gate", "pass"), checks)
+        self.assertIn(("feature.status_consistency:feature-handoff-packet", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-task-export", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-traceability-export", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-validation-summary", "pass"), checks)
@@ -64,6 +66,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine validate . --fusion --features",
             "PYTHONPATH=src python3 -m unittest discover -s tests",
             "PYTHONPATH=src python3 -m specspine feature status <slug> . --json",
+            "PYTHONPATH=src python3 -m specspine feature handoff <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature tasks <slug> . --json",
             "Keep feature specs, implementation tasks, and quality checks traceable",
             "Do not vendor upstream source code.",
@@ -149,6 +152,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/feature-readiness-gate.md",
             "execution/features/feature-readiness-gate.md",
             "quality/features/feature-readiness-gate.md",
+            "specs/features/feature-handoff-packet.md",
+            "execution/features/feature-handoff-packet.md",
+            "quality/features/feature-handoff-packet.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
