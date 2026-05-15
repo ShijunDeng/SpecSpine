@@ -251,6 +251,14 @@ def feature_summary_slugs(payload: dict[str, object]) -> list[str]:
     return [str(summary["slug"]) for summary in summaries]
 
 
+def readiness_feature_ids(payload: dict[str, object]) -> list[str]:
+    summary = payload["readiness_summary"]
+    assert isinstance(summary, dict)
+    features = summary["features"]
+    assert isinstance(features, list)
+    return [str(feature["feature_id"]) for feature in features]
+
+
 class StatusTests(TestCase):
     def test_status_for_plain_workspace_does_not_probe_adapters(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -316,6 +324,7 @@ class StatusTests(TestCase):
             self.assertNotIn("adapters", payload)
             self.assertNotIn("validation", payload)
             self.assertNotIn("feature_summaries", payload)
+            self.assertNotIn("readiness_summary", payload)
 
     def test_status_json_cli_can_include_feature_summaries(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -379,6 +388,249 @@ class StatusTests(TestCase):
                 "specspine feature handoff add-dark-mode . --json",
                 summary["recommended_commands"],
             )
+
+    def test_status_json_cli_can_include_readiness_summary(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(root, slug="ready-feature")
+            write_status_feature_bundle(root, slug="planned-feature", status="planned")
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["status", str(root), "--json", "--readiness-summary"])
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertIn("readiness_summary", payload)
+            summary = payload["readiness_summary"]
+            self.assertEqual(summary["features_total"], 2)
+            self.assertEqual(summary["ready"], 1)
+            self.assertEqual(summary["not_ready"], 1)
+            self.assertEqual(summary["coverage_required_total"], 0)
+            self.assertEqual(readiness_feature_ids(payload), ["planned-feature", "ready-feature"])
+            planned = summary["features"][0]
+            self.assertEqual(
+                set(planned),
+                {
+                    "blocking_check_ids",
+                    "blocking_checks",
+                    "coverage_required",
+                    "feature_id",
+                    "gap_ids",
+                    "gaps",
+                    "missing_files",
+                    "next_actions",
+                    "policy_coverage_required",
+                    "ready",
+                    "recommended_commands",
+                    "status",
+                },
+            )
+            self.assertEqual(planned["feature_id"], "planned-feature")
+            self.assertFalse(planned["ready"])
+            self.assertFalse(planned["coverage_required"])
+            self.assertFalse(planned["policy_coverage_required"])
+            self.assertIn("feature.lifecycle_status", planned["blocking_check_ids"])
+            self.assertIn(
+                "specspine feature ready planned-feature . --json",
+                summary["recommended_commands"],
+            )
+            self.assertIn(
+                "specspine feature ready planned-feature . --json",
+                planned["recommended_commands"],
+            )
+
+    def test_status_json_readiness_summary_reports_partial_bundle_details(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(
+                root,
+                slug="partial-feature",
+                include_quality=False,
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["status", str(root), "--json", "--readiness-summary"])
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            summary = payload["readiness_summary"]
+            self.assertEqual(summary["features_total"], 1)
+            self.assertEqual(summary["not_ready"], 1)
+            record = summary["features"][0]
+            self.assertEqual(record["feature_id"], "partial-feature")
+            self.assertFalse(record["ready"])
+            self.assertIn("quality/features/partial-feature.md", record["missing_files"])
+            self.assertGreater(record["gaps"], 0)
+            self.assertGreater(record["blocking_checks"], 0)
+            self.assertIn("feature.bundle_files", record["blocking_check_ids"])
+            self.assertTrue(record["gap_ids"])
+            self.assertIn("missing_file", record["gap_ids"])
+            self.assertTrue(record["next_actions"])
+            self.assertIn(
+                "Add missing peer file(s): quality/features/partial-feature.md",
+                record["next_actions"],
+            )
+            self.assertEqual(
+                record["recommended_commands"],
+                ["specspine feature ready partial-feature . --json"],
+            )
+
+    def test_status_json_readiness_summary_can_require_coverage(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(
+                root,
+                slug="covered-feature",
+                include_coverage=True,
+            )
+            write_status_feature_bundle(root, slug="missing-coverage")
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--readiness-summary",
+                        "--readiness-require-coverage",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            summary = payload["readiness_summary"]
+            self.assertEqual(summary["features_total"], 2)
+            self.assertEqual(summary["ready"], 1)
+            self.assertEqual(summary["not_ready"], 1)
+            self.assertEqual(summary["coverage_required_total"], 2)
+            records = {feature["feature_id"]: feature for feature in summary["features"]}
+            self.assertTrue(records["covered-feature"]["coverage_required"])
+            self.assertTrue(records["missing-coverage"]["coverage_required"])
+            self.assertFalse(records["missing-coverage"]["ready"])
+            self.assertIn(
+                "feature.test_coverage",
+                records["missing-coverage"]["blocking_check_ids"],
+            )
+            self.assertIn(
+                "specspine feature ready missing-coverage . --json --require-coverage",
+                records["missing-coverage"]["recommended_commands"],
+            )
+
+    def test_status_json_readiness_summary_policy_adds_policy_fields(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(root, slug="covered-feature", include_coverage=True)
+            write_status_feature_bundle(root, slug="policy-feature")
+            write_status_policy(
+                root,
+                "\n".join(
+                    [
+                        "readiness:",
+                        "  require_coverage:",
+                        "    enabled: true",
+                        "    feature_ids:",
+                        "      - policy-feature",
+                    ]
+                )
+                + "\n",
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--readiness-summary",
+                        "--readiness-policy",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            summary = payload["readiness_summary"]
+            self.assertTrue(summary["policy_applied"])
+            self.assertFalse(summary["policy_source_missing"])
+            self.assertEqual(summary["coverage_required_total"], 1)
+            self.assertEqual(summary["policy_coverage_required_total"], 1)
+            records = {feature["feature_id"]: feature for feature in summary["features"]}
+            self.assertFalse(records["covered-feature"]["coverage_required"])
+            self.assertFalse(records["covered-feature"]["policy_coverage_required"])
+            self.assertTrue(records["policy-feature"]["coverage_required"])
+            self.assertTrue(records["policy-feature"]["policy_coverage_required"])
+            self.assertTrue(records["policy-feature"]["policy_applied"])
+            self.assertIn(".specspine/policy.yaml", records["policy-feature"]["policy_source"])
+            self.assertIn(
+                "specspine feature ready policy-feature . --json --policy",
+                summary["recommended_commands"],
+            )
+
+    def test_status_json_readiness_require_coverage_overrides_policy_commands(
+        self,
+    ) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(root, slug="covered-feature", include_coverage=True)
+            write_status_feature_bundle(root, slug="policy-feature")
+            write_status_feature_bundle(root, slug="nonpolicy-feature")
+            write_status_policy(
+                root,
+                "\n".join(
+                    [
+                        "readiness:",
+                        "  require_coverage:",
+                        "    enabled: true",
+                        "    feature_ids:",
+                        "      - policy-feature",
+                    ]
+                )
+                + "\n",
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--readiness-summary",
+                        "--readiness-policy",
+                        "--readiness-require-coverage",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            summary = payload["readiness_summary"]
+            self.assertTrue(summary["policy_applied"])
+            self.assertEqual(summary["coverage_required_total"], 3)
+            self.assertEqual(summary["policy_coverage_required_total"], 1)
+            records = {feature["feature_id"]: feature for feature in summary["features"]}
+            self.assertTrue(all(record["coverage_required"] for record in records.values()))
+            self.assertFalse(records["covered-feature"]["policy_coverage_required"])
+            self.assertTrue(records["policy-feature"]["policy_coverage_required"])
+            self.assertFalse(records["nonpolicy-feature"]["policy_coverage_required"])
+            self.assertEqual(
+                records["policy-feature"]["recommended_commands"],
+                ["specspine feature ready policy-feature . --json --require-coverage"],
+            )
+            self.assertEqual(
+                records["nonpolicy-feature"]["recommended_commands"],
+                ["specspine feature ready nonpolicy-feature . --json --require-coverage"],
+            )
+            for command in summary["recommended_commands"]:
+                self.assertIn("--require-coverage", command)
+                self.assertNotIn("--policy", command)
 
     def test_status_json_feature_summaries_can_require_coverage(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -714,6 +966,51 @@ class StatusTests(TestCase):
             self.assertNotIn("coverage=", text)
             self.assertNotIn("feature.test_coverage", text)
             self.assertIn("next: Review, merge, or archive the ready feature bundle.", text)
+
+    def test_status_text_readiness_summary_is_opt_in(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(root, slug="ready-feature")
+            write_status_feature_bundle(root, slug="planned-feature", status="planned")
+            default_output = StringIO()
+            summary_output = StringIO()
+
+            with redirect_stdout(default_output):
+                default_returncode = main(["status", str(root)])
+            with redirect_stdout(summary_output):
+                summary_returncode = main(["status", str(root), "--readiness-summary"])
+
+            self.assertEqual(default_returncode, 0)
+            self.assertEqual(summary_returncode, 0)
+            self.assertNotIn("Readiness summary:", default_output.getvalue())
+            self.assertNotIn("Not-ready features:", default_output.getvalue())
+            self.assertNotIn("readiness_summary", default_output.getvalue())
+            text = summary_output.getvalue()
+            self.assertIn("Readiness summary:", text)
+            self.assertIn("features=2 ready=1 not_ready=1", text)
+            self.assertIn("Not-ready features:", text)
+            self.assertIn("- planned-feature status=planned", text)
+            self.assertIn("specspine feature ready planned-feature . --json", text)
+
+    def test_status_text_readiness_summary_omits_not_ready_section_when_all_ready(
+        self,
+    ) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(root, slug="ready-feature")
+            output = StringIO()
+
+            with redirect_stdout(output):
+                returncode = main(["status", str(root), "--readiness-summary"])
+
+            text = output.getvalue()
+            self.assertEqual(returncode, 0)
+            self.assertIn("Readiness summary:", text)
+            self.assertIn("features=1 ready=1 not_ready=0", text)
+            self.assertNotIn("Not-ready features:", text)
+            self.assertNotIn("specspine feature ready ready-feature . --json", text)
 
     def test_status_text_feature_summaries_show_coverage_requirement(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1698,6 +1995,98 @@ class StatusTests(TestCase):
             self.assertNotIn("secret-github-pat", output.getvalue())
             self.assertNotIn("secret-github-token", output.getvalue())
 
+    def test_status_readiness_summary_does_not_call_gh_network_or_read_tokens(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(root, slug="covered-feature", include_coverage=True)
+            write_status_feature_bundle(root, slug="missing-coverage")
+            output = StringIO()
+            token_names = {
+                "GH_TOKEN",
+                "GITHUB_API_TOKEN",
+                "GITHUB_PAT",
+                "GITHUB_TOKEN",
+            }
+            environ_type = os.environ.__class__
+            original_get = environ_type.get
+            original_getitem = environ_type.__getitem__
+            original_contains = environ_type.__contains__
+
+            def guarded_get(environ, key, default=None):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_get(environ, key, default)
+
+            def guarded_getitem(environ, key):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_getitem(environ, key)
+
+            def guarded_contains(environ, key):
+                if key in token_names:
+                    raise AssertionError(f"token read: {key}")
+                return original_contains(environ, key)
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "GH_TOKEN": "secret-gh-token",
+                    "GITHUB_API_TOKEN": "secret-github-api-token",
+                    "GITHUB_PAT": "secret-github-pat",
+                    "GITHUB_TOKEN": "secret-github-token",
+                    "PATH": "",
+                },
+            ):
+                with (
+                    patch.object(environ_type, "get", guarded_get),
+                    patch.object(environ_type, "__getitem__", guarded_getitem),
+                    patch.object(environ_type, "__contains__", guarded_contains),
+                    patch(
+                        "subprocess.run",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_run,
+                    patch(
+                        "subprocess.Popen",
+                        side_effect=AssertionError("subprocess called"),
+                    ) as subprocess_popen,
+                    patch(
+                        "urllib.request.urlopen",
+                        side_effect=AssertionError("network called"),
+                    ) as urlopen,
+                    patch(
+                        "socket.create_connection",
+                        side_effect=AssertionError("network called"),
+                    ) as create_connection,
+                    patch(
+                        "socket.socket.connect",
+                        side_effect=AssertionError("network called"),
+                    ) as socket_connect,
+                    redirect_stdout(output),
+                ):
+                    returncode = main(
+                        [
+                            "status",
+                            str(root),
+                            "--json",
+                            "--readiness-summary",
+                            "--readiness-require-coverage",
+                        ]
+                    )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertEqual(payload["readiness_summary"]["coverage_required_total"], 2)
+            subprocess_run.assert_not_called()
+            subprocess_popen.assert_not_called()
+            urlopen.assert_not_called()
+            create_connection.assert_not_called()
+            socket_connect.assert_not_called()
+            self.assertNotIn("secret-gh-token", output.getvalue())
+            self.assertNotIn("secret-github-api-token", output.getvalue())
+            self.assertNotIn("secret-github-pat", output.getvalue())
+            self.assertNotIn("secret-github-token", output.getvalue())
+
     def test_status_feature_summary_options_require_feature_summaries(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1731,6 +2120,26 @@ class StatusTests(TestCase):
                     self.assertIn("--feature-project", stderr.getvalue())
                     self.assertIn("--feature-effort", stderr.getvalue())
                     self.assertIn("--feature-require-coverage", stderr.getvalue())
+
+    def test_status_readiness_summary_options_require_readiness_summary(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            cases = (
+                ("--readiness-require-coverage",),
+                ("--readiness-policy",),
+            )
+
+            for options in cases:
+                with self.subTest(options=options):
+                    stdout = StringIO()
+                    stderr = StringIO()
+                    with redirect_stdout(stdout), redirect_stderr(stderr):
+                        returncode = main(["status", str(root), *options])
+
+                    self.assertEqual(returncode, 2)
+                    self.assertEqual(stdout.getvalue(), "")
+                    self.assertIn("requires --readiness-summary", stderr.getvalue())
 
     def test_status_feature_summary_invalid_options_return_two(self) -> None:
         with TemporaryDirectory() as tmp:

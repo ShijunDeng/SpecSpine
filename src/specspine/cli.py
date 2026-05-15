@@ -436,6 +436,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="include compact per-feature progress summaries and next actions",
     )
     status_parser.add_argument(
+        "--readiness-summary",
+        action="store_true",
+        help="include a workspace rollup of native feature readiness gates",
+    )
+    status_parser.add_argument(
+        "--readiness-require-coverage",
+        action="store_true",
+        help="require completed local Test Coverage links when computing readiness summary",
+    )
+    status_parser.add_argument(
+        "--readiness-policy",
+        action="store_true",
+        help="apply workspace readiness policy when computing readiness summary",
+    )
+    status_parser.add_argument(
         "--feature-require-coverage",
         action="store_true",
         help="require completed local Test Coverage links when computing feature summary readiness",
@@ -1176,6 +1191,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.validation_warnings and not args.validate:
             print("--validation-warnings requires --validate.", file=sys.stderr)
             return 2
+        if args.readiness_policy and not args.readiness_summary:
+            print("--readiness-policy requires --readiness-summary.", file=sys.stderr)
+            return 2
+        if args.readiness_require_coverage and not args.readiness_summary:
+            print("--readiness-require-coverage requires --readiness-summary.", file=sys.stderr)
+            return 2
 
         feature_summary_options_requested = bool(
             args.feature_status
@@ -1250,6 +1271,7 @@ def main(argv: list[str] | None = None) -> int:
         status_kwargs = {
             "include_adapters": args.adapters,
             "include_feature_summaries": args.feature_summaries,
+            "include_readiness_summary": args.readiness_summary,
             "feature_summary_statuses": feature_summary_statuses,
             "feature_summary_ready": feature_summary_ready,
             "feature_summary_priorities": feature_summary_priorities,
@@ -1261,6 +1283,8 @@ def main(argv: list[str] | None = None) -> int:
             "feature_summary_sort": feature_summary_sort,
             "feature_summary_sort_desc": args.feature_sort_desc,
             "feature_summary_require_coverage": args.feature_require_coverage,
+            "readiness_require_coverage": args.readiness_require_coverage,
+            "readiness_use_policy": args.readiness_policy,
         }
         if args.feature_policy:
             status_kwargs["feature_summary_use_policy"] = True

@@ -46,6 +46,8 @@ class AgentsTests(TestCase):
             "specspine status . --json --validate --feature-summaries",
             "specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-sort slug",
             "specspine status . --json --validate --feature-summaries --feature-require-coverage --feature-ready yes --feature-sort priority",
+            "specspine status . --json --readiness-summary",
+            "specspine status . --json --readiness-summary --readiness-policy",
             "specspine gates . --json",
             "specspine adapters lifecycle . --json",
             "specspine validate .",

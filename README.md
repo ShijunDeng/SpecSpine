@@ -40,7 +40,7 @@ This repository is an early project skeleton. It includes:
 - A fusion initializer: `specspine fuse`.
 - A local adapter lifecycle mapping exporter: `specspine adapters lifecycle`.
 - A feature-specific adapter handoff exporter: `specspine adapters handoff`.
-- A compact workspace status packet with optional validation, opt-in validation warning details, and filterable feature summaries: `specspine status --json --validate --validation-warnings --feature-summaries`.
+- A compact workspace status packet with optional validation, opt-in validation warning details, filterable feature summaries, and opt-in readiness rollups: `specspine status --json --validate --validation-warnings --feature-summaries --readiness-summary`.
 - An executable validation layer: `specspine validate --json`.
 - Adapter metadata for OpenSpec, Spec Kit, and Superpowers.
 - Default templates for intent, product, architecture, feature workflow bundles, quality, and execution.
@@ -197,6 +197,8 @@ specspine status . --json --validate --validation-warnings
 specspine status . --json --validate --feature-summaries --feature-status validated --feature-ready yes --feature-priority high --feature-sort priority
 specspine status . --json --feature-summaries --feature-project "Native feature bundles" --feature-sort effort
 specspine status . --json --feature-summaries --feature-policy --feature-ready yes
+specspine status . --json --readiness-summary
+specspine status . --json --readiness-summary --readiness-policy
 ```
 
 Validate workspace and fusion contracts for CI or agents:
@@ -318,7 +320,7 @@ Initializes the SpecSpine workspace structure.
 specspine agents init [path] [--force]
 ```
 
-Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
+Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, add `--readiness-summary` when workspace ready/not-ready counts are needed, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
 
 ```bash
 specspine doctor [path]
@@ -439,7 +441,7 @@ Text output is reviewable Markdown with Summary, Metadata, Notes, Sources, Missi
 Partial bundles return `0` with missing files and blockers recorded. If no native feature files exist for the slug, the command returns `1`; invalid slugs return `2`. `--output` writes the text plan and refuses to overwrite an existing file unless `--force` is passed. `--output-dir` refuses to overwrite files this command would write unless `--force` is passed, and never deletes unknown files in the directory. With `--json --output` or `--json --output-dir`, stdout remains JSON while files are written.
 
 ```bash
-specspine status [path] [--json] [--adapters] [--validate] [--validation-warnings] [--feature-summaries] [--feature-require-coverage] [--feature-status STATUS] [--feature-ready READY] [--feature-priority VALUE] [--feature-owner VALUE] [--feature-milestone VALUE] [--feature-target-release VALUE] [--feature-project VALUE] [--feature-effort VALUE] [--feature-sort KEY] [--feature-sort-desc]
+specspine status [path] [--json] [--adapters] [--validate] [--validation-warnings] [--feature-summaries] [--feature-require-coverage] [--feature-status STATUS] [--feature-ready READY] [--feature-priority VALUE] [--feature-owner VALUE] [--feature-milestone VALUE] [--feature-target-release VALUE] [--feature-project VALUE] [--feature-effort VALUE] [--feature-sort KEY] [--feature-sort-desc] [--readiness-summary] [--readiness-require-coverage] [--readiness-policy]
 ```
 
 Summarizes workspace completeness, fusion completeness, core artifact status, native feature files, feature lifecycle status, enabled upstreams, and recommended next actions. `--json` emits a stable compact context packet for agents and scripts. `--adapters` also checks external OpenSpec, Spec Kit, and Superpowers availability.
@@ -451,6 +453,10 @@ Summarizes workspace completeness, fusion completeness, core artifact status, na
 `--feature-summaries` appends an optional `feature_summaries` list to JSON status and a short Feature summaries section to text status. Each entry is derived from local native feature bundle discovery, spec-file metadata, and the existing feature handoff report, with `feature_id`, `slug`, `status`, `priority`, `owner`, `milestone`, `target_release`, `project`, `effort`, `complete`, `ready`, `missing_files`, `tasks_summary`, `ready_summary`, gap count, blocking check count, deterministic `next_actions`, and `recommended_commands`. Missing or unsupported priority values display as `unknown`; missing or blank owners, milestones, target releases, and projects display as `unassigned`; missing or blank effort displays as `unknown`. The flag is not enabled by default because startup status should stay small; use it when an agent or maintainer needs to choose or compare multiple native features before opening a focused `feature handoff` packet.
 
 Add `--feature-require-coverage` when summary readiness must match `specspine feature ready --require-coverage`. In that mode each summary's `ready`, `ready_summary`, `blocking_checks`, and `next_actions` include the local Test Coverage gate; JSON summaries also include `coverage_required: true`, and text rows include `coverage=yes`. Default summaries omit that field and keep the existing readiness behavior.
+
+`--readiness-summary` appends an optional top-level `readiness_summary` object to JSON status and a short Readiness summary section to text status. It reuses `build_feature_ready_report` for each native feature and reports `features_total`, `ready`, `not_ready`, `blocking_checks_total`, `gaps_total`, `coverage_required_total`, compact per-feature records, and recommended focused commands such as `specspine feature ready <slug> . --json` for not-ready features. Per-feature records include `feature_id`, `status`, `ready`, `coverage_required`, `policy_coverage_required`, blocker and gap counts, missing files, next actions, and recommended commands. Default status output omits this rollup.
+
+`--readiness-require-coverage` is valid only with `--readiness-summary` and makes every feature use the same coverage-required gate as `feature ready --require-coverage`. `--readiness-policy` is also valid only with `--readiness-summary`; it loads `.specspine/policy.yaml`, marks policy-selected feature records, and reports policy coverage counts. When both flags are present, explicit coverage-required mode overrides policy selection by requiring coverage for every feature. These rollup options are local metadata checks only: status does not run tests, subprocesses, network calls, GitHub operations, upstream CLIs, or token reads.
 
 Feature summary filters and sorting are local and deterministic. `--feature-status STATUS` can be repeated and accepts `proposed`, `planned`, `in-progress`, `implemented`, `validated`, `archived`, `invalid`, and `unknown`. `--feature-ready READY` accepts `yes`, `no`, `true`, `false`, `ready`, and `not-ready`; with `--feature-require-coverage`, this filter uses coverage-required readiness. `--feature-priority VALUE` can be repeated and accepts `high`, `medium`, `low`, and `unknown`. `--feature-owner VALUE`, `--feature-milestone VALUE`, `--feature-target-release VALUE`, `--feature-project VALUE`, and `--feature-effort VALUE` can be repeated and perform case-insensitive exact matches against normalized summary metadata; `unassigned` matches missing owner, milestone, target release, and project values, while `unknown` matches missing effort. `--feature-sort KEY` accepts `slug`, `status`, `ready`, `gaps`, `blocking`, `tasks-open`, `priority`, `milestone`, `target-release`, `project`, and `effort`; priority sort uses `high`, `medium`, `low`, then `unknown`, effort sort uses `XS`, `S`, `M`, `L`, `XL`, `XXL`, then `unknown`, metadata sorts use normalized lexical order, and metadata default values stay last. `--feature-sort-desc` reverses the selected order while keeping metadata defaults last. These options are valid only with `--feature-summaries`; unsupported values or missing `--feature-summaries` return code `2`.
 

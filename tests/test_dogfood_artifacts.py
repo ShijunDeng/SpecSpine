@@ -49,6 +49,7 @@ class DogfoodArtifactsTests(TestCase):
             "workspace-readiness-policy",
             "extended-feature-metadata",
             "feature-metadata-filters",
+            "status-readiness-rollup",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -96,6 +97,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:workspace-readiness-policy", "pass"), checks)
         self.assertIn(("feature.status_consistency:extended-feature-metadata", "pass"), checks)
         self.assertIn(("feature.status_consistency:feature-metadata-filters", "pass"), checks)
+        self.assertIn(("feature.status_consistency:status-readiness-rollup", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -111,6 +113,8 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine status . --json --feature-summaries --feature-project \"Native feature bundles\" --feature-sort effort",
             "PYTHONPATH=src python3 -m specspine policy . --json",
             "PYTHONPATH=src python3 -m specspine status . --json --feature-summaries --feature-policy --feature-ready yes",
+            "PYTHONPATH=src python3 -m specspine status . --json --readiness-summary",
+            "PYTHONPATH=src python3 -m specspine status . --json --readiness-summary --readiness-policy",
             "PYTHONPATH=src python3 -m specspine gates . --json",
             "PYTHONPATH=src python3 -m specspine adapters lifecycle . --json",
             "PYTHONPATH=src python3 -m specspine validate . --fusion --features",
@@ -279,6 +283,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/feature-metadata-filters.md",
             "execution/features/feature-metadata-filters.md",
             "quality/features/feature-metadata-filters.md",
+            "specs/features/status-readiness-rollup.md",
+            "execution/features/status-readiness-rollup.md",
+            "quality/features/status-readiness-rollup.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -565,6 +572,25 @@ class DogfoodArtifactsTests(TestCase):
         self.assertTrue(policy_report.policy_applied)
         self.assertFalse(policy_report.coverage_required_by_policy)
         self.assertEqual(policy_report.summary["fail"], 0)
+
+    def test_status_readiness_rollup_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(
+            REPO_ROOT,
+            "status-readiness-rollup",
+        )
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "status-readiness-rollup",
+            require_coverage=True,
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
 
     def test_feature_test_packet_dogfood_exports_test_cases(self) -> None:
         report = build_feature_tests_report(REPO_ROOT, "feature-test-packet")
