@@ -29,6 +29,10 @@ Why: The command is useful only if it produces deterministic local handoff data 
 - [x] AC006 -> tests/test_adapter_handoff.py::AdapterFeatureHandoffTests::test_partial_bundle_returns_zero_and_records_missing_gaps_blockers
 - [x] AC007 -> tests/test_adapter_handoff.py::AdapterFeatureHandoffTests::test_missing_bundle_and_invalid_slug_exit_codes
 - [x] AC008 -> tests/test_adapter_handoff.py::AdapterFeatureHandoffTests::test_handoff_does_not_call_subprocess_network_probe_or_read_tokens
+- [x] AC009 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_adapter_feature_handoff_documentation_and_agents_describe_workflow
+- [x] AC010 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_adapter_feature_handoff_dogfood_bundle_passes_its_gate
+- [x] AC010 -> tests/test_adapter_handoff.py::AdapterFeatureHandoffTests::test_adapter_feature_handoff_dogfood_bundle_passes_readiness_and_validation
+- [x] AC010 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_adapter_feature_handoff_quality_records_completion_gates
 
 ## Test Plan
 

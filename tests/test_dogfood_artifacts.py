@@ -169,6 +169,60 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn("A native feature handoff packet exporter", readme)
         self.assertIn("specspine feature handoff add-dark-mode . --json", readme)
 
+    def test_adapter_feature_handoff_documentation_and_agents_describe_workflow(self) -> None:
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        )
+        upstreams = (REPO_ROOT / "docs" / "upstreams.md").read_text(
+            encoding="utf-8"
+        )
+        agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        combined_docs = "\n".join([readme, architecture, upstreams])
+
+        for snippet in (
+            "specspine adapters handoff <slug> [path] [--json] [--output FILE] [--output-dir DIR] [--force]",
+            "specspine adapters handoff add-dark-mode . --json",
+            "specspine adapters handoff add-dark-mode . --output-dir .specspine/adapter-handoff/add-dark-mode",
+            "OpenSpec + Spec Kit + Superpowers adapter handoff",
+            "OpenSpec recommendations are argv arrays",
+            "Spec Kit recommendations follow the Spec -> Plan -> Tasks -> Implement artifact flow as agent actions",
+            "Superpowers recommendations name skill actions",
+            "requires_network=false",
+            "requires_token=false",
+            "executed=false",
+            "does not execute these steps, probe adapter tools, read tokens, or call the network",
+            "does not call `probe_adapters`, subprocesses, upstream CLIs, GitHub APIs, network services, token reads",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, combined_docs)
+
+        for snippet in (
+            "specspine adapters handoff <slug> . --json",
+            "specspine adapters handoff <slug> . --output-dir .specspine/adapter-handoff/<slug>",
+            "feature-specific OpenSpec, Spec Kit, and Superpowers adapter handoff data only",
+            "Do not treat recommended upstream steps as executed commands.",
+            "OpenSpec, Spec Kit, and Superpowers are external adapters only.",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, agents)
+
+    def test_adapter_feature_handoff_quality_records_completion_gates(self) -> None:
+        quality = (
+            REPO_ROOT / "quality" / "features" / "adapter-feature-handoff.md"
+        ).read_text(encoding="utf-8")
+
+        for snippet in (
+            "Run `PYTHONPATH=src python3 -m unittest tests.test_adapter_handoff`.",
+            "Run `PYTHONPATH=src python3 -m unittest discover -s tests`.",
+            "Run `PYTHONPATH=src python3 -m specspine validate . --fusion --features --json`.",
+            "Run `git diff --check`.",
+            "Focused adapter handoff tests and full repository tests pass.",
+            "The dogfood bundle is ready and validated.",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, quality)
+
     def test_feature_test_packet_documentation_describes_workflow(self) -> None:
         readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
         architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(
