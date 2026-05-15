@@ -48,6 +48,8 @@ class AgentsTests(TestCase):
             "specspine status . --json --validate --feature-summaries --feature-require-coverage --feature-ready yes --feature-sort priority",
             "specspine status . --json --readiness-summary",
             "specspine status . --json --readiness-summary --readiness-policy",
+            "specspine coverage debt . --json",
+            "specspine coverage debt . --json --policy",
             "specspine gates . --json",
             "specspine adapters lifecycle . --json",
             "specspine validate .",
@@ -74,6 +76,7 @@ class AgentsTests(TestCase):
             "focused handoff, task issue drafts, tests, PR, readiness, and validation guidance",
             "repository-level quality gate definitions",
             "adapter lifecycle definitions",
+            "exact feature and AC coverage gaps",
             "Use `--run-upstream` only when the user explicitly asks",
         ):
             with self.subTest(expected=expected):

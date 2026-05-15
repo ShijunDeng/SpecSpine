@@ -632,6 +632,47 @@ class StatusTests(TestCase):
                 self.assertIn("--require-coverage", command)
                 self.assertNotIn("--policy", command)
 
+    def test_status_features_alias_matches_feature_summaries_with_readiness(
+        self,
+    ) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_status_feature_bundle(root)
+            feature_summaries_output = StringIO()
+            features_alias_output = StringIO()
+
+            with redirect_stdout(feature_summaries_output):
+                feature_summaries_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--feature-summaries",
+                        "--readiness-summary",
+                        "--readiness-require-coverage",
+                    ]
+                )
+            with redirect_stdout(features_alias_output):
+                features_alias_returncode = main(
+                    [
+                        "status",
+                        str(root),
+                        "--json",
+                        "--features",
+                        "--readiness-summary",
+                        "--readiness-require-coverage",
+                    ]
+                )
+
+            self.assertEqual(feature_summaries_returncode, 0)
+            self.assertEqual(features_alias_returncode, 0)
+            feature_summaries_payload = json.loads(feature_summaries_output.getvalue())
+            features_alias_payload = json.loads(features_alias_output.getvalue())
+            self.assertIn("feature_summaries", features_alias_payload)
+            self.assertIn("readiness_summary", features_alias_payload)
+            self.assertEqual(features_alias_payload, feature_summaries_payload)
+
     def test_status_json_feature_summaries_can_require_coverage(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

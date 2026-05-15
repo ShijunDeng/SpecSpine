@@ -23,6 +23,11 @@ from .adapters import (
     write_adapter_feature_handoff_artifacts,
 )
 from .agents import AgentsFileExistsError, init_agents_file
+from .coverage import (
+    build_coverage_debt_report,
+    render_coverage_debt_json,
+    render_coverage_debt_text,
+)
 from .features import (
     FeatureBundleExistsError,
     FeatureBundleNotFoundError,
@@ -408,6 +413,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="print stable JSON for agents and scripts",
     )
 
+    coverage_parser = subcommands.add_parser("coverage", help="inspect local coverage evidence")
+    coverage_subcommands = coverage_parser.add_subparsers(
+        dest="coverage_command",
+        required=True,
+    )
+    coverage_debt_parser = coverage_subcommands.add_parser(
+        "debt",
+        help="report native feature acceptance-criteria coverage debt",
+    )
+    coverage_debt_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    coverage_debt_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    coverage_debt_parser.add_argument(
+        "--policy",
+        action="store_true",
+        help="only require coverage for features selected by workspace readiness policy",
+    )
+
     status_parser = subcommands.add_parser("status", help="summarize SpecSpine workspace status")
     status_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     status_parser.add_argument(
@@ -432,6 +458,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     status_parser.add_argument(
         "--feature-summaries",
+        "--features",
+        dest="feature_summaries",
         action="store_true",
         help="include compact per-feature progress summaries and next actions",
     )
@@ -1186,6 +1214,23 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(render_policy_text(policy), end="")
         return 0
+
+    if args.command == "coverage":
+        if args.coverage_command == "debt":
+            try:
+                report = build_coverage_debt_report(
+                    Path(args.path),
+                    use_policy=args.policy,
+                )
+            except OSError as error:
+                print(f"Could not read coverage debt: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_coverage_debt_json(report), end="")
+            else:
+                print(render_coverage_debt_text(report), end="")
+            return 0
 
     if args.command == "status":
         if args.validation_warnings and not args.validate:

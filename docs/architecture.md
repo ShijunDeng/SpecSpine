@@ -31,6 +31,7 @@ The CLI is intentionally thin:
 - `specspine feature pr` exports a local GitHub Pull Request draft from a native feature bundle.
 - `specspine feature sync-plan` exports a local GitHub CLI synchronization plan and optional review artifacts without executing it.
 - `specspine policy` exports optional workspace readiness policy from `.specspine/policy.yaml`.
+- `specspine coverage debt` reports workspace-level AC coverage debt from local feature bundles.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
 - `specspine status` emits a compact status packet for humans, agents, and scripts.
@@ -164,6 +165,10 @@ Feature summary filters stay local and are valid only with `--feature-summaries`
 
 `--readiness-require-coverage` is valid only with `--readiness-summary` and requires every feature to pass the local coverage gate. `--readiness-policy` is also valid only with `--readiness-summary`; it loads `.specspine/policy.yaml`, includes policy fields, and counts policy-selected coverage requirements. Explicit readiness coverage overrides policy selection for the actual gate. These rollups are local metadata evaluation only and do not run tests, subprocesses, network calls, upstream CLIs, GitHub operations, or token reads.
 
+`specspine coverage debt [path] [--json] [--policy]` complements `status --readiness-summary --readiness-require-coverage` by showing exact AC coverage gaps. It reuses native feature discovery, trace parsing, `parse_test_coverage`, feature metadata, and workspace policy logic. Universal mode treats every feature as coverage-required; policy mode reports every feature but counts debt only for `.specspine/policy.yaml` selected features. A criterion is covered only when a checked `## Test Coverage` link references that AC id and its local relative target file exists, matching `feature ready --require-coverage`.
+
+Coverage debt JSON includes workspace totals, per-feature missing AC ids, unchecked known-AC coverage link ids, checked links with missing targets, links to unknown AC ids, source files, missing files, policy fields, and focused `feature ready` / `feature tests` commands. Text output keeps summary counts and only debt features. The command returns `0` when the report is built even if debt exists, and it does not run tests, subprocesses, network calls, upstream CLIs, GitHub operations, or token reads.
+
 Feature summary triage stays local to the already-built summaries. `--feature-status` filters by lifecycle status and can be repeated, including abnormal `invalid` and `unknown` buckets. `--feature-ready` filters by readiness aliases. `--feature-priority` filters by `high`, `medium`, `low`, or `unknown`, and `--feature-owner` performs repeated case-insensitive exact owner matches where `unassigned` includes missing owners. `--feature-sort` orders by `slug`, `status`, `ready`, `gaps`, `blocking`, `tasks-open`, or `priority`; priority sort uses `high -> medium -> low -> unknown`, with `--feature-sort-desc` reversing the selected order. These options and `--feature-require-coverage` are rejected with code `2` unless `--feature-summaries` is present, so callers do not accidentally think the compact default status was filtered.
 
 `specspine gates [path] [--json]` is the repository-level quality policy packet. It reads only `quality/checklist.md` and exports definitions without executing tests, validation, shell commands, upstream CLIs, GitHub APIs, network requests, `gh`, or token reads. The parser is intentionally section-bounded:
@@ -206,7 +211,7 @@ The sync plan JSON includes `feature_id`, `status`, `ready`, `source_files`, `mi
 
 `specspine validate --features` checks that discovered native feature bundles have valid slugs, all three peer files, matching feature ids, allowed status markers, and consistent peer-file status.
 
-`specspine agents init [path]` writes a short `AGENTS.md` file for Codex, Claude, Gemini, and similar coding agents. The file is a human-readable entry point, not a new source of truth. It points agents back to `specspine status . --json`, `specspine validate .`, native feature bundles, and the external-adapter boundary for OpenSpec, Spec Kit, and Superpowers. The command refuses to overwrite an existing `AGENTS.md` unless `--force` is passed.
+`specspine agents init [path]` writes a short `AGENTS.md` file for Codex, Claude, Gemini, and similar coding agents. The file is a human-readable entry point, not a new source of truth. It points agents back to `specspine status . --json`, `specspine validate .`, `specspine coverage debt . --json` for exact AC coverage gaps, native feature bundles, and the external-adapter boundary for OpenSpec, Spec Kit, and Superpowers. The command refuses to overwrite an existing `AGENTS.md` unless `--force` is passed.
 
 ## Adapter Direction
 
@@ -241,6 +246,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 - `specspine.adapters`: upstream metadata, availability probes, lifecycle mappings, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.policy`: optional workspace policy parsing, warning generation, rendering, and readiness coverage selector evaluation.
-- `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, optional validation summary, and optional feature summary rendering.
+- `specspine.coverage`: workspace-level coverage debt reporting from native feature ACs and local Test Coverage links.
+- `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, optional validation summary, optional feature summary, and optional readiness rollup rendering.
 - `specspine.validation`: executable workspace, scaffold-placeholder warning, fusion, feature, optional adapter contract checks, and compact validation summaries.
 - `specspine.cli`: command-line interface.

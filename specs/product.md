@@ -13,6 +13,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Native feature traceability export across acceptance criteria, tasks, required checks, and test plans.
 - Native feature readiness gate across peer files, lifecycle status, trace gaps, completed checklists, test plan evidence, release readiness, and optional completed local coverage links.
 - Optional workspace readiness policy export from `.specspine/policy.yaml`, including policy-selected coverage-required readiness.
+- Workspace coverage debt reporting that turns readiness coverage failures into exact feature and AC coverage gaps.
 - Native feature handoff packets that compose status, trace, tasks, readiness, release readiness, next actions, and recommended commands.
 - Native feature acceptance-test packets that map acceptance criteria to deterministic test cases, attach explicit local test coverage links, and surface existing test plans, quality checks, gaps, and blockers.
 - Local GitHub issue draft generation from feature bundles without API calls.
@@ -46,6 +47,7 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - Hand a full traceability packet to agents or reviewers with `specspine feature trace <slug> . --json`.
 - Fail or pass a per-feature readiness gate with `specspine feature ready <slug> . --json`; add `--require-coverage` for high-risk or pre-release checks that require every AC to have a checked local `## Test Coverage` link; add `--policy` when the workspace policy should decide whether that stricter gate applies.
 - Export the optional local governance context with `specspine policy . --json`; missing policy files return defaults with `source_missing: true` and do not make status or validation fail.
+- After `status --readiness-summary --readiness-require-coverage` shows workspace coverage blockers, run `specspine coverage debt . --json` to see exact missing AC coverage evidence; add `--policy` when only policy-selected features should count as required debt.
 - Hand an acceptance-test packet with explicit local test coverage links to QA or testing agents with `specspine feature tests <slug> . --json`.
 - Generate an offline issue draft with `specspine feature issue <slug> . --json` or `--output`.
 - Generate an offline Pull Request draft with `specspine feature pr <slug> . --json` or `--output`.
@@ -71,6 +73,8 @@ SpecSpine is a local CLI and file convention for spec-driven AI development. The
 - `status --readiness-summary --json` reports top-level `readiness_summary` counts for total features, ready/not-ready features, blocking checks, gaps, coverage-required records, compact per-feature readiness records, and recommended focused `feature ready <slug> . --json` commands while default status JSON omits the rollup.
 - `status --readiness-summary` appends a short text section with totals and not-ready features while default text status remains unchanged.
 - `status --readiness-summary --readiness-require-coverage` computes every feature through the same local coverage gate as `feature ready --require-coverage`; `--readiness-policy` uses `.specspine/policy.yaml` for per-feature coverage requirements; explicit readiness coverage overrides policy selection; either option without `--readiness-summary` returns code `2`.
+- `coverage debt --json` reports `root`, `mode`, workspace coverage totals, features with debt, missing AC totals, stable per-feature missing AC ids, open coverage link ids, missing target link ids, unknown AC link ids, source files, missing files, and focused local commands; text output lists summary counts and only features with debt.
+- `coverage debt --policy` reports every feature but counts required debt only for `.specspine/policy.yaml` selected features, includes policy fields and counts, returns `0` when the report is built even if debt exists, and does not run tests, invoke subprocesses, call network services, read tokens, invoke upstream CLIs, or add dependencies.
 - `feature tasks <slug> --json` reports stable ordered task records from `execution/features/<slug>.md`.
 - `feature task-issues <slug> --json` reports a local issue draft package with one issue per execution task, including stable titles, bodies, source lines, task metadata, summary counts, and recommended local commands without calling GitHub APIs, `gh`, network services, upstream CLIs, or reading tokens.
 - `feature trace <slug> --json` reports sources, missing files, acceptance criteria, tasks, required checks, test plan entries, summary counts, and trace gaps without calling external services.
