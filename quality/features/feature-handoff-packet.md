@@ -14,6 +14,20 @@ Why: A handoff packet is useful only if it is compact, deterministic, local, tok
 - [x] Unit tests cover agent template guidance and dogfood artifact readiness.
 - [x] The implementation does not call GitHub APIs, read tokens, call upstream CLIs, access network services, or add third-party dependencies.
 
+## Test Coverage
+
+- [x] AC001 -> tests/test_features.py::FeatureBundleTests::test_feature_handoff_cli_text_and_json_outputs_ready_bundle
+- [x] AC002 -> tests/test_features.py::FeatureBundleTests::test_feature_handoff_cli_text_and_json_outputs_ready_bundle
+- [x] AC003 -> tests/test_features.py::FeatureBundleTests::test_feature_handoff_cli_text_and_json_outputs_ready_bundle
+- [x] AC004 -> tests/test_features.py::FeatureBundleTests::test_feature_handoff_cli_reports_partial_bundle_actions
+- [x] AC005 -> tests/test_features.py::FeatureBundleTests::test_feature_handoff_cli_text_and_json_outputs_ready_bundle
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_feature_handoff_cli_output_file_overwrite_force_and_json_output
+- [x] AC007 -> tests/test_features.py::FeatureBundleTests::test_feature_handoff_cli_missing_bundle_returns_packet_and_nonzero
+- [x] AC007 -> tests/test_features.py::FeatureBundleTests::test_feature_handoff_cli_invalid_slug_returns_two
+- [x] AC008 -> tests/test_agents.py::AgentsTests::test_agents_content_includes_required_commands_and_boundaries
+- [x] AC008 -> tests/test_features.py::FeatureBundleTests::test_dogfood_feature_handoff_packet_is_validated_and_ready
+- [x] AC008 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_feature_handoff_documentation_describes_workflow
+
 ## Test Plan
 
 - Run `PYTHONPATH=src python3 -m unittest discover -s tests`.

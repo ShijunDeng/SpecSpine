@@ -145,6 +145,30 @@ class DogfoodArtifactsTests(TestCase):
         for snippet in required_snippets:
             self.assertIn(snippet, content)
 
+    def test_feature_handoff_documentation_describes_workflow(self) -> None:
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        )
+
+        for snippet in (
+            "specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]",
+            "composes the existing local feature status, trace, tasks, readiness, and release readiness evidence",
+            "recommended commands",
+            "handoff",
+            "tasks",
+            "task-issues",
+            "trace",
+            "tests",
+            "ready",
+            "pr",
+            "validate . --fusion --features",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, architecture)
+        self.assertIn("A native feature handoff packet exporter", readme)
+        self.assertIn("specspine feature handoff add-dark-mode . --json", readme)
+
     def test_fusion_artifacts_keep_no_vendor_contract(self) -> None:
         fusion_yaml = (REPO_ROOT / ".specspine" / "fusion.yaml").read_text(
             encoding="utf-8"
