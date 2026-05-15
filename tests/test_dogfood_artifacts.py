@@ -169,6 +169,27 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn("A native feature handoff packet exporter", readme)
         self.assertIn("specspine feature handoff add-dark-mode . --json", readme)
 
+    def test_feature_test_packet_documentation_describes_workflow(self) -> None:
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        )
+
+        for snippet in (
+            "specspine feature tests <slug> [path] [--json] [--output FILE] [--force]",
+            "composes a QA-focused acceptance-test packet",
+            "optional `## Test Coverage` links in the quality peer file",
+            "does not execute tests",
+            "one acceptance criterion becomes one test case",
+            "TC001` maps to `AC001",
+            "recommended_commands",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, architecture)
+        self.assertIn("A native feature acceptance-test packet exporter", readme)
+        self.assertIn("specspine feature tests add-dark-mode . --json", readme)
+        self.assertIn("Exports a local acceptance-test packet", readme)
+
     def test_fusion_artifacts_keep_no_vendor_contract(self) -> None:
         fusion_yaml = (REPO_ROOT / ".specspine" / "fusion.yaml").read_text(
             encoding="utf-8"
