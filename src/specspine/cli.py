@@ -131,7 +131,9 @@ from .provenance import (
     render_provenance_manifest_text,
 )
 from .retrospective import (
+    build_retrospective_analytics_report,
     build_retrospective_report,
+    render_retrospective_analytics_json,
     render_retrospective_json,
     render_retrospective_text,
     retrospective_report_exit_code,
@@ -1083,6 +1085,14 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         help="limit recommendation rows without changing summary or theme counts",
     )
+    retrospective_analytics_parser = retrospective_subcommands.add_parser(
+        "analytics",
+        help="compute retrospective analytics with anti-pattern detection",
+    )
+    retrospective_analytics_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    retrospective_analytics_parser.add_argument("--json", action="store_true", help="print stable JSON")
+    retrospective_analytics_parser.add_argument("--improvements", action="store_true", help="include improvement recommendations")
+    retrospective_analytics_parser.add_argument("--feature", metavar="SLUG", help="focus on one feature")
 
     return parser
 
@@ -1777,7 +1787,7 @@ def main(argv: list[str] | None = None) -> int:
                     Path(args.path),
                     use_policy=args.policy,
                     feature_filter=args.feature,
-                    limit=args.limit,
+                    limit=getattr(args, "limit", None),
                 )
             except InvalidFeatureSlug as error:
                 print(f"Invalid feature slug: {error}", file=sys.stderr)
@@ -2277,12 +2287,32 @@ def main(argv: list[str] | None = None) -> int:
                 print(text_body, end="")
             return 0
 
+    if args.command == "retrospective" and args.retrospective_command == "analytics":
+        root = Path(args.path).expanduser().resolve()
+        try:
+            result = build_retrospective_analytics_report(
+                root,
+                include_improvements=args.improvements,
+                feature_slug=args.feature,
+            )
+        except InvalidFeatureSlug as error:
+            print(str(error), file=sys.stderr)
+            return 2
+        except ValueError as error:
+            print(str(error), file=sys.stderr)
+            return 2
+        except OSError as error:
+            print(f"Could not build retrospective analytics: {error}", file=sys.stderr)
+            return 1
+        print(render_retrospective_analytics_json(result), end="")
+        return 0
+
     if args.command == "retrospective":
         try:
             result = build_retrospective_report(
                 Path(args.path),
                 feature_slug=args.feature,
-                limit=args.limit,
+                limit=getattr(args, "limit", None),
             )
         except (InvalidFeatureSlug, ValueError) as error:
             print(f"Invalid retrospective option: {error}", file=sys.stderr)
