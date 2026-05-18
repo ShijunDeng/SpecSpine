@@ -1,7 +1,7 @@
 # Spec Proposal Generation
 
 Feature ID: spec-proposal-generation
-Status: validated
+Status: implemented
 Priority: high
 Owner: SpecSpine maintainers
 Milestone: SDD workflow completion

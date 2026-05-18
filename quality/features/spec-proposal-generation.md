@@ -1,7 +1,7 @@
 # Spec Proposal Generation Quality
 
 Feature ID: spec-proposal-generation
-Status: validated
+Status: implemented
 Why: Generate structured spec bundles from natural language intent using deterministic, zero-dependency heuristics
 
 ## Required Checks

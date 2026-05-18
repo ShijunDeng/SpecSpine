@@ -33,6 +33,7 @@ The CLI is intentionally thin:
 - `specspine feature sync-plan` exports a local GitHub CLI synchronization plan and optional review artifacts without executing it.
 - `specspine policy` exports optional workspace readiness policy from `.specspine/policy.yaml`.
 - `specspine coverage debt` reports workspace-level AC coverage debt from local feature bundles.
+- `specspine analyze` reports cross-artifact consistency and coverage findings for native feature bundles without changing files.
 - `specspine loop packet` exports a local, deterministic agent loop packet with feature summaries, readiness counts, lifecycle guidance, subagents, validation commands, safety notes, and upstream metadata.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
@@ -175,6 +176,10 @@ Feature summary filters stay local and are valid only with `--feature-summaries`
 
 Coverage debt JSON includes workspace totals, per-feature missing AC ids, unchecked known-AC coverage link ids, checked links with missing targets, links to unknown AC ids, source files, missing files, policy fields, and focused `feature ready` / `feature tests` commands. Text output keeps summary counts and only debt features. The command returns `0` when the report is built even if debt exists, and it does not run tests, subprocesses, network calls, upstream CLIs, GitHub operations, or token reads.
 
+`specspine analyze [path] [--json] [--feature SLUG] [--fail-on-issues]` is a read-only workspace analysis pass for native feature bundles. It reuses feature discovery, trace parsing, readiness checks with coverage required, task parsing, required check parsing, and local Test Coverage link parsing. It reports missing peer artifacts, readiness blockers, acceptance criteria without execution task references, acceptance criteria without completed local coverage links, tasks without AC/test/quality references, unknown AC coverage links, checked links with missing local targets, open coverage links, duplicate AC text, and vague AC wording.
+
+Analysis JSON includes `root`, `feature_filter`, summary counts, per-feature metrics and issues, a flat issue list, and recommended commands. Text output groups issue rows by feature and prints a clean success message when no issues are found. The command returns `0` when the report is built even if findings exist; only `--fail-on-issues` turns findings into a nonzero exit. It does not write files, run tests, invoke subprocesses, probe adapters, call network services, call GitHub, or read tokens.
+
 Feature summary triage stays local to the already-built summaries. `--feature-status` filters by lifecycle status and can be repeated, including abnormal `invalid` and `unknown` buckets. `--feature-ready` filters by readiness aliases. `--feature-priority` filters by `high`, `medium`, `low`, or `unknown`, and `--feature-owner` performs repeated case-insensitive exact owner matches where `unassigned` includes missing owners. `--feature-sort` orders by `slug`, `status`, `ready`, `gaps`, `blocking`, `tasks-open`, or `priority`; priority sort uses `high -> medium -> low -> unknown`, with `--feature-sort-desc` reversing the selected order. These options and `--feature-require-coverage` are rejected with code `2` unless `--feature-summaries` is present, so callers do not accidentally think the compact default status was filtered.
 
 `specspine gates [path] [--json]` is the repository-level quality policy packet. It reads only `quality/checklist.md` and exports definitions without executing tests, validation, shell commands, upstream CLIs, GitHub APIs, network requests, `gh`, or token reads. The parser is intentionally section-bounded:
@@ -253,6 +258,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.policy`: optional workspace policy parsing, warning generation, rendering, and readiness coverage selector evaluation.
 - `specspine.coverage`: workspace-level coverage debt reporting from native feature ACs and local Test Coverage links.
+- `specspine.analysis`: read-only native feature consistency and coverage analysis across specs, execution tasks, quality checks, readiness blockers, and Test Coverage links.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, optional validation summary, optional feature summary, and optional readiness rollup rendering.
 - `specspine.validation`: executable workspace, scaffold-placeholder warning, fusion, feature, optional adapter contract checks, and compact validation summaries.
 - `specspine.cli`: command-line interface.

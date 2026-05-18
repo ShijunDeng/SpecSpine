@@ -23,6 +23,11 @@ from .adapters import (
     write_adapter_feature_handoff_artifacts,
 )
 from .agents import AgentsFileExistsError, init_agents_file
+from .analysis import (
+    build_analysis_report,
+    render_analysis_json,
+    render_analysis_text,
+)
 from .coverage import (
     build_coverage_debt_report,
     render_coverage_debt_json,
@@ -445,6 +450,27 @@ def build_parser() -> argparse.ArgumentParser:
         "--policy",
         action="store_true",
         help="only require coverage for features selected by workspace readiness policy",
+    )
+
+    analyze_parser = subcommands.add_parser(
+        "analyze",
+        help="analyze native feature consistency and coverage without changing files",
+    )
+    analyze_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    analyze_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    analyze_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="analyze one native feature slug",
+    )
+    analyze_parser.add_argument(
+        "--fail-on-issues",
+        action="store_true",
+        help="return nonzero when analysis finds issues",
     )
 
     loop_parser = subcommands.add_parser("loop", help="export local agent loop packets")
@@ -1287,6 +1313,27 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(render_coverage_debt_text(report), end="")
             return 0
+
+    if args.command == "analyze":
+        try:
+            report = build_analysis_report(
+                Path(args.path),
+                feature_filter=args.feature,
+            )
+        except InvalidFeatureSlug as error:
+            print(str(error), file=sys.stderr)
+            return 2
+        except OSError as error:
+            print(f"Could not analyze feature bundles: {error}", file=sys.stderr)
+            return 1
+
+        if args.json:
+            print(render_analysis_json(report), end="")
+        else:
+            print(render_analysis_text(report), end="")
+        if args.fail_on_issues and report.issues:
+            return 1
+        return 0
 
     if args.command == "loop":
         if args.loop_command == "packet":

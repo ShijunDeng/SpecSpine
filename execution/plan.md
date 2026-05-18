@@ -27,6 +27,7 @@
 - Optional workspace readiness policy through `.specspine/policy.yaml`, `specspine policy`, `feature ready --policy`, and `status --feature-summaries --feature-policy`.
 - Optional workspace readiness rollups in `specspine status --json --readiness-summary`, with coverage-required and policy-selected readiness modes.
 - Workspace-level coverage debt reporting through `specspine coverage debt`, with universal and policy-selected coverage-required modes.
+- Read-only native feature consistency and coverage analysis through `specspine analyze`, with feature filtering and opt-in failing issue exits.
 - Natural-language feature proposal generation through `specspine propose`, with deterministic native bundle generation, dry-run previews, JSON output, metadata flags, conflict protection, and no external services.
 - Repository-level quality gate definition export through `specspine gates`, including optional severity, owner, and CI metadata labels.
 - Unit tests and GitHub Actions coverage for the current command surface.
@@ -43,6 +44,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine status . --json --validate --feature-summaries` when an agent needs to choose or compare multiple native features; add filters such as `--feature-status validated --feature-ready yes --feature-priority high --feature-sort priority` when a multi-feature workspace needs focused triage; add `--feature-require-coverage` when every candidate must include checked local AC coverage links; add `--feature-policy` when `.specspine/policy.yaml` should decide stricter readiness per feature; keep the default startup packet compact otherwise.
 - Use `specspine status . --json --readiness-summary` when an agent or CI job needs whole-workspace ready/not-ready feature counts in one packet; add `--readiness-require-coverage` for universal coverage gates or `--readiness-policy` when `.specspine/policy.yaml` should decide per feature.
 - Use `specspine coverage debt . --json` after coverage-required readiness rollups to locate exact feature and AC coverage gaps; add `--policy` when only policy-selected features should count as required debt.
+- Use `specspine analyze . --json` after tasks are drafted and before implementation to review cross-artifact consistency, AC-to-task traceability, and local coverage evidence; add `--feature <slug>` for a focused packet or `--fail-on-issues` only when CI should fail on findings.
 - Use `specspine feature handoff <slug> . --json` as the default feature-level packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
 - Use `specspine feature task-issues <slug> . --json` when an agent needs one local GitHub issue draft per execution task.

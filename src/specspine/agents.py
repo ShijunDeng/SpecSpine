@@ -35,6 +35,8 @@ AGENTS_TEMPLATE = """
     specspine status . --json --readiness-summary --readiness-policy
     specspine coverage debt . --json
     specspine coverage debt . --json --policy
+    specspine analyze . --json
+    specspine analyze . --json --feature <slug>
     specspine loop packet . --json
     specspine gates . --json
     specspine adapters lifecycle . --json
@@ -64,6 +66,7 @@ AGENTS_TEMPLATE = """
     - Use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features; add local filters such as `--feature-status validated --feature-ready yes --feature-sort slug` for triage, and add `--feature-require-coverage` when candidate readiness must include checked local AC coverage links.
     - Use `specspine status . --json --readiness-summary` when an agent or CI job needs whole-workspace ready/not-ready counts; add `--readiness-policy` or `--readiness-require-coverage` when policy or universal coverage gates should apply.
     - Use `specspine coverage debt . --json` after coverage-required rollups to see exact feature and AC coverage gaps; add `--policy` when only policy-selected features should count as required debt.
+    - Use `specspine analyze . --json` before implementation to check native feature cross-artifact consistency, task traceability, and coverage evidence without changing files.
     - Use `specspine loop packet . --json` when a worker needs a local, deterministic agent loop packet. Do not treat loop packet recommended commands as executed commands.
     - Use `specspine gates . --json` when an agent or reviewer needs repository-level quality gate definitions; it exports definitions and does not execute checks.
     - Use `specspine adapters lifecycle . --json` when adapter lifecycle definitions are needed; it exports static local mappings and does not execute upstream tools.
