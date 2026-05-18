@@ -74,6 +74,11 @@ from .gates import (
     render_quality_gate_json,
     render_quality_gate_text,
 )
+from .loop import (
+    build_loop_packet,
+    render_loop_packet_json,
+    render_loop_packet_text,
+)
 from .policy import load_workspace_policy, render_policy_json, render_policy_text
 from .status import (
     InvalidFeatureSummaryOption,
@@ -432,6 +437,32 @@ def build_parser() -> argparse.ArgumentParser:
         "--policy",
         action="store_true",
         help="only require coverage for features selected by workspace readiness policy",
+    )
+
+    loop_parser = subcommands.add_parser("loop", help="export local agent loop packets")
+    loop_subcommands = loop_parser.add_subparsers(dest="loop_command", required=True)
+    loop_packet_parser = loop_subcommands.add_parser(
+        "packet",
+        help="export a deterministic local agent loop packet",
+    )
+    loop_packet_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    loop_packet_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    loop_packet_parser.add_argument(
+        "--output",
+        help="write the text packet to a file instead of printing it",
+    )
+    loop_packet_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite an existing output file",
+    )
+    loop_packet_parser.add_argument(
+        "--deadline",
+        help="deadline value to include in the packet",
     )
 
     status_parser = subcommands.add_parser("status", help="summarize SpecSpine workspace status")
@@ -1230,6 +1261,44 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_coverage_debt_json(report), end="")
             else:
                 print(render_coverage_debt_text(report), end="")
+            return 0
+
+    if args.command == "loop":
+        if args.loop_command == "packet":
+            try:
+                packet = build_loop_packet(
+                    Path(args.path),
+                    deadline=args.deadline,
+                )
+            except OSError as error:
+                print(f"Could not build loop packet: {error}", file=sys.stderr)
+                return 1
+
+            text_body = render_loop_packet_text(packet)
+            output_path = None
+            if args.output:
+                output_path = Path(args.output).expanduser().resolve()
+                if output_path.exists() and not args.force:
+                    print(
+                        f"Output file already exists: {output_path}. "
+                        "Use --force to overwrite it.",
+                        file=sys.stderr,
+                    )
+                    return 1
+
+                try:
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(text_body, encoding="utf-8")
+                except OSError as error:
+                    print(f"Could not write loop packet: {error}", file=sys.stderr)
+                    return 1
+
+            if args.json:
+                print(render_loop_packet_json(packet), end="")
+            elif output_path is not None:
+                print(f"Wrote loop packet to {output_path}")
+            else:
+                print(text_body, end="")
             return 0
 
     if args.command == "status":

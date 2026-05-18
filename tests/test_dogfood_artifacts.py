@@ -51,6 +51,7 @@ class DogfoodArtifactsTests(TestCase):
             "feature-metadata-filters",
             "status-readiness-rollup",
             "coverage-debt-report",
+            "agent-loop-packet",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -100,6 +101,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:feature-metadata-filters", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-readiness-rollup", "pass"), checks)
         self.assertIn(("feature.status_consistency:coverage-debt-report", "pass"), checks)
+        self.assertIn(("feature.status_consistency:agent-loop-packet", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -119,6 +121,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine status . --json --readiness-summary --readiness-policy",
             "PYTHONPATH=src python3 -m specspine coverage debt . --json",
             "PYTHONPATH=src python3 -m specspine coverage debt . --json --policy",
+            "PYTHONPATH=src python3 -m specspine loop packet . --json",
             "PYTHONPATH=src python3 -m specspine gates . --json",
             "PYTHONPATH=src python3 -m specspine adapters lifecycle . --json",
             "PYTHONPATH=src python3 -m specspine validate . --fusion --features",
@@ -144,6 +147,29 @@ class DogfoodArtifactsTests(TestCase):
         ]
         for snippet in required_snippets:
             self.assertIn(snippet, content)
+
+    def test_agent_loop_packet_documentation_and_dogfood_describe_workflow(self) -> None:
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        )
+        product = (REPO_ROOT / "specs" / "product.md").read_text(encoding="utf-8")
+        review = (REPO_ROOT / "quality" / "review.md").read_text(encoding="utf-8")
+        combined_docs = "\n".join([readme, architecture, product, review])
+
+        for snippet in (
+            "specspine loop packet [path] [--json] [--output FILE] [--force] [--deadline VALUE]",
+            "specspine loop packet . --json",
+            "local, deterministic agent loop packet",
+            "does not call GitHub, read or write tokens, invoke subprocesses, probe adapters, or access the network",
+            "root, deadline, core_features, summary, context_commands, lifecycle_steps, subagents, validation_commands, safety_notes, upstreams, and recommended_commands",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, combined_docs)
+
+        self.assertIn("specspine loop packet . --json", agents)
+        self.assertIn("Do not treat loop packet recommended commands as executed commands.", agents)
 
     def test_feature_handoff_documentation_describes_workflow(self) -> None:
         readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
@@ -392,6 +418,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/coverage-debt-report.md",
             "execution/features/coverage-debt-report.md",
             "quality/features/coverage-debt-report.md",
+            "specs/features/agent-loop-packet.md",
+            "execution/features/agent-loop-packet.md",
+            "quality/features/agent-loop-packet.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -706,6 +735,22 @@ class DogfoodArtifactsTests(TestCase):
         coverage_report = build_feature_ready_report(
             REPO_ROOT,
             "coverage-debt-report",
+            require_coverage=True,
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+
+    def test_agent_loop_packet_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(REPO_ROOT, "agent-loop-packet")
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "agent-loop-packet",
             require_coverage=True,
         )
 

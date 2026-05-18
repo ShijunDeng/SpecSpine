@@ -50,6 +50,7 @@ class AgentsTests(TestCase):
             "specspine status . --json --readiness-summary --readiness-policy",
             "specspine coverage debt . --json",
             "specspine coverage debt . --json --policy",
+            "specspine loop packet . --json",
             "specspine gates . --json",
             "specspine adapters lifecycle . --json",
             "specspine validate .",
@@ -77,6 +78,8 @@ class AgentsTests(TestCase):
             "repository-level quality gate definitions",
             "adapter lifecycle definitions",
             "exact feature and AC coverage gaps",
+            "local, deterministic agent loop packet",
+            "Do not treat loop packet recommended commands as executed commands.",
             "Use `--run-upstream` only when the user explicitly asks",
         ):
             with self.subTest(expected=expected):

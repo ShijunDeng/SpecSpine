@@ -32,6 +32,7 @@ The CLI is intentionally thin:
 - `specspine feature sync-plan` exports a local GitHub CLI synchronization plan and optional review artifacts without executing it.
 - `specspine policy` exports optional workspace readiness policy from `.specspine/policy.yaml`.
 - `specspine coverage debt` reports workspace-level AC coverage debt from local feature bundles.
+- `specspine loop packet` exports a local, deterministic agent loop packet with feature summaries, readiness counts, lifecycle guidance, subagents, validation commands, safety notes, and upstream metadata.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
 - `specspine status` emits a compact status packet for humans, agents, and scripts.
@@ -63,6 +64,8 @@ Future commands should remain thin orchestration layers over explicit files so t
 Status validation checks workspace, fusion, and native feature bundles by default. It runs external adapter availability probes only when `--adapters` is also passed. The command is still a report command and returns `0`; CI gates should continue to use `specspine validate`.
 
 `specspine status --json --validate --validation-warnings` adds `validation.warning_checks` with warning check dictionaries. Text status with the same flag lists warning ids under `Warning checks:`. The warning flag is rejected with code `2` unless `--validate` is also present, and the default `status --json --validate` payload omits warning details to stay compact.
+
+`specspine loop packet [path] [--json] [--output FILE] [--force] [--deadline VALUE]` is the workspace-level agent loop packet. It reuses status feature summaries, readiness summary, recommendations, and upstream metadata while disabling adapter probes. JSON includes root, deadline, core_features, summary, context_commands, lifecycle_steps, subagents, validation_commands, safety_notes, upstreams, and recommended_commands. Text output mirrors those sections. The command does not call GitHub, read or write tokens, invoke subprocesses, probe adapters, or access the network; only explicit `--output` writes a text packet, and `--json --output` keeps stdout parseable JSON.
 
 `specspine validate --json` is the preferred machine-readable quality gate. It reports:
 

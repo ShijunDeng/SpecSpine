@@ -329,7 +329,7 @@ Initializes the SpecSpine workspace structure.
 specspine agents init [path] [--force]
 ```
 
-Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, add `--readiness-summary` when workspace ready/not-ready counts are needed, use `coverage debt` when coverage rollups need exact AC gaps, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
+Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, use `specspine loop packet . --json` when a local loop packet is needed, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, add `--readiness-summary` when workspace ready/not-ready counts are needed, use `coverage debt` when coverage rollups need exact AC gaps, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
 
 ```bash
 specspine doctor [path]
@@ -476,6 +476,16 @@ specspine coverage debt [path] [--json] [--policy]
 Reports workspace-level coverage debt for native feature bundles by reading acceptance criteria from specs and `## Test Coverage` links from quality files. Universal mode treats every discovered feature as coverage-required. `--policy` loads `.specspine/policy.yaml` and counts debt only for policy-selected features while still reporting all feature records with `coverage_required=false` for skipped features.
 
 A criterion is covered only when a checked coverage link references that AC id and its local relative target file exists, matching `feature ready --require-coverage`. JSON includes workspace totals, per-feature missing AC ids, open coverage link ids, checked links with missing targets, links to unknown AC ids, source and missing files, policy fields, and focused commands such as `specspine feature ready <slug> . --json --require-coverage`. Text output lists summary counts and only features with debt. The command complements `status --readiness-summary --readiness-require-coverage` by showing exact AC coverage gaps. It returns `0` when the report is built, even if debt exists, and does not run tests, subprocesses, network calls, GitHub operations, upstream CLIs, or token reads.
+
+```bash
+specspine loop packet [path] [--json] [--output FILE] [--force] [--deadline VALUE]
+```
+
+Exports a local, deterministic agent loop packet for implementation workers, validators, and reviewers. It reuses `build_status(..., include_feature_summaries=True, include_readiness_summary=True, ...)`, status recommendations, and upstream metadata to produce one workspace-level context packet before a worker opens focused feature handoff commands.
+
+JSON output includes `root`, `deadline`, `core_features`, `summary`, `context_commands`, `lifecycle_steps`, `subagents`, `validation_commands`, `safety_notes`, `upstreams`, and `recommended_commands`. Summary counts include feature totals, ready/not-ready totals, open task totals, gap totals, blocking check totals, and enabled upstream totals. Text output contains the same key sections in readable Markdown-like form.
+
+The command does not call GitHub, read or write tokens, invoke subprocesses, probe adapters, or access the network. Recommended commands are plan data only and are marked `executed=false`. `--output` writes the text packet and refuses to overwrite unless `--force` is passed; with `--json --output`, stdout remains JSON and the file contains text.
 
 ```bash
 specspine gates [path] [--json]
