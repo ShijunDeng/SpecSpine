@@ -55,6 +55,11 @@ from .coverage import (
     render_coverage_plan_json,
     render_coverage_plan_text,
 )
+from .dependency import (
+    build_dependency_graph,
+    render_dependency_json,
+    render_dependency_text,
+)
 from .features import (
     FeatureBundleExistsError,
     FeatureBundleNotFoundError,
@@ -484,6 +489,27 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="print stable JSON for agents and scripts",
+    )
+
+    feature_dependency_parser = feature_subcommands.add_parser(
+        "dependency",
+        help="analyze feature dependencies and compute critical path",
+    )
+    feature_dependency_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    feature_dependency_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    feature_dependency_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="focus on one native feature slug",
+    )
+    feature_dependency_parser.add_argument(
+        "--features",
+        metavar="SLUG1,SLUG2",
+        help="comma-separated list of feature slugs to include",
     )
 
     doctor_parser = subcommands.add_parser("doctor", help="check SpecSpine workspace files")
@@ -1661,6 +1687,28 @@ def main(argv: list[str] | None = None) -> int:
                     status = file["status"] or "unknown"
                     print(f"  [{marker}] {kind}: {file['path']} ({status})")
             return 0 if has_files else 1
+
+        if args.feature_command == "dependency":
+            root = Path(args.path).expanduser().resolve()
+            feature_slugs: list[str] | None = None
+            if args.features:
+                feature_slugs = [s.strip() for s in args.features.split(",") if s.strip()]
+            elif args.feature:
+                feature_slugs = [args.feature]
+            try:
+                result = build_dependency_graph(root, feature_slugs=feature_slugs)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not build dependency graph: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_dependency_json(result), end="")
+            else:
+                print(render_dependency_text(result), end="")
+            return 0
 
     if args.command == "doctor":
         required_files = dict(BASE_WORKSPACE_FILES)
