@@ -203,6 +203,10 @@ Consistency JSON includes `root`, `feature_filter`, `changed_files`, `features`,
 
 Hygiene JSON includes `root`, `changed_files`, `findings`, `summary`, `recommended_commands`, and `safety_notes`. Findings include stable ids, severity, category, path, message, source, and optional line number. Default mode returns `0` when the report is built; `--strict` returns `1` when high-risk findings are present. The command is advisory and read-only: it does not delete files, run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens.
 
+`specspine retrospective report [path] [--json] [--feature SLUG] [--limit N]` is a local deterministic retrospective report for pre-planning and post-review learning. It composes native feature bundle discovery, metadata, readiness, trace, and tests evidence without writing files or executing commands.
+
+Retrospective JSON includes `root`, `feature_filter`, `features`, `themes`, `summary`, `recommendations`, `recommended_commands`, and `safety_notes`. Each feature record includes feature id, status, ready flag, priority, owner, task counts, readiness counts, gap count, blocking checks, coverage state, source files, and recommended local commands. Missing focused feature bundles return `1`, invalid slugs return `2`, and `--limit N` limits recommendation rows only while preserving full summary and theme counts. The command is advisory and read-only: it does not write files, run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens.
+
 `specspine change risk [path] [--json] [--changed PATH]... [--feature SLUG]` is a local changed-path risk packet for pre-review triage. It classifies changed paths into source, test, feature spec, feature execution, feature quality, project docs, config, or other; assigns advisory risk levels; infers feature ids from native peer file paths; and composes coverage-required feature readiness evidence for provided or inferred feature ids.
 
 Change risk JSON includes `root`, `feature_id`, `changed_files`, `files`, `feature_evidence`, `summary`, `recommended_commands`, and `safety_notes`. Missing feature bundles return a report with exit code `1`; invalid slugs return `2`. The command is read-only and advisory: it does not execute tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens.
@@ -300,6 +304,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 - `specspine.analysis`: read-only native feature consistency and coverage analysis across specs, execution tasks, quality checks, readiness blockers, and Test Coverage links.
 - `specspine.impact`: local static source-to-test impact graphing and test command recommendation.
 - `specspine.hygiene`: local repository hygiene scanning for generated artifacts, denylisted residue, changed-path context, and strict failure signals.
+- `specspine.retrospective`: local deterministic retrospective reporting across native feature readiness, trace, task, coverage, theme, and recommendation evidence.
 - `specspine.change`: local changed-path classification, risk evidence, feature readiness context, and advisory command recommendation.
 - `specspine.security`: local security-sensitive cue detection, feature readiness context, and advisory command recommendation.
 - `specspine.review`: local pre-merge review packet composition from validation, quality gates, test impact, and optional feature evidence.

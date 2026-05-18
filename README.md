@@ -269,6 +269,14 @@ specspine hygiene scan . --json
 specspine hygiene scan . --changed src/specspine/features.py --strict --json
 ```
 
+Build a local feature retrospective before planning the next iteration:
+
+```bash
+specspine retrospective report .
+specspine retrospective report . --json
+specspine retrospective report . --feature add-dark-mode --limit 3 --json
+```
+
 Inspect AC-level verification evidence without running tests:
 
 ```bash
@@ -589,6 +597,8 @@ Add `--feature-require-coverage` when summary readiness must match `specspine fe
 
 `--readiness-require-coverage` is valid only with `--readiness-summary` and makes every feature use the same coverage-required gate as `feature ready --require-coverage`. `--readiness-policy` is also valid only with `--readiness-summary`; it loads `.specspine/policy.yaml`, marks policy-selected feature records, and reports policy coverage counts. When both flags are present, explicit coverage-required mode overrides policy selection by requiring coverage for every feature. These rollup options are local metadata checks only: status does not run tests, subprocesses, network calls, GitHub operations, upstream CLIs, or token reads.
 
+`retrospective report --json` reports `root`, `feature_filter`, `features`, `themes`, `summary`, `recommendations`, `recommended_commands`, and `safety_notes`; each feature includes status, ready flag, priority, owner, task counts, readiness counts, gap count, blocking checks, coverage state, source files, and recommended local commands. `--feature SLUG` focuses one valid feature, missing bundles return `1`, invalid slugs return `2`, `--limit N` trims recommendation rows only while preserving summary and theme counts, and the command does not write files, run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens.
+
 Feature summary filters and sorting are local and deterministic. `--feature-status STATUS` can be repeated and accepts `proposed`, `planned`, `in-progress`, `implemented`, `validated`, `archived`, `invalid`, and `unknown`. `--feature-ready READY` accepts `yes`, `no`, `true`, `false`, `ready`, and `not-ready`; with `--feature-require-coverage`, this filter uses coverage-required readiness. `--feature-priority VALUE` can be repeated and accepts `high`, `medium`, `low`, and `unknown`. `--feature-owner VALUE`, `--feature-milestone VALUE`, `--feature-target-release VALUE`, `--feature-project VALUE`, and `--feature-effort VALUE` can be repeated and perform case-insensitive exact matches against normalized summary metadata; `unassigned` matches missing owner, milestone, target release, and project values, while `unknown` matches missing effort. `--feature-sort KEY` accepts `slug`, `status`, `ready`, `gaps`, `blocking`, `tasks-open`, `priority`, `milestone`, `target-release`, `project`, and `effort`; priority sort uses `high`, `medium`, `low`, then `unknown`, effort sort uses `XS`, `S`, `M`, `L`, `XL`, `XXL`, then `unknown`, metadata sorts use normalized lexical order, and metadata default values stay last. `--feature-sort-desc` reverses the selected order while keeping metadata defaults last. These options are valid only with `--feature-summaries`; unsupported values or missing `--feature-summaries` return code `2`.
 
 ```bash
@@ -634,6 +644,16 @@ Exports a local repository hygiene report for agents and reviewers. It reads loc
 JSON output includes `root`, `changed_files`, `findings`, `summary`, `recommended_commands`, and `safety_notes`. Findings include stable ids, severity, category, path, message, source, and optional line number. Default mode returns `0` when the report is built; `--strict` returns `1` when high-risk findings are present so review or CI wrappers can fail on repository residue while still allowing low-risk generated cache artifacts to remain advisory.
 
 The command is read-only and local. It does not delete files, run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens. Recommended commands are advisory and are not executed.
+
+```bash
+specspine retrospective report [path] [--json] [--feature SLUG] [--limit N]
+```
+
+Exports a local deterministic feature retrospective for agents and reviewers. It reuses native feature discovery, metadata, readiness, trace, and tests evidence to summarize delivery quality, repeated blockers, open tasks, coverage gaps, and follow-up commands across scanned feature bundles.
+
+JSON output includes `root`, `feature_filter`, `features`, `themes`, `summary`, `recommendations`, `recommended_commands`, and `safety_notes`. Each feature record includes feature id, status, ready flag, priority, owner, task counts, readiness counts, gap count, blocking checks, coverage state, source files, and recommended local commands. `--feature SLUG` focuses one valid feature; missing bundles return `1` with a structured report, and invalid slugs return `2`. `--limit N` accepts a nonnegative integer and limits recommendation rows only, preserving full summary and theme counts.
+
+The command is read-only and local. It does not write files, run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens. Recommended commands are advisory and are not executed.
 
 ```bash
 specspine change risk [path] [--json] [--changed PATH]... [--feature SLUG]

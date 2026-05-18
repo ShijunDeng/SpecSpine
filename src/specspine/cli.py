@@ -122,6 +122,12 @@ from .provenance import (
     render_provenance_manifest_json,
     render_provenance_manifest_text,
 )
+from .retrospective import (
+    build_retrospective_report,
+    render_retrospective_json,
+    render_retrospective_text,
+    retrospective_report_exit_code,
+)
 from .review import (
     build_review_packet,
     render_review_packet_json,
@@ -995,6 +1001,35 @@ def build_parser() -> argparse.ArgumentParser:
     propose_parser.add_argument("--project", default="unassigned", help="feature project")
     propose_parser.add_argument("--effort", default="unknown", help="estimated effort")
 
+
+    retrospective_parser = subcommands.add_parser(
+        "retrospective",
+        help="build local feature retrospective reports",
+    )
+    retrospective_subcommands = retrospective_parser.add_subparsers(
+        dest="retrospective_command",
+        required=True,
+    )
+    retrospective_report_parser = retrospective_subcommands.add_parser(
+        "report",
+        help="scan native feature bundles and recommend follow-up work",
+    )
+    retrospective_report_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    retrospective_report_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    retrospective_report_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="focus on one native feature slug",
+    )
+    retrospective_report_parser.add_argument(
+        "--limit",
+        type=int,
+        help="limit recommendation rows without changing summary or theme counts",
+    )
 
     return parser
 
@@ -2138,6 +2173,26 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(text_body, end="")
             return 0
+
+    if args.command == "retrospective":
+        try:
+            result = build_retrospective_report(
+                Path(args.path),
+                feature_slug=args.feature,
+                limit=args.limit,
+            )
+        except (InvalidFeatureSlug, ValueError) as error:
+            print(f"Invalid retrospective option: {error}", file=sys.stderr)
+            return 2
+        except OSError as error:
+            print(f"Could not build retrospective: {error}", file=sys.stderr)
+            return 1
+
+        if args.json:
+            print(render_retrospective_json(result), end="")
+        else:
+            print(render_retrospective_text(result), end="")
+        return retrospective_report_exit_code(result)
 
     if args.command == "propose":
         root = Path(args.path).expanduser().resolve()

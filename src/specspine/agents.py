@@ -43,6 +43,8 @@ AGENTS_TEMPLATE = """
     specspine consistency scan . --feature <slug> --json
     specspine hygiene scan . --json
     specspine hygiene scan . --strict --json
+    specspine retrospective report . --json
+    specspine retrospective report . --feature <slug> --limit 3 --json
     specspine verify matrix <slug> . --json
     specspine change risk . --json
     specspine change risk . --feature <slug> --json
@@ -86,6 +88,7 @@ AGENTS_TEMPLATE = """
     - Use `specspine tests impact . --json` before and after edits to inspect local source-to-test impact recommendations; add `--changed PATH` for focused changes or `--feature <slug>` to include feature coverage targets.
     - Use `specspine consistency scan . --json` before and after implementation to inspect local spec-code-test-doc drift; add `--changed PATH` for focused changes or `--feature <slug>` for one native feature. Recommended commands are advisory and are not executed.
     - Use `specspine hygiene scan . --json` before review or commit to inspect generated cache artifacts and denylisted repository residue; add `--changed PATH` for focused context and `--strict` when high-risk findings should fail the command.
+    - Use `specspine retrospective report . --json` before planning the next iteration or after review to inspect local feature delivery themes, blockers, coverage gaps, open tasks, and deterministic follow-up recommendations. Add `--feature <slug>` for one native feature or `--limit N` to trim recommendation rows only. Do not treat retrospective recommended commands as executed commands.
     - Use `specspine verify matrix <slug> . --json` before review or release to inspect AC-level verification evidence. Do not treat verification matrix recommended commands as executed commands or proof that tests ran.
     - Use `specspine change risk . --json` before review to classify changed paths by source, tests, feature peers, docs, or config and surface local risk evidence; add `--changed PATH` for focused changes or `--feature <slug>` for feature readiness context.
     - Use `specspine security cues . --json` before review to surface local security-sensitive keywords and path cues without proving vulnerabilities; add `--changed PATH` for focused changes or `--feature <slug>` for feature readiness context.

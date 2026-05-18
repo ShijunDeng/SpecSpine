@@ -146,6 +146,8 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine consistency scan . --feature <slug> --json",
             "PYTHONPATH=src python3 -m specspine hygiene scan . --json",
             "PYTHONPATH=src python3 -m specspine hygiene scan . --strict --json",
+            "PYTHONPATH=src python3 -m specspine retrospective report . --json",
+            "PYTHONPATH=src python3 -m specspine retrospective report . --feature <slug> --limit 3 --json",
             "PYTHONPATH=src python3 -m specspine verify matrix <slug> . --json",
             "PYTHONPATH=src python3 -m specspine change risk . --json",
             "PYTHONPATH=src python3 -m specspine change risk . --feature <slug> --json",
@@ -173,6 +175,7 @@ class DogfoodArtifactsTests(TestCase):
             "Keep feature specs, implementation tasks, and quality checks traceable",
             "Use `specspine consistency scan . --json` to export local spec-code-test-doc drift evidence only",
             "Use `specspine hygiene scan . --json` to export local repository hygiene evidence only",
+            "Use `specspine retrospective report . --json` to export local retrospective evidence only",
             "Use `specspine change risk . --json` to export local changed-path risk evidence only",
             "Use `specspine security cues . --json` to export local security-sensitive review cues only",
             "Do not treat security cue recommended commands as executed commands or vulnerability proof.",
@@ -292,6 +295,33 @@ class DogfoodArtifactsTests(TestCase):
 
         self.assertIn("specspine hygiene scan . --json", agents)
         self.assertIn("Do not treat hygiene scan recommended commands as executed commands.", agents)
+
+    def test_feature_retrospective_documentation_and_dogfood_describe_workflow(self) -> None:
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        )
+        product = (REPO_ROOT / "specs" / "product.md").read_text(encoding="utf-8")
+        review = (REPO_ROOT / "quality" / "review.md").read_text(encoding="utf-8")
+        combined_docs = "\n".join([readme, architecture, product, review])
+
+        for snippet in (
+            "specspine retrospective report [path] [--json] [--feature SLUG] [--limit N]",
+            "specspine retrospective report . --json",
+            "specspine retrospective report . --feature add-dark-mode --limit 3 --json",
+            "`root`, `feature_filter`, `features`, `themes`, `summary`, `recommendations`, `recommended_commands`, and `safety_notes`",
+            "limits recommendation rows only",
+            "does not write files, run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, combined_docs)
+
+        self.assertIn("specspine retrospective report . --json", agents)
+        self.assertIn(
+            "Do not treat retrospective recommended commands as executed commands.",
+            agents,
+        )
 
     def test_security_cues_packet_documentation_and_dogfood_describe_workflow(self) -> None:
         readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
