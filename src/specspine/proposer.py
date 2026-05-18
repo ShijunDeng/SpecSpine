@@ -661,6 +661,7 @@ Why: {why_text}
 - Run `specspine feature trace {resolved_slug} . --json` to inspect acceptance, tasks, quality checks, test plan, and gaps.
 - Run `specspine feature tests {resolved_slug} . --json` to build the acceptance-test packet.
 - Run `specspine tests impact . --feature {resolved_slug} --json` to inspect local source-to-test impact recommendations.
+- Run `specspine verify matrix {resolved_slug} . --json` to inspect AC-level verification evidence.
 - Run `specspine change risk . --feature {resolved_slug} --json` to inspect local changed-path risk evidence.
 - Run `specspine security cues . --feature {resolved_slug} --json` to inspect local security-sensitive review cues.
 - Run `specspine provenance manifest . --feature {resolved_slug} --json` to hash local evidence artifacts before review or archive.
@@ -705,14 +706,15 @@ Use `- [ ] AC001 -> tests/...` to link existing local test files or test selecto
 - [ ] RR001: Acceptance criteria, tasks, required checks, and test plan evidence are complete.
 - [ ] RR002: Docs, release notes, or `specspine feature pr {resolved_slug} . --json` output are ready for reviewers.
 - [ ] RR003: `specspine tests impact . --feature {resolved_slug} --json` has been reviewed for focused local test commands.
-- [ ] RR004: `specspine change risk . --feature {resolved_slug} --json` has been reviewed for changed-path risk evidence.
-- [ ] RR005: `specspine security cues . --feature {resolved_slug} --json` has been reviewed for security-sensitive cues.
-- [ ] RR006: `specspine provenance manifest . --feature {resolved_slug} --json` has been reviewed for local evidence hashes.
-- [ ] RR007: `specspine review packet . --feature {resolved_slug} --json` has been reviewed for local pre-merge evidence.
-- [ ] RR008: `specspine feature sync-plan {resolved_slug} . --json` or `--output-dir .specspine/sync-plan/{resolved_slug}` has been reviewed before any remote GitHub sync.
-- [ ] RR009: `specspine feature archive {resolved_slug} . --json` has been reviewed before marking status archived.
-- [ ] RR010: `specspine feature ready {resolved_slug} . --json` and `specspine validate . --fusion --features` have been run.
-- [ ] RR011: No known blockers remain, or blockers are documented in review notes.
+- [ ] RR004: `specspine verify matrix {resolved_slug} . --json` has been reviewed for AC-level verification evidence.
+- [ ] RR005: `specspine change risk . --feature {resolved_slug} --json` has been reviewed for changed-path risk evidence.
+- [ ] RR006: `specspine security cues . --feature {resolved_slug} --json` has been reviewed for security-sensitive cues.
+- [ ] RR007: `specspine provenance manifest . --feature {resolved_slug} --json` has been reviewed for local evidence hashes.
+- [ ] RR008: `specspine review packet . --feature {resolved_slug} --json` has been reviewed for local pre-merge evidence.
+- [ ] RR009: `specspine feature sync-plan {resolved_slug} . --json` or `--output-dir .specspine/sync-plan/{resolved_slug}` has been reviewed before any remote GitHub sync.
+- [ ] RR010: `specspine feature archive {resolved_slug} . --json` has been reviewed before marking status archived.
+- [ ] RR011: `specspine feature ready {resolved_slug} . --json` and `specspine validate . --fusion --features` have been run.
+- [ ] RR012: No known blockers remain, or blockers are documented in review notes.
 """)
 
     return {

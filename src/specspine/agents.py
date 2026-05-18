@@ -39,6 +39,7 @@ AGENTS_TEMPLATE = """
     specspine analyze . --json --feature <slug>
     specspine tests impact . --json
     specspine tests impact . --feature <slug> --json
+    specspine verify matrix <slug> . --json
     specspine change risk . --json
     specspine change risk . --feature <slug> --json
     specspine security cues . --json
@@ -79,6 +80,7 @@ AGENTS_TEMPLATE = """
     - Use `specspine coverage debt . --json` after coverage-required rollups to see exact feature and AC coverage gaps; add `--policy` when only policy-selected features should count as required debt.
     - Use `specspine analyze . --json` before implementation to check native feature cross-artifact consistency, task traceability, and coverage evidence without changing files.
     - Use `specspine tests impact . --json` before and after edits to inspect local source-to-test impact recommendations; add `--changed PATH` for focused changes or `--feature <slug>` to include feature coverage targets.
+    - Use `specspine verify matrix <slug> . --json` before review or release to inspect AC-level verification evidence. Do not treat verification matrix recommended commands as executed commands or proof that tests ran.
     - Use `specspine change risk . --json` before review to classify changed paths by source, tests, feature peers, docs, or config and surface local risk evidence; add `--changed PATH` for focused changes or `--feature <slug>` for feature readiness context.
     - Use `specspine security cues . --json` before review to surface local security-sensitive keywords and path cues without proving vulnerabilities; add `--changed PATH` for focused changes or `--feature <slug>` for feature readiness context.
     - Use `specspine provenance manifest . --json` before review or archive to hash local evidence files and export feature provenance without reading file contents into the report; add `--include PATH` for focused artifacts or `--feature <slug>` for native feature evidence.

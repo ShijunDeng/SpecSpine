@@ -8,6 +8,7 @@ from specspine.review import build_review_packet
 from specspine.security import build_security_cue_report
 from specspine.status import build_status
 from specspine.validation import build_validation_report
+from specspine.verification import build_verification_matrix
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -60,6 +61,7 @@ class DogfoodArtifactsTests(TestCase):
             "change-risk-packet",
             "security-cues-packet",
             "provenance-manifest",
+            "verification-matrix",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -114,6 +116,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:change-risk-packet", "pass"), checks)
         self.assertIn(("feature.status_consistency:security-cues-packet", "pass"), checks)
         self.assertIn(("feature.status_consistency:provenance-manifest", "pass"), checks)
+        self.assertIn(("feature.status_consistency:verification-matrix", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -133,6 +136,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine status . --json --readiness-summary --readiness-policy",
             "PYTHONPATH=src python3 -m specspine coverage debt . --json",
             "PYTHONPATH=src python3 -m specspine coverage debt . --json --policy",
+            "PYTHONPATH=src python3 -m specspine verify matrix <slug> . --json",
             "PYTHONPATH=src python3 -m specspine change risk . --json",
             "PYTHONPATH=src python3 -m specspine change risk . --feature <slug> --json",
             "PYTHONPATH=src python3 -m specspine security cues . --json",
@@ -160,6 +164,8 @@ class DogfoodArtifactsTests(TestCase):
             "Use `specspine change risk . --json` to export local changed-path risk evidence only",
             "Use `specspine security cues . --json` to export local security-sensitive review cues only",
             "Do not treat security cue recommended commands as executed commands or vulnerability proof.",
+            "Use `specspine verify matrix <slug> . --json` to export local AC-level verification evidence only",
+            "Do not treat verification matrix recommended commands as executed commands or proof that tests ran.",
             "Use `specspine provenance manifest . --json` to export local file hashes and feature evidence only",
             "Do not treat provenance recommended commands as executed commands or as proof that tests ran.",
             "Use `specspine review packet . --json` to export local pre-merge review evidence only",
@@ -273,6 +279,36 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn("specspine provenance manifest . --json", agents)
         self.assertIn(
             "Do not treat provenance recommended commands as executed commands or as proof that tests ran.",
+            agents,
+        )
+
+    def test_verification_matrix_documentation_and_dogfood_describe_workflow(self) -> None:
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        )
+        product = (REPO_ROOT / "specs" / "product.md").read_text(encoding="utf-8")
+        review = (REPO_ROOT / "quality" / "review.md").read_text(encoding="utf-8")
+        combined_docs = "\n".join([readme, architecture, product, review])
+
+        for snippet in (
+            "specspine verify matrix <slug> [path] [--json]",
+            "specspine verify matrix add-dark-mode . --json",
+            "local acceptance-criterion verification matrix",
+            "`root`, `feature_id`, `status`, `ready`, `matrix`, `evidence`, `summary`, `recommended_commands`, and `safety_notes`",
+            "does not run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, combined_docs)
+
+        self.assertTrue(
+            "does not prove tests were run" in combined_docs
+            or "not proof that tests ran" in combined_docs
+        )
+        self.assertIn("specspine verify matrix <slug> . --json", agents)
+        self.assertIn(
+            "Do not treat verification matrix recommended commands as executed commands or proof that tests ran.",
             agents,
         )
 
@@ -562,6 +598,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/provenance-manifest.md",
             "execution/features/provenance-manifest.md",
             "quality/features/provenance-manifest.md",
+            "specs/features/verification-matrix.md",
+            "execution/features/verification-matrix.md",
+            "quality/features/verification-matrix.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -996,6 +1035,26 @@ class DogfoodArtifactsTests(TestCase):
         self.assertEqual(manifest.feature_id, "provenance-manifest")
         self.assertGreaterEqual(manifest.summary["artifacts_existing"], 3)
         self.assertGreaterEqual(manifest.summary["hashed_artifacts"], 1)
+
+    def test_verification_matrix_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(REPO_ROOT, "verification-matrix")
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "verification-matrix",
+            require_coverage=True,
+        )
+        matrix = build_verification_matrix(REPO_ROOT, "verification-matrix")
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+        self.assertEqual(matrix.feature_id, "verification-matrix")
+        self.assertGreaterEqual(matrix.summary["acceptance_criteria"], 1)
+        self.assertEqual(matrix.summary["unverified"], 0)
 
     def test_feature_test_packet_dogfood_exports_test_cases(self) -> None:
         report = build_feature_tests_report(REPO_ROOT, "feature-test-packet")

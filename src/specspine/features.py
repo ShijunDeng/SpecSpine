@@ -916,6 +916,7 @@ def build_feature_files(
             - Run `specspine feature trace {slug} . --json` to inspect acceptance, tasks, quality checks, test plan, and gaps.
             - Run `specspine feature tests {slug} . --json` to build the acceptance-test packet.
             - Run `specspine tests impact . --feature {slug} --json` to inspect local source-to-test impact recommendations.
+            - Run `specspine verify matrix {slug} . --json` to inspect AC-level verification evidence.
             - Run `specspine change risk . --feature {slug} --json` to inspect local changed-path risk evidence.
             - Run `specspine security cues . --feature {slug} --json` to inspect local security-sensitive review cues.
             - Run `specspine provenance manifest . --feature {slug} --json` to hash local evidence artifacts before review or archive.
@@ -961,6 +962,7 @@ def build_feature_files(
             - [ ] TODO: Acceptance criteria, tasks, required checks, and test plan evidence are complete.
             - [ ] TODO: Docs, release notes, or `specspine feature pr {slug} . --json` output are ready for reviewers.
             - [ ] TODO: `specspine tests impact . --feature {slug} --json` has been reviewed for focused local test commands.
+            - [ ] TODO: `specspine verify matrix {slug} . --json` has been reviewed for AC-level verification evidence.
             - [ ] TODO: `specspine change risk . --feature {slug} --json` has been reviewed for changed-path risk evidence.
             - [ ] TODO: `specspine security cues . --feature {slug} --json` has been reviewed for security-sensitive cues.
             - [ ] TODO: `specspine provenance manifest . --feature {slug} --json` has been reviewed for local evidence hashes.

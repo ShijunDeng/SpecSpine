@@ -58,9 +58,9 @@ from .features import (
     build_feature_ready_report,
     build_feature_task_issues_report,
     build_feature_sync_plan,
+    build_feature_tasks_report,
     build_feature_tests_report,
     build_feature_trace_report,
-    build_feature_tasks_report,
     build_issue_draft,
     build_proposal_files,
     build_pull_request_draft,
@@ -76,12 +76,12 @@ from .features import (
     render_feature_sync_plan_text,
     render_feature_task_issues_json,
     render_feature_task_issues_text,
+    render_feature_tasks_json,
+    render_feature_tasks_text,
     render_feature_tests_json,
     render_feature_tests_text,
     render_feature_trace_json,
     render_feature_trace_text,
-    render_feature_tasks_json,
-    render_feature_tasks_text,
     render_issue_json,
     render_issue_text,
     render_pull_request_json,
@@ -139,6 +139,11 @@ from .validation import (
     render_validation_json,
     render_validation_text,
     validation_exit_code,
+)
+from .verification import (
+    build_verification_matrix,
+    render_verification_matrix_json,
+    render_verification_matrix_text,
 )
 from .workspace import BASE_WORKSPACE_FILES, check_workspace, init_workspace
 
@@ -536,6 +541,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="include local feature test coverage evidence",
     )
 
+    verify_parser = subcommands.add_parser(
+        "verify",
+        help="export local verification evidence",
+    )
+    verify_subcommands = verify_parser.add_subparsers(
+        dest="verify_command",
+        required=True,
+    )
+    verify_matrix_parser = verify_subcommands.add_parser(
+        "matrix",
+        help="export a feature verification matrix",
+    )
+    verify_matrix_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    verify_matrix_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    verify_matrix_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+
     change_parser = subcommands.add_parser("change", help="inspect local change risk")
     change_subcommands = change_parser.add_subparsers(
         dest="change_command",
@@ -896,6 +921,20 @@ def build_parser() -> argparse.ArgumentParser:
     propose_parser.add_argument("--target-release", default="unassigned", help="feature target release")
     propose_parser.add_argument("--project", default="unassigned", help="feature project")
     propose_parser.add_argument("--effort", default="unknown", help="estimated effort")
+
+    sync_parser = subcommands.add_parser(
+        "sync",
+        help="execute offline GitHub drafts to create real remote issues and PRs",
+    )
+    sync_parser.add_argument("slug", help="feature slug")
+    sync_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    sync_parser.add_argument("--github-token", default=None, help="GitHub personal access token")
+    sync_parser.add_argument("--repo", required=True, help="GitHub repository in OWNER/REPO format")
+    sync_parser.add_argument("--dry-run", action="store_true", help="show API payloads without executing")
+    sync_parser.add_argument("--json", action="store_true", help="print stable JSON")
+    sync_parser.add_argument("--token-stdin", action="store_true", help="read token from stdin")
+    sync_parser.add_argument("--pr-base", default="main", help="base branch for PR")
+    sync_parser.add_argument("--pr-head", default=None, help="head branch for PR")
 
     return parser
 
@@ -1580,6 +1619,25 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(render_test_impact_text(report), end="")
             if report.feature is not None and not report.feature["has_native_files"]:
+                return 1
+            return 0
+
+    if args.command == "verify":
+        if args.verify_command == "matrix":
+            try:
+                matrix = build_verification_matrix(Path(args.path), args.slug)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not build verification matrix: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_verification_matrix_json(matrix), end="")
+            else:
+                print(render_verification_matrix_text(matrix), end="")
+            if not matrix.evidence["has_native_files"]:
                 return 1
             return 0
 

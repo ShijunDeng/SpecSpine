@@ -34,6 +34,7 @@ This repository is an early project skeleton. It includes:
 - A workspace coverage debt report for exact AC-level coverage gaps: `specspine coverage debt`.
 - A read-only native feature consistency and coverage analyzer: `specspine analyze`.
 - A local static source-to-test impact packet exporter: `specspine tests impact`.
+- A local acceptance-criterion verification matrix exporter: `specspine verify matrix`.
 - A local changed-path risk packet exporter: `specspine change risk`.
 - A local security-sensitive cue packet exporter: `specspine security cues`.
 - A local provenance manifest exporter for evidence hashes: `specspine provenance manifest`.
@@ -135,6 +136,13 @@ Export the acceptance-test packet for QA or testing agents:
 ```bash
 specspine feature tests add-dark-mode .
 specspine feature tests add-dark-mode . --json
+```
+
+Export the local acceptance-criterion verification matrix:
+
+```bash
+specspine verify matrix add-dark-mode .
+specspine verify matrix add-dark-mode . --json
 ```
 
 Check whether the feature is ready for review or release:
@@ -241,6 +249,13 @@ specspine tests impact .
 specspine tests impact . --json
 specspine tests impact . --changed src/specspine/features.py --json
 specspine tests impact . --feature add-dark-mode --json
+```
+
+Inspect AC-level verification evidence without running tests:
+
+```bash
+specspine verify matrix add-dark-mode .
+specspine verify matrix add-dark-mode . --json
 ```
 
 Classify changed-path risk evidence before review:
@@ -394,7 +409,7 @@ Initializes the SpecSpine workspace structure.
 specspine agents init [path] [--force]
 ```
 
-Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, use `specspine loop packet . --json` when a local loop packet is needed, use `specspine change risk . --json`, `specspine security cues . --json`, and `specspine review packet . --json` before review or merge, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, add `--readiness-summary` when workspace ready/not-ready counts are needed, use `coverage debt` when coverage rollups need exact AC gaps, preview natural-language requirements with `specspine propose "..." . --slug <slug> --dry-run`, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
+Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, use `specspine loop packet . --json` when a local loop packet is needed, use `specspine verify matrix <slug> . --json`, `specspine change risk . --json`, `specspine security cues . --json`, and `specspine review packet . --json` before review or merge, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, add `--readiness-summary` when workspace ready/not-ready counts are needed, use `coverage debt` when coverage rollups need exact AC gaps, preview natural-language requirements with `specspine propose "..." . --slug <slug> --dry-run`, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
 
 ```bash
 specspine doctor [path]
@@ -481,6 +496,14 @@ Add coverage links with GitHub Markdown checklists such as `- [x] AC001 -> tests
 JSON output includes `feature_id`, `status`, `ready`, `source_files`, `missing_files`, `gaps`, `blocking_checks`, `acceptance_criteria`, `test_plan`, `test_coverage`, `test_cases`, `quality_checks`, `summary`, and `recommended_commands`. Each `test_cases` record maps deterministically from one acceptance criterion: `TC001` maps `AC001`, includes the AC text, source file, line, associated coverage links, and a behavior-to-test statement. Test case status is `covered` when any linked coverage item is checked, `planned` when only unchecked coverage exists, and `pending` when no coverage is linked.
 
 Text output includes feature/status/ready, sources, summary, GitHub Markdown checklist test cases with linked targets, a Test Coverage section, existing test plan, quality checks, gaps, blocking checks, and key commands. Partial bundles return `0` with missing files and gaps recorded. Missing bundles return `1`; invalid slugs return `2`. `--output` writes the text packet and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
+
+```bash
+specspine verify matrix <slug> [path] [--json]
+```
+
+Exports a local acceptance-criterion verification matrix for agents, reviewers, and release checks. It composes existing local feature trace, acceptance-test packet, and coverage-required readiness evidence so each AC row shows the source criterion, linked test cases, linked `## Test Coverage` records, `coverage_complete`, `verification_status`, and `gap_reasons`.
+
+JSON output includes `root`, `feature_id`, `status`, `ready`, `matrix`, `evidence`, `summary`, `recommended_commands`, and `safety_notes`. Missing feature bundles return `1` with a structured report; invalid slugs return `2`. The command is advisory and local: it does not run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens. A verified row means the AC is checked and has at least one checked existing local coverage link; it does not prove tests were run.
 
 ```bash
 specspine feature task-issues <slug> [path] [--json] [--output FILE] [--force]
