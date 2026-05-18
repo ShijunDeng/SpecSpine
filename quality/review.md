@@ -23,6 +23,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine status --readiness-summary` now exposes an opt-in workspace readiness rollup with ready/not-ready counts, compact per-feature readiness records, coverage-required and policy modes, and focused `feature ready` commands without changing default status output.
 - `specspine coverage debt` now reports exact workspace AC coverage debt from local native feature bundles, including open coverage links, missing targets, unknown AC links, universal mode, and policy-selected mode.
 - `specspine analyze` now reports read-only native feature consistency, traceability, readiness, and coverage findings with feature filtering and opt-in failing issue exits.
+- `specspine tests impact` now reports local static source-to-test impact recommendations and optional feature coverage targets without running tests, invoking subprocesses, calling network services, or reading tokens.
 - `specspine loop packet` now exports a local, deterministic agent loop packet with root, deadline, core_features, summary, context_commands, lifecycle_steps, subagents, validation_commands, safety_notes, upstreams, and recommended_commands.
 - `specspine propose` now turns meaningful natural-language intent into populated native feature bundles with EARS-like acceptance criteria, boundary/dependency-annotated execution tasks, mapped quality checks, dry-run previews, JSON output, metadata flags, conflict protection, and no external calls.
 - `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
@@ -46,6 +47,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Use `specspine status . --json --readiness-summary` when agents or CI need workspace-wide ready/not-ready feature counts in one packet; add `--readiness-require-coverage` or `--readiness-policy` when coverage gates should be universal or policy-selected.
 - Use `specspine coverage debt . --json` when a coverage-required readiness rollup shows not-ready features and agents need exact missing AC coverage evidence; add `--policy` to limit required debt to policy-selected features.
 - Use `specspine analyze . --json` before implementation when reviewers or agents need one read-only packet for cross-artifact consistency, AC task references, readiness blockers, and coverage evidence; use `--fail-on-issues` only for CI-style failure behavior.
+- Use `specspine tests impact . --json`, optionally with `--changed PATH` and `--feature <slug>`, when agents or reviewers need focused local unittest recommendations without executing the tests.
 - Treat `specspine loop packet . --json` as the workspace-level local agent loop packet before delegating implementation, validation, or review work. It does not call GitHub, read or write tokens, invoke subprocesses, probe adapters, or access the network.
 - Treat `specspine propose "..." . --json` as the default seed for natural-language feature requests; use `--dry-run` before writing when a reviewer wants to inspect generated artifacts.
 - Treat `specspine feature handoff <slug> . --json` as the default local feature packet for implementation, acceptance, and review agents.
@@ -66,6 +68,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Treat generated feature templates as the starting workflow contract for new requirements: keep acceptance criteria testable, tasks traceable, quality gates unchecked until evidence exists, and handoff/task-issues/tests/pr/ready commands visible.
 - Keep GitHub issue and Pull Request draft generation offline and token-free by default.
 - Keep GitHub sync planning and artifact materialization offline and token-free; remote issue/PR creation remains a future explicit workflow, not default behavior.
+- Keep test impact reporting advisory and local; recommended commands are not executed by SpecSpine.
 - Keep native feature peer files on a consistent allowed lifecycle status.
 - Prefer `specspine feature status <slug> . --set STATUS --enforce-transition` when lifecycle order matters; run `specspine feature ready <slug> . --json` and `specspine feature archive <slug> . --json` before archiving.
 - Use `--run-upstream` only after explicit user instruction.
@@ -85,6 +88,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Workspace status can now opt into a `readiness_summary` rollup that reuses feature readiness gates and reports counts, not-ready features, coverage-required records, policy-selected coverage records, and focused local commands.
 - Workspace coverage debt can now be exported as a local report that complements readiness rollups with exact AC gaps and link classifications without running tests or touching GitHub.
 - Workspace analysis can now be exported as a local report that combines native feature traceability, readiness blockers, AC-to-task references, coverage link classifications, duplicate AC text, and vague AC wording without writing files or touching external services.
+- Test impact packets can now be exported as local static source-to-test graphs with focused unittest recommendations and feature coverage target commands.
 - Loop packets can now be exported as local agent startup packets with feature summaries, readiness counts, lifecycle guidance, subagents, validation commands, safety notes, upstream metadata, and recommended commands.
 - Natural-language proposal generation can now create native spec, execution, and quality bundles deterministically without network access, subprocesses, token reads, GitHub calls, upstream CLIs, or third-party dependencies.
 - Feature execution checklists can now be exported without generation, GitHub credentials, or upstream tool calls.

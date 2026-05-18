@@ -250,6 +250,7 @@ class FeatureBundleTests(TestCase):
                 "specspine feature task-issues add-dark-mode . --json",
                 "specspine feature trace add-dark-mode . --json",
                 "specspine feature tests add-dark-mode . --json",
+                "specspine tests impact . --feature add-dark-mode --json",
                 "specspine feature ready add-dark-mode . --json",
                 "specspine feature pr add-dark-mode . --json",
                 "specspine feature sync-plan add-dark-mode . --json",
@@ -270,6 +271,7 @@ class FeatureBundleTests(TestCase):
             self.assertIn("Acceptance criteria are reviewed", quality)
             self.assertIn("Test coverage proves", quality)
             self.assertIn("Documentation, release notes, or PR draft", quality)
+            self.assertIn("specspine tests impact . --feature add-dark-mode --json", quality)
             self.assertIn("specspine feature sync-plan add-dark-mode . --json", quality)
             self.assertIn("specspine feature archive add-dark-mode . --json", quality)
             self.assertIn("specspine feature ready add-dark-mode . --json", quality)
@@ -293,7 +295,7 @@ class FeatureBundleTests(TestCase):
             self.assertEqual(test_coverage[0].acceptance_criterion_id, "AC001")
             self.assertEqual(test_coverage[0].target, "tests/...")
             self.assertFalse(test_coverage[0].target_exists)
-            self.assertEqual(len(release_readiness), 6)
+            self.assertEqual(len(release_readiness), 7)
             self.assertTrue(all(not check.done for check in quality_checks))
             self.assertTrue(all(not check.done for check in release_readiness))
 

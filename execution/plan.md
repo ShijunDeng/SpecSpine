@@ -17,6 +17,7 @@
 - Local GitHub CLI synchronization planning and artifact materialization through `specspine feature sync-plan`.
 - Local native feature archive evidence reporting and package materialization through `specspine feature archive`.
 - Native acceptance-test packet export through `specspine feature tests`.
+- Local static source-to-test impact reporting through `specspine tests impact`.
 - Refreshed native feature bundle templates with focused handoff, task issue draft, tests, PR, readiness, and validation guidance.
 - Fusion layer generation for OpenSpec, Spec Kit, and Superpowers.
 - Status JSON, validation JSON/text, adapter doctor, and install hints.
@@ -46,6 +47,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine status . --json --readiness-summary` when an agent or CI job needs whole-workspace ready/not-ready feature counts in one packet; add `--readiness-require-coverage` for universal coverage gates or `--readiness-policy` when `.specspine/policy.yaml` should decide per feature.
 - Use `specspine coverage debt . --json` after coverage-required readiness rollups to locate exact feature and AC coverage gaps; add `--policy` when only policy-selected features should count as required debt.
 - Use `specspine analyze . --json` after tasks are drafted and before implementation to review cross-artifact consistency, AC-to-task traceability, and local coverage evidence; add `--feature <slug>` for a focused packet or `--fail-on-issues` only when CI should fail on findings.
+- Use `specspine tests impact . --json` before or after implementation to inspect static source-to-test recommendations; add `--changed PATH` for focused changes or `--feature <slug>` for feature coverage targets.
 - Use `specspine feature handoff <slug> . --json` as the default feature-level packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
 - Use `specspine feature task-issues <slug> . --json` when an agent needs one local GitHub issue draft per execution task.

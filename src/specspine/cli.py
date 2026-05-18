@@ -90,6 +90,11 @@ from .gates import (
     render_quality_gate_json,
     render_quality_gate_text,
 )
+from .impact import (
+    build_test_impact_report,
+    render_test_impact_json,
+    render_test_impact_text,
+)
 from .loop import (
     build_loop_packet,
     render_loop_packet_json,
@@ -484,6 +489,31 @@ def build_parser() -> argparse.ArgumentParser:
         "--policy",
         action="store_true",
         help="only require coverage for features selected by workspace readiness policy",
+    )
+
+    tests_parser = subcommands.add_parser("tests", help="inspect local test impact")
+    tests_subcommands = tests_parser.add_subparsers(dest="tests_command", required=True)
+    tests_impact_parser = tests_subcommands.add_parser(
+        "impact",
+        help="export a local static source-to-test impact packet",
+    )
+    tests_impact_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    tests_impact_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    tests_impact_parser.add_argument(
+        "--changed",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="changed source or test path; repeat to include more than one",
+    )
+    tests_impact_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="include local feature test coverage evidence",
     )
 
     analyze_parser = subcommands.add_parser(
@@ -1393,6 +1423,29 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_coverage_debt_json(report), end="")
             else:
                 print(render_coverage_debt_text(report), end="")
+            return 0
+
+    if args.command == "tests":
+        if args.tests_command == "impact":
+            try:
+                report = build_test_impact_report(
+                    Path(args.path),
+                    changed_files=tuple(args.changed),
+                    feature=args.feature,
+                )
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not inspect test impact: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_test_impact_json(report), end="")
+            else:
+                print(render_test_impact_text(report), end="")
+            if report.feature is not None and not report.feature["has_native_files"]:
+                return 1
             return 0
 
     if args.command == "analyze":

@@ -33,6 +33,7 @@ This repository is an early project skeleton. It includes:
 - An optional workspace readiness policy exporter: `specspine policy`.
 - A workspace coverage debt report for exact AC-level coverage gaps: `specspine coverage debt`.
 - A read-only native feature consistency and coverage analyzer: `specspine analyze`.
+- A local static source-to-test impact packet exporter: `specspine tests impact`.
 - A native feature handoff packet exporter: `specspine feature handoff`.
 - A native feature acceptance-test packet exporter: `specspine feature tests`.
 - A local GitHub issue draft exporter: `specspine feature issue`.
@@ -227,6 +228,15 @@ specspine analyze .
 specspine analyze . --json
 specspine analyze . --json --feature add-dark-mode
 specspine analyze . --fail-on-issues
+```
+
+Inspect static source-to-test impact recommendations without running tests:
+
+```bash
+specspine tests impact .
+specspine tests impact . --json
+specspine tests impact . --changed src/specspine/features.py --json
+specspine tests impact . --feature add-dark-mode --json
 ```
 
 Validate workspace and fusion contracts for CI or agents:
@@ -519,6 +529,14 @@ specspine analyze [path] [--json] [--feature SLUG] [--fail-on-issues]
 Runs a local, deterministic consistency and coverage analysis across native feature bundles. The report combines feature discovery, trace evidence, readiness blockers, execution task references, and `## Test Coverage` links. It flags missing peer artifacts, ACs without task references, ACs without completed local coverage evidence, tasks without AC/test/quality references, unknown AC coverage links, checked links whose target file is missing, open coverage links, duplicate AC text, and vague AC wording.
 
 JSON output includes `root`, `feature_filter`, `summary`, per-feature metrics and issues, a flat `issues` list, and `recommended_commands`. Text output groups issue rows by feature and prints a success message when no issues are found. By default the command returns `0` when a report is built, even if issues exist; `--fail-on-issues` is the opt-in failing mode for CI. The command does not write files, run tests, invoke subprocesses, probe adapters, call network services, call GitHub, or read tokens.
+
+```bash
+specspine tests impact [path] [--json] [--changed PATH]... [--feature SLUG]
+```
+
+Exports a local static test-impact packet for agents, reviewers, and CI authors. It builds a deterministic graph from `src/specspine/*.py` modules to `tests/test_*.py` files using Python import parsing and conservative local text matching, then reports recommended unittest commands without executing them. With no `--changed`, it emits the full graph and recommends `PYTHONPATH=src python3 -m unittest discover -s tests`.
+
+When `--changed` is repeated, source-file changes recommend directly impacted `tests.test_*` modules, changed test files recommend themselves, and files without direct static impact add the full discovery command as an explicit fallback. `--feature SLUG` includes existing local `feature tests` coverage evidence, coverage target paths, and recommended commands for those targets. Missing feature bundles return `1` with a report; invalid feature slugs return `2`. The command reads local files only and does not run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens.
 
 ```bash
 specspine loop packet [path] [--json] [--output FILE] [--force] [--deadline VALUE]
