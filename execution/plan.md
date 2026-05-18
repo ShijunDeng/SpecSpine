@@ -32,6 +32,7 @@
 - Read-only native feature consistency and coverage analysis through `specspine analyze`, with feature filtering and opt-in failing issue exits.
 - Natural-language feature proposal generation through `specspine propose`, with deterministic native bundle generation, dry-run previews, JSON output, metadata flags, conflict protection, and no external services.
 - Repository-level quality gate definition export through `specspine gates`, including optional severity, owner, and CI metadata labels.
+- Local changed-path risk packet export through `specspine change risk`, classifying changed files and composing optional feature evidence without running commands.
 - Local pre-merge review packet export through `specspine review packet`, composing validation, quality gates, test impact, and optional feature evidence without running commands.
 - Unit tests and GitHub Actions coverage for the current command surface.
 
@@ -49,6 +50,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine coverage debt . --json` after coverage-required readiness rollups to locate exact feature and AC coverage gaps; add `--policy` when only policy-selected features should count as required debt.
 - Use `specspine analyze . --json` after tasks are drafted and before implementation to review cross-artifact consistency, AC-to-task traceability, and local coverage evidence; add `--feature <slug>` for a focused packet or `--fail-on-issues` only when CI should fail on findings.
 - Use `specspine tests impact . --json` before or after implementation to inspect static source-to-test recommendations; add `--changed PATH` for focused changes or `--feature <slug>` for feature coverage targets.
+- Use `specspine change risk . --json` before review to classify changed paths by local risk and evidence expectations; add `--changed PATH` and `--feature <slug>` for focused change review.
 - Use `specspine review packet . --json` before review or merge to compose local validation, quality gate, test impact, and safety evidence; add `--feature <slug>` and `--changed PATH` for focused native feature review.
 - Use `specspine feature handoff <slug> . --json` as the default feature-level packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` when an agent needs a feature implementation checklist.
@@ -88,4 +90,5 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Should future remote sync consume quality gate `ci_check` labels for branch-protection required checks, or should SpecSpine continue to export them only as local planning metadata?
 - Should a future remote-sync command consume `feature sync-plan --output-dir` artifacts after explicit confirmation, or should SpecSpine remain plan-only for GitHub writes?
 - Should future adapter handoff artifacts include a signed manifest or schema version after the current structured JSON files and SHA-256 checksums prove useful?
+- Should change risk later infer changed files from VCS state behind an explicit flag, or remain purely caller-supplied to avoid subprocesses?
 - Should review packets later support policy-selected review profiles, or stay compositional over the existing local reports?

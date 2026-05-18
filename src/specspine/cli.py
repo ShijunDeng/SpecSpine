@@ -37,6 +37,11 @@ from .archive import (
     render_feature_archive_text,
     write_feature_archive_package,
 )
+from .change import (
+    build_change_risk_report,
+    render_change_risk_json,
+    render_change_risk_text,
+)
 from .coverage import (
     build_coverage_debt_report,
     render_coverage_debt_json,
@@ -519,6 +524,34 @@ def build_parser() -> argparse.ArgumentParser:
         "--feature",
         metavar="SLUG",
         help="include local feature test coverage evidence",
+    )
+
+    change_parser = subcommands.add_parser("change", help="inspect local change risk")
+    change_subcommands = change_parser.add_subparsers(
+        dest="change_command",
+        required=True,
+    )
+    change_risk_parser = change_subcommands.add_parser(
+        "risk",
+        help="export a local changed-path risk packet",
+    )
+    change_risk_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    change_risk_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    change_risk_parser.add_argument(
+        "--changed",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="changed path; repeat to include more than one",
+    )
+    change_risk_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="include focused native feature readiness evidence",
     )
 
     review_parser = subcommands.add_parser("review", help="compose local review packets")
@@ -1475,6 +1508,32 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(render_test_impact_text(report), end="")
             if report.feature is not None and not report.feature["has_native_files"]:
+                return 1
+            return 0
+
+    if args.command == "change":
+        if args.change_command == "risk":
+            try:
+                report = build_change_risk_report(
+                    Path(args.path),
+                    changed_files=tuple(args.changed),
+                    feature=args.feature,
+                )
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not build change risk report: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_change_risk_json(report), end="")
+            else:
+                print(render_change_risk_text(report), end="")
+            if any(
+                not evidence["has_native_files"]
+                for evidence in report.feature_evidence
+            ):
                 return 1
             return 0
 
