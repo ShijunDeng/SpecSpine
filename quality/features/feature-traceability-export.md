@@ -12,6 +12,17 @@ Why: The trace export must be trustworthy as a local handoff for future agents a
 - [x] Documentation describes the command surface and offline boundaries.
 - [x] The implementation does not call GitHub APIs, read tokens, call upstream CLIs, or add third-party dependencies.
 
+## Test Coverage
+
+- [x] AC001 -> tests/test_features.py::FeatureBundleTests::test_feature_trace_cli_all_files_missing_returns_nonzero
+- [x] AC002 -> tests/test_features.py::FeatureBundleTests::test_feature_trace_cli_text_and_json_outputs
+- [x] AC003 -> tests/test_features.py::FeatureBundleTests::test_feature_trace_cli_text_and_json_outputs
+- [x] AC004 -> tests/test_features.py::FeatureBundleTests::test_feature_trace_cli_text_and_json_outputs
+- [x] AC005 -> tests/test_features.py::FeatureBundleTests::test_feature_trace_cli_output_file_overwrite_force_and_json_output
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_feature_trace_cli_reports_partial_bundle_gaps
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_dogfood_feature_traceability_export_is_validated_and_complete
+- [x] AC006 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_feature_traceability_export_dogfood_bundle_passes_default_and_coverage_gates
+
 ## Test Plan
 
 - Run `PYTHONPATH=src python3 -m unittest discover -s tests`.
