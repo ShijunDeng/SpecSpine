@@ -270,7 +270,7 @@ class LoopPacketTests(TestCase):
             root = Path(tmp)
             init_workspace(root)
             stdout = StringIO()
-            token = "ghp_FAKE_SECRET_TOKEN_VALUE"
+            token = "FAKE_SECRET_TOKEN_VALUE"
 
             with patch.dict(os.environ, {"GITHUB_TOKEN": token}), patch.object(
                 subprocess,

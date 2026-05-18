@@ -39,6 +39,8 @@ AGENTS_TEMPLATE = """
     specspine analyze . --json --feature <slug>
     specspine tests impact . --json
     specspine tests impact . --feature <slug> --json
+    specspine review packet . --json
+    specspine review packet . --feature <slug> --json
     specspine loop packet . --json
     specspine gates . --json
     specspine adapters lifecycle . --json
@@ -71,6 +73,7 @@ AGENTS_TEMPLATE = """
     - Use `specspine coverage debt . --json` after coverage-required rollups to see exact feature and AC coverage gaps; add `--policy` when only policy-selected features should count as required debt.
     - Use `specspine analyze . --json` before implementation to check native feature cross-artifact consistency, task traceability, and coverage evidence without changing files.
     - Use `specspine tests impact . --json` before and after edits to inspect local source-to-test impact recommendations; add `--changed PATH` for focused changes or `--feature <slug>` to include feature coverage targets.
+    - Use `specspine review packet . --json` before review or merge to compose local pre-merge review evidence from validation, quality gates, test impact, and optional feature packets; add `--feature <slug>` for focused native feature evidence. Recommended commands are advisory and are not executed.
     - Use `specspine loop packet . --json` when a worker needs a local, deterministic agent loop packet. Do not treat loop packet recommended commands as executed commands.
     - Use `specspine gates . --json` when an agent or reviewer needs repository-level quality gate definitions; it exports definitions and does not execute checks.
     - Use `specspine adapters lifecycle . --json` when adapter lifecycle definitions are needed; it exports static local mappings and does not execute upstream tools.

@@ -661,6 +661,7 @@ Why: {why_text}
 - Run `specspine feature trace {resolved_slug} . --json` to inspect acceptance, tasks, quality checks, test plan, and gaps.
 - Run `specspine feature tests {resolved_slug} . --json` to build the acceptance-test packet.
 - Run `specspine tests impact . --feature {resolved_slug} --json` to inspect local source-to-test impact recommendations.
+- Run `specspine review packet . --feature {resolved_slug} --json` to compose local pre-merge review evidence.
 - Run `specspine feature ready {resolved_slug} . --json` after implementation evidence is complete.
 - Run `specspine feature pr {resolved_slug} . --json` to draft local Pull Request review notes.
 - Run `specspine feature sync-plan {resolved_slug} . --json` to review GitHub CLI sync intent without executing it.
@@ -701,10 +702,11 @@ Use `- [ ] AC001 -> tests/...` to link existing local test files or test selecto
 - [ ] RR001: Acceptance criteria, tasks, required checks, and test plan evidence are complete.
 - [ ] RR002: Docs, release notes, or `specspine feature pr {resolved_slug} . --json` output are ready for reviewers.
 - [ ] RR003: `specspine tests impact . --feature {resolved_slug} --json` has been reviewed for focused local test commands.
-- [ ] RR004: `specspine feature sync-plan {resolved_slug} . --json` or `--output-dir .specspine/sync-plan/{resolved_slug}` has been reviewed before any remote GitHub sync.
-- [ ] RR005: `specspine feature archive {resolved_slug} . --json` has been reviewed before marking status archived.
-- [ ] RR006: `specspine feature ready {resolved_slug} . --json` and `specspine validate . --fusion --features` have been run.
-- [ ] RR007: No known blockers remain, or blockers are documented in review notes.
+- [ ] RR004: `specspine review packet . --feature {resolved_slug} --json` has been reviewed for local pre-merge evidence.
+- [ ] RR005: `specspine feature sync-plan {resolved_slug} . --json` or `--output-dir .specspine/sync-plan/{resolved_slug}` has been reviewed before any remote GitHub sync.
+- [ ] RR006: `specspine feature archive {resolved_slug} . --json` has been reviewed before marking status archived.
+- [ ] RR007: `specspine feature ready {resolved_slug} . --json` and `specspine validate . --fusion --features` have been run.
+- [ ] RR008: No known blockers remain, or blockers are documented in review notes.
 """)
 
     return {

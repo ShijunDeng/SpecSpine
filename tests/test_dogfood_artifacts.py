@@ -2,6 +2,7 @@ from pathlib import Path
 from unittest import TestCase
 
 from specspine.features import build_feature_ready_report, build_feature_tests_report
+from specspine.review import build_review_packet
 from specspine.status import build_status
 from specspine.validation import build_validation_report
 
@@ -52,6 +53,7 @@ class DogfoodArtifactsTests(TestCase):
             "status-readiness-rollup",
             "coverage-debt-report",
             "agent-loop-packet",
+            "review-packet",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -102,6 +104,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:status-readiness-rollup", "pass"), checks)
         self.assertIn(("feature.status_consistency:coverage-debt-report", "pass"), checks)
         self.assertIn(("feature.status_consistency:agent-loop-packet", "pass"), checks)
+        self.assertIn(("feature.status_consistency:review-packet", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -121,6 +124,8 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine status . --json --readiness-summary --readiness-policy",
             "PYTHONPATH=src python3 -m specspine coverage debt . --json",
             "PYTHONPATH=src python3 -m specspine coverage debt . --json --policy",
+            "PYTHONPATH=src python3 -m specspine review packet . --json",
+            "PYTHONPATH=src python3 -m specspine review packet . --feature <slug> --json",
             "PYTHONPATH=src python3 -m specspine loop packet . --json",
             "PYTHONPATH=src python3 -m specspine gates . --json",
             "PYTHONPATH=src python3 -m specspine adapters lifecycle . --json",
@@ -137,6 +142,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine feature tests <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature pr <slug> . --json",
             "Keep feature specs, implementation tasks, and quality checks traceable",
+            "Use `specspine review packet . --json` to export local pre-merge review evidence only",
             "Use `specspine gates . --json` to export quality gate definitions and optional severity/owner/CI metadata only",
             "Use `specspine adapters lifecycle . --json` to export adapter lifecycle definitions only",
             "prefer `--enforce-transition` when advancing lifecycle state",
@@ -170,6 +176,30 @@ class DogfoodArtifactsTests(TestCase):
 
         self.assertIn("specspine loop packet . --json", agents)
         self.assertIn("Do not treat loop packet recommended commands as executed commands.", agents)
+
+    def test_review_packet_documentation_and_dogfood_describe_workflow(self) -> None:
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        )
+        product = (REPO_ROOT / "specs" / "product.md").read_text(encoding="utf-8")
+        review = (REPO_ROOT / "quality" / "review.md").read_text(encoding="utf-8")
+        combined_docs = "\n".join([readme, architecture, product, review])
+
+        for snippet in (
+            "specspine review packet [path] [--json] [--feature SLUG] [--changed PATH]...",
+            "specspine review packet . --json",
+            "specspine review packet . --feature add-dark-mode --changed src/specspine/features.py --json",
+            "local pre-merge review packet",
+            "`validation`, `quality_gates`, `test_impact`, optional `feature`, `review_checks`, `summary`, `recommended_commands`, and `safety_notes`",
+            "does not run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, combined_docs)
+
+        self.assertIn("specspine review packet . --json", agents)
+        self.assertIn("Do not treat review packet recommended commands as executed commands.", agents)
 
     def test_feature_handoff_documentation_describes_workflow(self) -> None:
         readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
@@ -421,6 +451,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/agent-loop-packet.md",
             "execution/features/agent-loop-packet.md",
             "quality/features/agent-loop-packet.md",
+            "specs/features/review-packet.md",
+            "execution/features/review-packet.md",
+            "quality/features/review-packet.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -761,6 +794,29 @@ class DogfoodArtifactsTests(TestCase):
         self.assertEqual(coverage_report.status, "validated")
         self.assertTrue(coverage_report.coverage_required)
         self.assertEqual(coverage_report.summary["fail"], 0)
+
+    def test_review_packet_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(REPO_ROOT, "review-packet")
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "review-packet",
+            require_coverage=True,
+        )
+        packet = build_review_packet(
+            REPO_ROOT,
+            feature="review-packet",
+            changed_files=("src/specspine/review.py",),
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+        self.assertEqual(packet.feature_id, "review-packet")
+        self.assertEqual(packet.summary["failed_review_checks"], 0)
 
     def test_feature_test_packet_dogfood_exports_test_cases(self) -> None:
         report = build_feature_tests_report(REPO_ROOT, "feature-test-packet")

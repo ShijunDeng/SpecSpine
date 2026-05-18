@@ -36,6 +36,7 @@ The CLI is intentionally thin:
 - `specspine coverage debt` reports workspace-level AC coverage debt from local feature bundles.
 - `specspine analyze` reports cross-artifact consistency and coverage findings for native feature bundles without changing files.
 - `specspine tests impact` exports a local static source-to-test impact packet without running tests.
+- `specspine review packet` composes local pre-merge review evidence from validation, quality gates, test impact, and optional feature packets without running commands.
 - `specspine loop packet` exports a local, deterministic agent loop packet with feature summaries, readiness counts, lifecycle guidance, subagents, validation commands, safety notes, and upstream metadata.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
 - `specspine doctor` checks whether expected files exist.
@@ -186,6 +187,10 @@ Analysis JSON includes `root`, `feature_filter`, summary counts, per-feature met
 
 Impact JSON includes `root`, `changed_files`, `source_modules`, `test_files`, `recommendations`, `summary`, `recommended_commands`, `safety_notes`, and optional `feature`. The command does not execute tests, subprocesses, network calls, upstream CLIs, GitHub operations, or token reads.
 
+`specspine review packet [path] [--json] [--feature SLUG] [--changed PATH]...` is the local pre-merge review packet. It composes the validation summary, repository quality gate definitions, static test impact recommendations, and optional feature handoff, readiness, trace, and tests evidence into one reviewable JSON or text report.
+
+Review packet JSON includes `root`, `feature_id`, `changed_files`, `validation`, `quality_gates`, `test_impact`, optional `feature`, `review_checks`, `summary`, `recommended_commands`, and `safety_notes`. Feature mode uses coverage-required readiness and returns a report with exit code `1` when the feature bundle is missing; invalid slugs return `2`. The command is advisory and read-only: it does not execute tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens.
+
 Feature summary triage stays local to the already-built summaries. `--feature-status` filters by lifecycle status and can be repeated, including abnormal `invalid` and `unknown` buckets. `--feature-ready` filters by readiness aliases. `--feature-priority` filters by `high`, `medium`, `low`, or `unknown`, and `--feature-owner` performs repeated case-insensitive exact owner matches where `unassigned` includes missing owners. `--feature-sort` orders by `slug`, `status`, `ready`, `gaps`, `blocking`, `tasks-open`, or `priority`; priority sort uses `high -> medium -> low -> unknown`, with `--feature-sort-desc` reversing the selected order. These options and `--feature-require-coverage` are rejected with code `2` unless `--feature-summaries` is present, so callers do not accidentally think the compact default status was filtered.
 
 `specspine gates [path] [--json]` is the repository-level quality policy packet. It reads only `quality/checklist.md` and exports definitions without executing tests, validation, shell commands, upstream CLIs, GitHub APIs, network requests, `gh`, or token reads. The parser is intentionally section-bounded:
@@ -266,6 +271,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 - `specspine.coverage`: workspace-level coverage debt reporting from native feature ACs and local Test Coverage links.
 - `specspine.analysis`: read-only native feature consistency and coverage analysis across specs, execution tasks, quality checks, readiness blockers, and Test Coverage links.
 - `specspine.impact`: local static source-to-test impact graphing and test command recommendation.
+- `specspine.review`: local pre-merge review packet composition from validation, quality gates, test impact, and optional feature evidence.
 - `specspine.status`: compact workspace, fusion, artifact, upstream, recommendation, optional validation summary, optional feature summary, and optional readiness rollup rendering.
 - `specspine.validation`: executable workspace, scaffold-placeholder warning, fusion, feature, optional adapter contract checks, and compact validation summaries.
 - `specspine.cli`: command-line interface.

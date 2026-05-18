@@ -52,6 +52,8 @@ class AgentsTests(TestCase):
             "specspine coverage debt . --json --policy",
             "specspine tests impact . --json",
             "specspine tests impact . --feature <slug> --json",
+            "specspine review packet . --json",
+            "specspine review packet . --feature <slug> --json",
             "specspine loop packet . --json",
             "specspine gates . --json",
             "specspine adapters lifecycle . --json",
@@ -85,7 +87,9 @@ class AgentsTests(TestCase):
             "adapter lifecycle definitions",
             "exact feature and AC coverage gaps",
             "local source-to-test impact recommendations",
+            "local pre-merge review evidence",
             "local, deterministic agent loop packet",
+            "Recommended commands are advisory and are not executed.",
             "Do not treat loop packet recommended commands as executed commands.",
             "Use `--run-upstream` only when the user explicitly asks",
         ):

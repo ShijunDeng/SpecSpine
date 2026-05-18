@@ -101,6 +101,11 @@ from .loop import (
     render_loop_packet_text,
 )
 from .policy import load_workspace_policy, render_policy_json, render_policy_text
+from .review import (
+    build_review_packet,
+    render_review_packet_json,
+    render_review_packet_text,
+)
 from .status import (
     InvalidFeatureSummaryOption,
     build_status,
@@ -514,6 +519,31 @@ def build_parser() -> argparse.ArgumentParser:
         "--feature",
         metavar="SLUG",
         help="include local feature test coverage evidence",
+    )
+
+    review_parser = subcommands.add_parser("review", help="compose local review packets")
+    review_subcommands = review_parser.add_subparsers(dest="review_command", required=True)
+    review_packet_parser = review_subcommands.add_parser(
+        "packet",
+        help="export a local pre-merge review evidence packet",
+    )
+    review_packet_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    review_packet_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    review_packet_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="include focused native feature evidence",
+    )
+    review_packet_parser.add_argument(
+        "--changed",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="changed source or test path; repeat to include more than one",
     )
 
     analyze_parser = subcommands.add_parser(
@@ -1445,6 +1475,29 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(render_test_impact_text(report), end="")
             if report.feature is not None and not report.feature["has_native_files"]:
+                return 1
+            return 0
+
+    if args.command == "review":
+        if args.review_command == "packet":
+            try:
+                packet = build_review_packet(
+                    Path(args.path),
+                    feature=args.feature,
+                    changed_files=tuple(args.changed),
+                )
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not build review packet: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_review_packet_json(packet), end="")
+            else:
+                print(render_review_packet_text(packet), end="")
+            if packet.feature is not None and not packet.feature["has_native_files"]:
                 return 1
             return 0
 
