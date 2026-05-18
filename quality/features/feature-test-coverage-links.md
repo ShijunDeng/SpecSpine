@@ -15,8 +15,17 @@ Why: Coverage links are useful only if they remain local, deterministic, source-
 
 ## Test Coverage
 
+- [x] AC001 -> tests/test_features.py::FeatureBundleTests::test_parse_test_coverage_extracts_links_and_target_existence
+- [x] AC002 -> tests/test_features.py::FeatureBundleTests::test_parse_test_coverage_extracts_links_and_target_existence
+- [x] AC003 -> tests/test_features.py::FeatureBundleTests::test_parse_test_coverage_extracts_links_and_target_existence
+- [x] AC004 -> tests/test_features.py::FeatureBundleTests::test_feature_tests_cli_text_and_json_outputs_ready_bundle
+- [x] AC004 -> tests/test_features.py::FeatureBundleTests::test_feature_tests_report_links_coverage_to_matching_acceptance_criteria
 - [x] AC005 -> tests/test_features.py::FeatureBundleTests::test_feature_tests_cli_json_and_text_include_coverage_links
-- [x] AC008 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_feature_test_coverage_links_dogfood_bundle_passes_its_gate
+- [x] AC005 -> tests/test_features.py::FeatureBundleTests::test_feature_tests_report_links_coverage_to_matching_acceptance_criteria
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_feature_tests_cli_text_and_json_outputs_ready_bundle
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_feature_tests_cli_json_and_text_include_coverage_links
+- [x] AC007 -> tests/test_features.py::FeatureBundleTests::test_create_feature_bundle_in_plain_workspace
+- [x] AC008 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_feature_test_coverage_links_dogfood_bundle_passes_default_and_coverage_gates
 
 ## Test Plan
 
