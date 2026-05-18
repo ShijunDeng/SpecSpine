@@ -111,6 +111,11 @@ from .review import (
     render_review_packet_json,
     render_review_packet_text,
 )
+from .security import (
+    build_security_cue_report,
+    render_security_cue_json,
+    render_security_cue_text,
+)
 from .status import (
     InvalidFeatureSummaryOption,
     build_status,
@@ -549,6 +554,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="changed path; repeat to include more than one",
     )
     change_risk_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="include focused native feature readiness evidence",
+    )
+
+    security_parser = subcommands.add_parser(
+        "security",
+        help="inspect local security review cues",
+    )
+    security_subcommands = security_parser.add_subparsers(
+        dest="security_command",
+        required=True,
+    )
+    security_cues_parser = security_subcommands.add_parser(
+        "cues",
+        help="export local security-sensitive review cues",
+    )
+    security_cues_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    security_cues_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    security_cues_parser.add_argument(
+        "--changed",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="changed path; repeat to include more than one",
+    )
+    security_cues_parser.add_argument(
         "--feature",
         metavar="SLUG",
         help="include focused native feature readiness evidence",
@@ -1530,6 +1566,32 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_change_risk_json(report), end="")
             else:
                 print(render_change_risk_text(report), end="")
+            if any(
+                not evidence["has_native_files"]
+                for evidence in report.feature_evidence
+            ):
+                return 1
+            return 0
+
+    if args.command == "security":
+        if args.security_command == "cues":
+            try:
+                report = build_security_cue_report(
+                    Path(args.path),
+                    changed_files=tuple(args.changed),
+                    feature=args.feature,
+                )
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not build security cues report: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_security_cue_json(report), end="")
+            else:
+                print(render_security_cue_text(report), end="")
             if any(
                 not evidence["has_native_files"]
                 for evidence in report.feature_evidence

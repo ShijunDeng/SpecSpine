@@ -35,6 +35,7 @@ This repository is an early project skeleton. It includes:
 - A read-only native feature consistency and coverage analyzer: `specspine analyze`.
 - A local static source-to-test impact packet exporter: `specspine tests impact`.
 - A local changed-path risk packet exporter: `specspine change risk`.
+- A local security-sensitive cue packet exporter: `specspine security cues`.
 - A local pre-merge review packet exporter: `specspine review packet`.
 - A native feature handoff packet exporter: `specspine feature handoff`.
 - A native feature acceptance-test packet exporter: `specspine feature tests`.
@@ -249,6 +250,14 @@ specspine change risk . --json
 specspine change risk . --changed src/specspine/features.py --feature add-dark-mode --json
 ```
 
+Inspect local security-sensitive cues before review:
+
+```bash
+specspine security cues .
+specspine security cues . --json
+specspine security cues . --changed src/specspine/features.py --feature add-dark-mode --json
+```
+
 Compose local pre-merge review evidence without running tests or calling external services:
 
 ```bash
@@ -376,7 +385,7 @@ Initializes the SpecSpine workspace structure.
 specspine agents init [path] [--force]
 ```
 
-Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, use `specspine loop packet . --json` when a local loop packet is needed, use `specspine change risk . --json` and `specspine review packet . --json` before review or merge, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, add `--readiness-summary` when workspace ready/not-ready counts are needed, use `coverage debt` when coverage rollups need exact AC gaps, preview natural-language requirements with `specspine propose "..." . --slug <slug> --dry-run`, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
+Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, use `specspine loop packet . --json` when a local loop packet is needed, use `specspine change risk . --json`, `specspine security cues . --json`, and `specspine review packet . --json` before review or merge, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, add `--readiness-summary` when workspace ready/not-ready counts are needed, use `coverage debt` when coverage rollups need exact AC gaps, preview natural-language requirements with `specspine propose "..." . --slug <slug> --dry-run`, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
 
 ```bash
 specspine doctor [path]
@@ -563,6 +572,16 @@ specspine change risk [path] [--json] [--changed PATH]... [--feature SLUG]
 Exports a local changed-path risk packet for agents and reviewers. It classifies changed paths as source, test, feature spec, feature execution, feature quality, project docs, config, or other; assigns advisory risk levels; infers feature ids from native peer paths; and composes optional feature readiness evidence when a feature is provided or inferred.
 
 JSON output includes `root`, `feature_id`, `changed_files`, `files`, `feature_evidence`, `summary`, `recommended_commands`, and `safety_notes`. With no `--changed` values it still returns a workspace-level packet and recommends conservative local validation and review commands. Missing feature bundles return `1` with a report; invalid feature slugs return `2`.
+
+The command is read-only and local. It does not run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens. Recommended commands are advisory and are not executed.
+
+```bash
+specspine security cues [path] [--json] [--changed PATH]... [--feature SLUG]
+```
+
+Exports a local security-sensitive cue packet for agents and reviewers. It is not a vulnerability scanner. It classifies changed paths, reads local text files, and reports cue keywords such as token, secret, password, auth, session, cookie, SQL, subprocess, shell, eval, network, crypto, permission, admin, and path traversal terms without printing file contents or secret values.
+
+JSON output includes `root`, `feature_id`, `changed_files`, `files`, `cues`, `feature_evidence`, `summary`, `recommended_commands`, and `safety_notes`. Missing feature bundles return `1` with a report; invalid feature slugs return `2`. Cues are advisory prompts for human or agent review, not proof of a vulnerability.
 
 The command is read-only and local. It does not run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens. Recommended commands are advisory and are not executed.
 
