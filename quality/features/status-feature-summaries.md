@@ -15,6 +15,19 @@ Why: The summary view must be compact, deterministic, local-only, and safe to us
 - [x] Agent template tests verify the new optional startup guidance.
 - [x] Dogfood readiness tests verify this bundle is validated and ready.
 
+## Test Coverage
+
+- [x] AC001 -> tests/test_status.py::StatusTests::test_status_json_cli_can_include_feature_summaries
+- [x] AC001 -> tests/test_status.py::StatusTests::test_status_json_cli_validate_preserves_feature_summaries
+- [x] AC001 -> tests/test_status.py::StatusTests::test_status_validate_with_adapters_preserves_feature_summaries
+- [x] AC002 -> tests/test_status.py::StatusTests::test_status_json_cli_output_is_parseable
+- [x] AC003 -> tests/test_status.py::StatusTests::test_status_json_cli_can_include_feature_summaries
+- [x] AC004 -> tests/test_status.py::StatusTests::test_status_text_feature_summaries_are_opt_in
+- [x] AC005 -> tests/test_status.py::StatusTests::test_status_feature_summary_reports_partial_bundle_actions
+- [x] AC006 -> tests/test_status.py::StatusTests::test_status_feature_summary_handles_invalid_slug_files
+- [x] AC007 -> tests/test_agents.py::AgentsTests::test_agents_content_includes_required_commands_and_boundaries
+- [x] AC007 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_status_feature_summaries_dogfood_bundle_passes_default_and_coverage_gates
+
 ## Test Plan
 
 - Run `PYTHONPATH=src python3 -m unittest discover -s tests`.
