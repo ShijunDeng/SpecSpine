@@ -732,17 +732,6 @@ def build_parser() -> argparse.ArgumentParser:
     propose_parser.add_argument("--project", default="unassigned", help="feature project")
     propose_parser.add_argument("--effort", default="unknown", help="estimated effort")
 
-    mcp_parser = subcommands.add_parser("mcp", help="MCP server interface")
-    mcp_sub = mcp_parser.add_subparsers(dest="mcp_command", required=True)
-    mcp_sub.add_parser("server", help="Start MCP stdio server")
-    mcp_config = mcp_sub.add_parser("config", help="Generate MCP client config")
-    mcp_config.add_argument(
-        "--format",
-        choices=["claude-desktop", "vscode", "cursor"],
-        default="claude-desktop",
-    )
-    mcp_config.add_argument("--root", default=".", help="workspace root path")
-
     return parser
 
 
@@ -1870,20 +1859,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Created SpecSpine proposal bundle '{slug}' at {root}")
         _print_created(written, root)
         return 0
-
-    if args.command == "mcp":
-        if args.mcp_command == "server":
-            from .mcp import run_server
-
-            run_server()
-            return 0
-
-        if args.mcp_command == "config":
-            from .mcp import generate_client_config
-
-            config = generate_client_config(fmt=args.format, root=args.root)
-            print(json.dumps(config, indent=2, sort_keys=True))
-            return 0
 
     parser.print_help()
     return 1

@@ -28,6 +28,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
 - `specspine feature pr` now exports offline Pull Request drafts that compose local feature evidence without GitHub API calls, token reads, `gh`, or network access.
 - `specspine feature sync-plan` now exports reviewable GitHub CLI argv plans and optional local artifact directories for feature issues, task issues, and draft PRs without executing `gh`, reading tokens, calling APIs, invoking subprocesses, or using network access.
+- `specspine feature archive` now exports durable local archive evidence and optional package artifacts without marking lifecycle status, running tests, invoking subprocesses, calling network services, or reading tokens.
 - `specspine feature tests` now exports acceptance-test packets that map acceptance criteria to test cases, attach explicit local `## Test Coverage` links, and surface existing test plan, quality checks, gaps, and blockers without running tests or generating code.
 - `specspine feature new` now generates native feature bundles with focused spec, execution, quality, handoff, task issue draft, tests, PR, ready, validation guidance, and initial spec-level priority, owner, milestone, target release, project, and effort metadata instead of broad generic placeholders.
 - `specspine gates` now exports repository-level quality gate definitions from `quality/checklist.md` without executing commands, reading tokens, requiring `gh`, or calling network services.
@@ -56,6 +57,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Treat `specspine feature tests <slug> . --json` as the focused local packet for QA and testing agents, and use `## Test Coverage` links in quality files to point AC ids at existing local tests.
 - Treat `specspine feature pr <slug> . --json` as the local Pull Request draft bridge after readiness and trace evidence are available.
 - Treat `specspine feature sync-plan <slug> . --json` as the local review packet for GitHub CLI sync intent, and `specspine feature sync-plan <slug> . --output-dir .specspine/sync-plan/<slug>` as the local body-file and manifest materialization step before a human runs any remote command.
+- Treat `specspine feature archive <slug> . --json` as the local closure packet before lifecycle archiving, and `specspine feature archive <slug> . --output-dir .specspine/archive/<slug>` as the local archive package materialization step.
 - Treat feature metadata as local draft context only; milestone, target release, project, and effort are not synced to GitHub Issue Fields or Projects by SpecSpine.
 - Treat `specspine gates . --json` as the repository-level quality policy packet before implementation, review, or CI wiring; it exports definitions, metadata, and coverage counts, and does not run checks.
 - Treat `specspine adapters lifecycle . --json` as the local adapter lifecycle policy packet before future adapter sync, upstream planning, or remote issue/PR mapping work.
@@ -65,7 +67,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Keep GitHub issue and Pull Request draft generation offline and token-free by default.
 - Keep GitHub sync planning and artifact materialization offline and token-free; remote issue/PR creation remains a future explicit workflow, not default behavior.
 - Keep native feature peer files on a consistent allowed lifecycle status.
-- Prefer `specspine feature status <slug> . --set STATUS --enforce-transition` when lifecycle order matters; run `specspine feature ready <slug> . --json` before archiving.
+- Prefer `specspine feature status <slug> . --set STATUS --enforce-transition` when lifecycle order matters; run `specspine feature ready <slug> . --json` and `specspine feature archive <slug> . --json` before archiving.
 - Use `--run-upstream` only after explicit user instruction.
 
 ## Release Notes
@@ -97,4 +99,5 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Adapter lifecycle mappings can now be exported as stable OpenSpec, Spec Kit, and Superpowers records for every native feature status.
 - Adapter feature handoffs can now be exported with selected lifecycle mappings and safe unexecuted upstream step recommendations for one native feature, and can be materialized as local `manifest.json`, `combined.md`, `combined.json`, focused per-adapter Markdown/JSON artifacts, and SHA-256 checksums.
 - GitHub CLI sync plans can now be exported as stable local argv arrays with safety flags and notes, then materialized into review-only local body files, manifest, and `commands.sh` before any remote issue or Pull Request is created.
+- Feature archive evidence can now be exported as stable local JSON or Markdown and materialized into `README.md`, `archive.json`, and source snapshots before a separate enforced lifecycle archive update.
 - New feature bundles now include edge cases, constraints, traceability notes, dependencies, open questions, agent handoff commands, acceptance-test guidance, PR draft guidance, readiness checks, and validation gates from creation time.

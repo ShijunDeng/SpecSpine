@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .features import (
-    FEATURE_FILE_PATHS,
     FeatureBundleNotFoundError,
     FeatureReadyReport,
     FeatureStatusReport,
@@ -436,19 +435,3 @@ def write_feature_archive_package(
         target.write_text(source_path.read_text(encoding="utf-8"), encoding="utf-8")
 
     return package
-
-
-def write_feature_archive_package_with_root(
-    report: FeatureArchiveReport,
-    root: Path,
-    output_dir: Path,
-    *,
-    force: bool = False,
-) -> FeatureArchivePackage:
-    rooted_report = FeatureArchiveReport(
-        **{
-            **report.__dict__,
-            "workspace_root": root.expanduser().resolve(),
-        }
-    )
-    return write_feature_archive_package(rooted_report, output_dir, force=force)

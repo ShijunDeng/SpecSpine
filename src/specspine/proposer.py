@@ -664,6 +664,7 @@ Why: {why_text}
 - Run `specspine feature pr {resolved_slug} . --json` to draft local Pull Request review notes.
 - Run `specspine feature sync-plan {resolved_slug} . --json` to review GitHub CLI sync intent without executing it.
 - Run `specspine feature sync-plan {resolved_slug} . --output-dir .specspine/sync-plan/{resolved_slug}` to materialize local sync review artifacts.
+- Run `specspine feature archive {resolved_slug} . --json` to package local archive evidence before lifecycle closure.
 - Run `specspine validate . --fusion --features` before handoff or release.
 """)
 
@@ -699,8 +700,9 @@ Use `- [ ] AC001 -> tests/...` to link existing local test files or test selecto
 - [ ] RR001: Acceptance criteria, tasks, required checks, and test plan evidence are complete.
 - [ ] RR002: Docs, release notes, or `specspine feature pr {resolved_slug} . --json` output are ready for reviewers.
 - [ ] RR003: `specspine feature sync-plan {resolved_slug} . --json` or `--output-dir .specspine/sync-plan/{resolved_slug}` has been reviewed before any remote GitHub sync.
-- [ ] RR004: `specspine feature ready {resolved_slug} . --json` and `specspine validate . --fusion --features` have been run.
-- [ ] RR005: No known blockers remain, or blockers are documented in review notes.
+- [ ] RR004: `specspine feature archive {resolved_slug} . --json` has been reviewed before marking status archived.
+- [ ] RR005: `specspine feature ready {resolved_slug} . --json` and `specspine validate . --fusion --features` have been run.
+- [ ] RR006: No known blockers remain, or blockers are documented in review notes.
 """)
 
     return {

@@ -15,6 +15,7 @@
 - Opt-in native feature transition enforcement through `specspine feature status --enforce-transition`.
 - Offline Pull Request draft export through `specspine feature pr`.
 - Local GitHub CLI synchronization planning and artifact materialization through `specspine feature sync-plan`.
+- Local native feature archive evidence reporting and package materialization through `specspine feature archive`.
 - Native acceptance-test packet export through `specspine feature tests`.
 - Refreshed native feature bundle templates with focused handoff, task issue draft, tests, PR, readiness, and validation guidance.
 - Fusion layer generation for OpenSpec, Spec Kit, and Superpowers.
@@ -54,13 +55,14 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine feature tests <slug> . --json` when QA or testing agents need acceptance criteria mapped to pending test cases plus existing test plan, gaps, and blockers.
 - Use `specspine feature pr <slug> . --json` when a reviewer or release agent needs a local Pull Request draft without touching GitHub.
 - Use `specspine feature sync-plan <slug> . --json` when a maintainer needs to review GitHub CLI issue/PR sync intent before any remote execution; add `--output-dir .specspine/sync-plan/<slug>` when the body files, manifest, and review-only command script should be materialized locally.
+- Use `specspine feature archive <slug> . --json` when a maintainer or reviewer needs durable local closure evidence before archiving; add `--output-dir .specspine/archive/<slug>` when `README.md`, `archive.json`, and source snapshots should be materialized locally.
 - Use `specspine gates . --json` when an agent, reviewer, or CI author needs repository-level quality gate definitions, severity/owner/CI metadata, and metadata coverage counts before running or wiring checks.
 - Use `specspine adapters lifecycle . --json` when an agent or maintainer needs local status-to-upstream phase definitions before adapter sync or upstream planning.
 - Use `specspine adapters handoff <slug> . --json` when an agent needs OpenSpec, Spec Kit, and Superpowers handoff steps for one native feature without executing upstream tooling; add `--output-dir .specspine/adapter-handoff/<slug>` when separate reviewable Markdown files, structured JSON files, a safety manifest, and SHA-256 checksums should be materialized locally.
 - Use `specspine validate . --fusion --features` as the project-level gate.
 - Let `specspine propose "..." . --slug <slug>` seed natural-language feature work with populated spec, execution, and quality peers. Use `specspine feature new <slug> . --title "..." --why "..."` when a manual template is more appropriate.
 - Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`; prefer `--enforce-transition` for ordered lifecycle advancement while keeping manual updates available by default.
-- Run `specspine feature ready <slug> . --json` before enforced archive updates so readiness blockers are resolved separately from transition rules.
+- Run `specspine feature ready <slug> . --json` and `specspine feature archive <slug> . --json` before enforced archive updates so readiness blockers and durable evidence are reviewed separately from transition rules.
 - Continue dogfooding generated templates and tighten them when repeated manual edits appear.
 - Keep upstream integrations adapter-based and avoid vendored code.
 - Keep validation warnings local and non-blocking; only failed checks should determine `validate` exit code.

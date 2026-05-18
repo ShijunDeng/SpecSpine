@@ -38,6 +38,7 @@ This repository is an early project skeleton. It includes:
 - A local GitHub issue draft exporter: `specspine feature issue`.
 - A local GitHub Pull Request draft exporter: `specspine feature pr`.
 - A local GitHub CLI synchronization plan and artifact exporter: `specspine feature sync-plan`.
+- A native feature archive evidence report and local package exporter: `specspine feature archive`.
 - A repository quality gate definition exporter: `specspine gates`.
 - A fusion initializer: `specspine fuse`.
 - A local adapter lifecycle mapping exporter: `specspine adapters lifecycle`.
@@ -167,6 +168,14 @@ Review a local GitHub CLI synchronization plan without executing it:
 specspine feature sync-plan add-dark-mode .
 specspine feature sync-plan add-dark-mode . --json
 specspine feature sync-plan add-dark-mode . --output-dir .specspine/sync-plan/add-dark-mode
+```
+
+Package local archive evidence before marking a feature archived:
+
+```bash
+specspine feature archive add-dark-mode .
+specspine feature archive add-dark-mode . --json --archive-id 2026-05-18-add-dark-mode
+specspine feature archive add-dark-mode . --output-dir .specspine/archive/add-dark-mode
 ```
 
 Advance the feature lifecycle when the bundle moves forward:
@@ -411,7 +420,7 @@ specspine feature handoff <slug> [path] [--json] [--output FILE] [--force]
 
 Exports a compact feature-level handoff packet for implementation, acceptance, and review agents. It composes existing local evidence from feature status, trace, ready, tasks, and release readiness reports. It does not call GitHub APIs, read tokens, invoke upstream CLIs, use network access, or add third-party dependencies.
 
-JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Summary includes trace total/done/open, ready pass/fail/total, task total/done/open, gap count, and blocking check count. Text output is brief and includes feature/status/ready, counts, sources, next actions, open tasks, blocking checks, and key commands. The generated `feature new` execution template mirrors these focused commands for `handoff`, `tasks`, `task-issues`, `trace`, `tests`, `ready`, `pr`, `sync-plan`, and `validate . --fusion --features`.
+JSON output includes `feature_id`, `status`, `ready`, `sources`, `missing_files`, `gaps`, `blocking_checks`, `summary`, `acceptance_criteria`, `tasks`, `quality_checks`, `test_plan`, `release_readiness`, `recommended_commands`, and `next_actions`. Summary includes trace total/done/open, ready pass/fail/total, task total/done/open, gap count, and blocking check count. Text output is brief and includes feature/status/ready, counts, sources, next actions, open tasks, blocking checks, and key commands. The generated `feature new` execution template mirrors these focused commands for `handoff`, `tasks`, `task-issues`, `trace`, `tests`, `ready`, `pr`, `sync-plan`, `archive`, and `validate . --fusion --features`.
 
 Missing bundles return `1` with create-or-restore guidance. Invalid slugs return `2`. Partial bundles return `0` and include missing files, trace gaps, and next actions. `--output` writes the text handoff and refuses to overwrite unless `--force` is passed. With `--json --output`, stdout remains JSON and the file contains text.
 
@@ -466,6 +475,14 @@ Every command is marked as creating remote state, requiring token and network ac
 Text output is reviewable Markdown with Summary, Metadata, Notes, Sources, Missing Files, Gaps, Blocking Checks, and shell-quoted command lines for human copy/paste only. `--output-dir` creates or updates local review artifacts: `manifest.json`, `feature-issue.md`, `task-issues/T001.md` style task bodies, `pull-request.md`, and `commands.sh`. The manifest contains the sync-plan JSON plus local `body_file` / `artifact_path` fields and an artifact index. `commands.sh` is review-only text with comments and shell-quoted `gh ... --body-file <local artifact>` commands; it is not chmodded or executed.
 
 Partial bundles return `0` with missing files and blockers recorded. If no native feature files exist for the slug, the command returns `1`; invalid slugs return `2`. `--output` writes the text plan and refuses to overwrite an existing file unless `--force` is passed. `--output-dir` refuses to overwrite files this command would write unless `--force` is passed, and never deletes unknown files in the directory. With `--json --output` or `--json --output-dir`, stdout remains JSON while files are written.
+
+```bash
+specspine feature archive <slug> [path] [--json] [--output-dir DIR] [--archive-id ID] [--force]
+```
+
+Packages local archive evidence for a native feature bundle before or alongside a separate lifecycle archive update. It composes existing local status, metadata, readiness, trace, task, test, source-file, missing-file, safety-note, and recommended-command evidence. When a quality `## Test Coverage` section is present, archive readiness uses the same coverage check as `feature ready --require-coverage`. The command does not mark the feature archived, run tests, invoke subprocesses, call network services, invoke upstream CLIs, call GitHub APIs, or read tokens.
+
+Report-only mode prints Markdown or stable JSON and returns `0` when any native feature evidence exists, even if readiness is blocked. Missing bundles return `1`; invalid slugs or archive ids return `2`. `--output-dir` writes only to that explicit directory, creating `README.md`, `archive.json`, and source snapshots under `sources/`; command-owned file conflicts return `1` unless `--force` is passed. Recommended commands include `specspine feature status <slug> . --set archived --enforce-transition --json` so the lifecycle change remains explicit after archive evidence is reviewed.
 
 ```bash
 specspine status [path] [--json] [--adapters] [--validate] [--validation-warnings] [--feature-summaries] [--feature-require-coverage] [--feature-status STATUS] [--feature-ready READY] [--feature-priority VALUE] [--feature-owner VALUE] [--feature-milestone VALUE] [--feature-target-release VALUE] [--feature-project VALUE] [--feature-effort VALUE] [--feature-sort KEY] [--feature-sort-desc] [--readiness-summary] [--readiness-require-coverage] [--readiness-policy]

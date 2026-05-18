@@ -31,6 +31,7 @@ The CLI is intentionally thin:
 - `specspine feature issue` exports a local GitHub issue draft from a native feature bundle.
 - `specspine feature pr` exports a local GitHub Pull Request draft from a native feature bundle.
 - `specspine feature sync-plan` exports a local GitHub CLI synchronization plan and optional review artifacts without executing it.
+- `specspine feature archive` exports local archive evidence and optional package artifacts without marking lifecycle status.
 - `specspine policy` exports optional workspace readiness policy from `.specspine/policy.yaml`.
 - `specspine coverage debt` reports workspace-level AC coverage debt from local feature bundles.
 - `specspine analyze` reports cross-artifact consistency and coverage findings for native feature bundles without changing files.

@@ -49,6 +49,8 @@ PYTHONPATH=src python3 -m specspine feature tests <slug> . --json
 PYTHONPATH=src python3 -m specspine feature pr <slug> . --json
 PYTHONPATH=src python3 -m specspine feature sync-plan <slug> . --json
 PYTHONPATH=src python3 -m specspine feature sync-plan <slug> . --output-dir .specspine/sync-plan/<slug>
+PYTHONPATH=src python3 -m specspine feature archive <slug> . --json
+PYTHONPATH=src python3 -m specspine feature archive <slug> . --output-dir .specspine/archive/<slug>
 ```
 
 ## Rules
@@ -57,11 +59,12 @@ PYTHONPATH=src python3 -m specspine feature sync-plan <slug> . --output-dir .spe
 - Keep feature specs, implementation tasks, and quality checks traceable by `Feature ID`.
 - Use `specspine propose "..."` as the starting workflow when the requirement is natural-language intent; it deterministically generates spec, execution, and quality peers with EARS-like acceptance criteria, dependency-annotated tasks, and quality mappings. Use `specspine feature new` when a maintainer wants a manual template instead; generated peer files include focused handoff, task issue drafts, tests, PR, ready, and validation guidance.
 - Keep native feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.
-- Before archiving, run `specspine feature ready <slug> . --json`; use `--require-coverage` for high-risk or release-bound features, use `--policy` when workspace readiness policy should select coverage requirements, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.
+- Before archiving, run `specspine feature ready <slug> . --json`; use `--require-coverage` for high-risk or release-bound features, use `--policy` when workspace readiness policy should select coverage requirements, package durable local evidence with `specspine feature archive <slug> . --json` or `--output-dir .specspine/archive/<slug>`, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.
 - Start implementation, acceptance, and review handoffs with `specspine feature handoff <slug> . --json`; use `feature tasks`, `feature task-issues`, `feature trace`, `feature ready`, `feature ready --require-coverage`, `feature ready --policy`, and `feature tests` for focused follow-up views. For QA context, add local `## Test Coverage` checklist links such as `- [ ] AC001 -> tests/test_features.py` in `quality/features/<slug>.md`.
 - Keep feature spec metadata local and explicit: priority, owner, milestone, target release, project, and effort are draft context for status, handoff, issue, PR, and sync-plan outputs, not automatic GitHub Issue Fields or Project updates.
 - Use `specspine feature pr <slug> . --json` to prepare an offline Pull Request draft from local evidence without reading tokens or calling GitHub.
 - Use `specspine feature sync-plan <slug> . --json` to review GitHub CLI sync intent without executing `gh`, reading tokens, or calling GitHub; use `--output-dir .specspine/sync-plan/<slug>` when maintainers need local body files, manifest, and review-only `commands.sh`.
+- Use `specspine feature archive <slug> . --json` before lifecycle closure to review durable local archive evidence; use `--output-dir .specspine/archive/<slug>` when maintainers need `README.md`, `archive.json`, and source snapshots. The command does not mark status archived.
 - Use `specspine gates . --json` to export quality gate definitions and optional severity/owner/CI metadata only; do not treat it as executing tests, CI, or status checks.
 - Use `specspine adapters lifecycle . --json` to export adapter lifecycle definitions only; do not treat it as invoking upstream tools.
 - Use `specspine adapters handoff <slug> . --json` to export feature-specific OpenSpec, Spec Kit, and Superpowers adapter handoff data only; use `--output-dir .specspine/adapter-handoff/<slug>` to write local `manifest.json`, `combined.md`, `combined.json`, focused per-adapter Markdown files, focused per-adapter JSON files, and SHA-256 checksums. Do not treat recommended upstream steps as executed commands.

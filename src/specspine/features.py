@@ -919,6 +919,7 @@ def build_feature_files(
             - Run `specspine feature pr {slug} . --json` to draft local Pull Request review notes.
             - Run `specspine feature sync-plan {slug} . --json` to review GitHub CLI sync intent without executing it.
             - Run `specspine feature sync-plan {slug} . --output-dir .specspine/sync-plan/{slug}` to materialize local sync review artifacts.
+            - Run `specspine feature archive {slug} . --json` to package local archive evidence before lifecycle closure.
             - Run `specspine validate . --fusion --features` before handoff or release.
         """,
         FEATURE_FILE_PATHS["quality"].format(slug=slug): f"""
@@ -955,6 +956,7 @@ def build_feature_files(
             - [ ] TODO: Acceptance criteria, tasks, required checks, and test plan evidence are complete.
             - [ ] TODO: Docs, release notes, or `specspine feature pr {slug} . --json` output are ready for reviewers.
             - [ ] TODO: `specspine feature sync-plan {slug} . --json` or `--output-dir .specspine/sync-plan/{slug}` has been reviewed before any remote GitHub sync.
+            - [ ] TODO: `specspine feature archive {slug} . --json` has been reviewed before marking status archived.
             - [ ] TODO: `specspine feature ready {slug} . --json` and `specspine validate . --fusion --features` have been run.
             - [ ] TODO: No known blockers remain, or blockers are documented in review notes.
         """,

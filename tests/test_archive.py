@@ -214,6 +214,26 @@ class FeatureArchiveTests(TestCase):
             self.assertEqual(code, 0, stderr)
             payload = json.loads(stdout)
             self.assertEqual(payload["package"]["output_dir"], str(output_dir))
+            self.assertEqual(payload["package"]["readme"], str(output_dir / "README.md"))
+            self.assertEqual(payload["package"]["report"], str(output_dir / "archive.json"))
+            self.assertEqual(
+                payload["package"]["sources"],
+                [
+                    str(output_dir / "sources" / "spec.md"),
+                    str(output_dir / "sources" / "execution.md"),
+                    str(output_dir / "sources" / "quality.md"),
+                ],
+            )
+            self.assertEqual(
+                payload["package"]["written_paths"],
+                [
+                    str(output_dir / "README.md"),
+                    str(output_dir / "archive.json"),
+                    str(output_dir / "sources" / "spec.md"),
+                    str(output_dir / "sources" / "execution.md"),
+                    str(output_dir / "sources" / "quality.md"),
+                ],
+            )
             self.assertTrue((output_dir / "README.md").exists())
             self.assertTrue((output_dir / "archive.json").exists())
             self.assertTrue((output_dir / "sources" / "spec.md").exists())
@@ -226,10 +246,17 @@ class FeatureArchiveTests(TestCase):
                 archived_payload["archive_id"],
                 "2026-05-18-feature-archive-package",
             )
+            self.assertEqual(archived_payload["package"], payload["package"])
             self.assertIn(
                 "Feature ID: feature-archive-package",
                 (output_dir / "sources" / "spec.md").read_text(encoding="utf-8"),
             )
+            for feature_path in (
+                root / "specs" / "features" / "feature-archive-package.md",
+                root / "execution" / "features" / "feature-archive-package.md",
+                root / "quality" / "features" / "feature-archive-package.md",
+            ):
+                self.assertIn("Status: validated", feature_path.read_text(encoding="utf-8"))
 
     def test_archive_output_dir_conflict_requires_force(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -288,6 +315,27 @@ class FeatureArchiveTests(TestCase):
             self.assertEqual(code, 2)
             self.assertIn("Invalid feature slug", stderr)
 
+    def test_archive_invalid_archive_id_returns_two(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_archive_feature_bundle(root)
+
+            code, _stdout, stderr = run_cli(
+                [
+                    "feature",
+                    "archive",
+                    "feature-archive-package",
+                    str(root),
+                    "--json",
+                    "--archive-id",
+                    "bad/archive-id",
+                ]
+            )
+
+            self.assertEqual(code, 2)
+            self.assertIn("Invalid archive id", stderr)
+
     def test_archive_missing_feature_returns_one(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -301,6 +349,78 @@ class FeatureArchiveTests(TestCase):
             self.assertIn("No feature files found", stderr)
             self.assertIn("specs/features/missing-feature.md", stderr)
 
+    def test_archive_not_ready_report_only_returns_zero_and_preserves_status(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_archive_feature_bundle(root, status="implemented")
+            execution_path = root / "execution" / "features" / "feature-archive-package.md"
+            execution_path.write_text(
+                execution_path.read_text(encoding="utf-8").replace(
+                    "- [x] Build archive evidence report.",
+                    "- [ ] Build archive evidence report.",
+                ),
+                encoding="utf-8",
+            )
+            before = workspace_snapshot(root)
+
+            code, stdout, stderr = run_cli(
+                [
+                    "feature",
+                    "archive",
+                    "feature-archive-package",
+                    str(root),
+                    "--json",
+                ]
+            )
+
+            self.assertEqual(code, 0, stderr)
+            payload = json.loads(stdout)
+            self.assertFalse(payload["ready"])
+            self.assertEqual(payload["status"], "implemented")
+            self.assertGreater(payload["summary"]["blocking_checks"]["total"], 0)
+            self.assertEqual(workspace_snapshot(root), before)
+
+    def test_archive_output_dir_file_and_parent_file_errors_return_one(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            write_archive_feature_bundle(root)
+            output_file = root / "archive-output"
+            output_file.write_text("not a directory\n", encoding="utf-8")
+
+            file_code, _stdout, file_stderr = run_cli(
+                [
+                    "feature",
+                    "archive",
+                    "feature-archive-package",
+                    str(root),
+                    "--output-dir",
+                    str(output_file),
+                ]
+            )
+
+            self.assertEqual(file_code, 1)
+            self.assertIn("not a directory", file_stderr)
+
+            output_dir = root / "nested-archive-output"
+            output_dir.mkdir()
+            (output_dir / "sources").write_text("not a directory\n", encoding="utf-8")
+
+            parent_code, _stdout, parent_stderr = run_cli(
+                [
+                    "feature",
+                    "archive",
+                    "feature-archive-package",
+                    str(root),
+                    "--output-dir",
+                    str(output_dir),
+                ]
+            )
+
+            self.assertEqual(parent_code, 1)
+            self.assertIn("parent is not a directory", parent_stderr)
+
     def test_archive_report_only_is_read_only_and_does_not_use_external_calls(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -308,17 +428,30 @@ class FeatureArchiveTests(TestCase):
             write_archive_feature_bundle(root, status="implemented")
             before = workspace_snapshot(root)
 
+            class GuardedEnviron(dict):
+                def __getitem__(self, key: str) -> str:
+                    if "TOKEN" in key.upper():
+                        raise AssertionError(f"unexpected token read: {key}")
+                    return super().__getitem__(key)
+
+                def get(self, key: str, default: object = None) -> object:
+                    if "TOKEN" in key.upper():
+                        raise AssertionError(f"unexpected token read: {key}")
+                    return super().get(key, default)
+
             with patch("subprocess.run", side_effect=AssertionError("unexpected process")):
-                with patch.dict(os.environ, {"GITHUB_TOKEN": "do-not-read"}):
-                    code, stdout, stderr = run_cli(
-                        [
-                            "feature",
-                            "archive",
-                            "feature-archive-package",
-                            str(root),
-                            "--json",
-                        ]
-                    )
+                with patch("socket.create_connection", side_effect=AssertionError("unexpected network")):
+                    with patch("urllib.request.urlopen", side_effect=AssertionError("unexpected network")):
+                        with patch("os.environ", GuardedEnviron(os.environ)):
+                            code, stdout, stderr = run_cli(
+                                [
+                                    "feature",
+                                    "archive",
+                                    "feature-archive-package",
+                                    str(root),
+                                    "--json",
+                                ]
+                            )
 
             self.assertEqual(code, 0, stderr)
             self.assertTrue(json.loads(stdout)["ready"])
