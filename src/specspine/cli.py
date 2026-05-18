@@ -922,20 +922,6 @@ def build_parser() -> argparse.ArgumentParser:
     propose_parser.add_argument("--project", default="unassigned", help="feature project")
     propose_parser.add_argument("--effort", default="unknown", help="estimated effort")
 
-    sync_parser = subcommands.add_parser(
-        "sync",
-        help="execute offline GitHub drafts to create real remote issues and PRs",
-    )
-    sync_parser.add_argument("slug", help="feature slug")
-    sync_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    sync_parser.add_argument("--github-token", default=None, help="GitHub personal access token")
-    sync_parser.add_argument("--repo", required=True, help="GitHub repository in OWNER/REPO format")
-    sync_parser.add_argument("--dry-run", action="store_true", help="show API payloads without executing")
-    sync_parser.add_argument("--json", action="store_true", help="print stable JSON")
-    sync_parser.add_argument("--token-stdin", action="store_true", help="read token from stdin")
-    sync_parser.add_argument("--pr-base", default="main", help="base branch for PR")
-    sync_parser.add_argument("--pr-head", default=None, help="head branch for PR")
-
     return parser
 
 
