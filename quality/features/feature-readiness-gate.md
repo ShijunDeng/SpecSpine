@@ -13,6 +13,22 @@ Why: A readiness gate is only useful if it is deterministic, local, strict enoug
 - [x] Documentation describes `feature ready` as a local reviewer and agent quality gate.
 - [x] The implementation does not call GitHub APIs, read tokens, call upstream CLIs, access network services, or add third-party dependencies.
 
+## Test Coverage
+
+- [x] AC001 -> tests/test_features.py::FeatureBundleTests::test_feature_ready_cli_returns_zero_for_ready_bundle_text_and_json
+- [x] AC002 -> tests/test_features.py::FeatureBundleTests::test_feature_ready_cli_returns_zero_for_ready_bundle_text_and_json
+- [x] AC003 -> tests/test_features.py::FeatureBundleTests::test_feature_ready_cli_returns_zero_for_ready_bundle_text_and_json
+- [x] AC003 -> tests/test_features.py::FeatureBundleTests::test_feature_ready_cli_reports_core_failures_for_partial_bundle
+- [x] AC003 -> tests/test_features.py::FeatureBundleTests::test_feature_ready_cli_invalid_slug_returns_two
+- [x] AC003 -> tests/test_features.py::FeatureBundleTests::test_feature_ready_cli_missing_bundle_returns_report_and_nonzero
+- [x] AC004 -> tests/test_features.py::FeatureBundleTests::test_feature_ready_cli_reports_core_failures_for_partial_bundle
+- [x] AC004 -> tests/test_features.py::FeatureBundleTests::test_feature_ready_cli_reports_trace_gaps_without_missing_files
+- [x] AC004 -> tests/test_features.py::FeatureBundleTests::test_feature_ready_cli_reports_unfinished_required_checklists
+- [x] AC004 -> tests/test_features.py::FeatureBundleTests::test_feature_ready_cli_reports_empty_test_plan
+- [x] AC005 -> tests/test_features.py::FeatureBundleTests::test_feature_ready_cli_reports_core_failures_for_partial_bundle
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_feature_ready_require_coverage_does_not_read_tokens_or_call_network
+- [x] AC007 -> tests/test_features.py::FeatureBundleTests::test_dogfood_feature_readiness_gate_is_validated_and_ready
+
 ## Test Plan
 
 - Run `PYTHONPATH=src python3 -m unittest discover -s tests`.
