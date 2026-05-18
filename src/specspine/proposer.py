@@ -225,10 +225,10 @@ EARS_PATTERNS = (
 )
 
 BEHAVIOR_PATTERNS = {
-    "event-driven": "The system SHALL {behavior} WHEN {condition}",
-    "conditional": "The system SHALL {behavior} IF {precondition}",
+    "event-driven": "The system SHALL {behavior} when {condition}",
+    "conditional": "The system SHALL {behavior} if {precondition}",
     "simple": "The system SHALL {behavior}",
-    "ubiquitous": "The system SHALL {behavior} WHERE {context}",
+    "ubiquitous": "The system SHALL {behavior} where {context}",
 }
 
 SLUG_STOP_WORDS = {
@@ -384,6 +384,29 @@ def _normalize_modifier(modifier: str) -> str:
     return result
 
 
+def _get_action_verb_form(action: str, form: str = "base") -> str:
+    """Convert action verb to appropriate grammatical form."""
+    common_verbs = {
+        "add": {"base": "add", "gerund": "adding", "past": "added"},
+        "create": {"base": "create", "gerund": "creating", "past": "created"},
+        "implement": {"base": "implement", "gerund": "implementing", "past": "implemented"},
+        "build": {"base": "build", "gerund": "building", "past": "built"},
+        "enable": {"base": "enable", "gerund": "enabling", "past": "enabled"},
+        "support": {"base": "support", "gerund": "supporting", "past": "supported"},
+        "integrate": {"base": "integrate", "gerund": "integrating", "past": "integrated"},
+        "remove": {"base": "remove", "gerund": "removing", "past": "removed"},
+        "update": {"base": "update", "gerund": "updating", "past": "updated"},
+        "delete": {"base": "delete", "gerund": "deleting", "past": "deleted"},
+        "modify": {"base": "modify", "gerund": "modifying", "past": "modified"},
+        "configure": {"base": "configure", "gerund": "configuring", "past": "configured"},
+        "setup": {"base": "setup", "gerund": "setting up", "past": "setup"},
+        "validate": {"base": "validate", "gerund": "validating", "past": "validated"},
+        "test": {"base": "test", "gerund": "testing", "past": "tested"},
+    }
+    verb = common_verbs.get(action, {"base": action, "gerund": action + "ing", "past": action + "ed"})
+    return verb.get(form, action)
+
+
 def generate_ears_criteria(parsed_intent: dict) -> list[dict]:
     action = parsed_intent["action"]
     target = parsed_intent["target"]
@@ -391,17 +414,22 @@ def generate_ears_criteria(parsed_intent: dict) -> list[dict]:
     components = parsed_intent["components"]
     is_complex = parsed_intent["is_complex"]
 
+    action_base = _get_action_verb_form(action, "base")
+    action_gerund = _get_action_verb_form(action, "gerund")
+    action_past = _get_action_verb_form(action, "past")
+
     criteria: list[dict] = []
     counter = 1
 
     if modifiers:
         first_mod = modifiers[0]
+        normalized_mod = _normalize_modifier(first_mod)
         criteria.append(
             {
                 "id": f"AC{counter:03d}",
                 "text": BEHAVIOR_PATTERNS["conditional"].format(
-                    behavior=f"allow users to {action} the {target}",
-                    precondition=_normalize_modifier(first_mod),
+                    behavior=f"allow users to {action_base} the {target}",
+                    precondition=normalized_mod,
                 ),
                 "pattern": "conditional",
             }
@@ -412,8 +440,8 @@ def generate_ears_criteria(parsed_intent: dict) -> list[dict]:
         {
             "id": f"AC{counter:03d}",
             "text": BEHAVIOR_PATTERNS["event-driven"].format(
-                behavior=f"{action} the {target} successfully",
-                condition=f"the user initiates a request to {action} the {target}",
+                behavior=f"allow the user to {action_base} the {target}",
+                condition=f"the user requests to {action_base} the {target}",
             ),
             "pattern": "event-driven",
         }
@@ -424,7 +452,7 @@ def generate_ears_criteria(parsed_intent: dict) -> list[dict]:
         {
             "id": f"AC{counter:03d}",
             "text": BEHAVIOR_PATTERNS["simple"].format(
-                behavior=f"provide the {target} with {action} capability",
+                behavior=f"validate all inputs before {action_gerund} the {target}",
             ),
             "pattern": "simple",
         }
@@ -435,8 +463,8 @@ def generate_ears_criteria(parsed_intent: dict) -> list[dict]:
         {
             "id": f"AC{counter:03d}",
             "text": BEHAVIOR_PATTERNS["ubiquitous"].format(
-                behavior=f"ensure the {target} behaves consistently during {action} operations",
-                context=f"the {target} is in active use",
+                behavior=f"handle errors gracefully when {action_gerund} fails",
+                context=f"any error occurs during the operation",
             ),
             "pattern": "ubiquitous",
         }
@@ -462,7 +490,7 @@ def generate_ears_criteria(parsed_intent: dict) -> list[dict]:
                 {
                     "id": f"AC{counter:03d}",
                     "text": BEHAVIOR_PATTERNS["simple"].format(
-                        behavior=f"handle edge cases related to {action}ing the {target}",
+                        behavior=f"handle edge cases related to {action_gerund} the {target}",
                     ),
                     "pattern": "simple",
                 }

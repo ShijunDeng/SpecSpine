@@ -252,21 +252,21 @@ class EarsCriteriaQuality(TestCase):
         criteria = generate_ears_criteria(parsed)
         event_criteria = [c for c in criteria if c["pattern"] == "event-driven"]
         self.assertGreater(len(event_criteria), 0)
-        self.assertTrue(any("WHEN" in c["text"] for c in event_criteria))
+        self.assertTrue(any("when" in c["text"].lower() for c in event_criteria))
 
     def test_conditional_criteria_has_if(self) -> None:
         parsed = parse_intent("add dark mode toggle for night viewing")
         criteria = generate_ears_criteria(parsed)
         conditional_criteria = [c for c in criteria if c["pattern"] == "conditional"]
         self.assertGreater(len(conditional_criteria), 0)
-        self.assertTrue(any("IF" in c["text"] for c in conditional_criteria))
+        self.assertTrue(any("if" in c["text"].lower() for c in conditional_criteria))
 
     def test_ubiquitous_criteria_has_where(self) -> None:
         parsed = parse_intent("add dark mode toggle")
         criteria = generate_ears_criteria(parsed)
         ubiquitous_criteria = [c for c in criteria if c["pattern"] == "ubiquitous"]
         self.assertGreater(len(ubiquitous_criteria), 0)
-        self.assertTrue(any("WHERE" in c["text"] for c in ubiquitous_criteria))
+        self.assertTrue(any("where" in c["text"].lower() for c in ubiquitous_criteria))
 
 
 class TaskDecompositionQuality(TestCase):
