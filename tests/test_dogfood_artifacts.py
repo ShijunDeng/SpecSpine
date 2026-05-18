@@ -885,12 +885,26 @@ class DogfoodArtifactsTests(TestCase):
         self.assertEqual(report.status, "validated")
         self.assertEqual(report.summary["fail"], 0)
 
-    def test_feature_template_refresh_dogfood_bundle_passes_its_gate(self) -> None:
-        report = build_feature_ready_report(REPO_ROOT, "feature-template-refresh")
+    def test_feature_template_refresh_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(REPO_ROOT, "feature-template-refresh")
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "feature-template-refresh",
+            require_coverage=True,
+        )
 
-        self.assertTrue(report.ready)
-        self.assertEqual(report.status, "validated")
-        self.assertEqual(report.summary["fail"], 0)
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+        coverage_checks = [
+            check for check in coverage_report.checks
+            if check.id == "feature.test_coverage"
+        ]
+        self.assertEqual([check.status for check in coverage_checks], ["pass"])
 
     def test_feature_summary_filters_dogfood_bundle_passes_its_gate(self) -> None:
         default_report = build_feature_ready_report(REPO_ROOT, "feature-summary-filters")

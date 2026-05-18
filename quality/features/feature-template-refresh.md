@@ -14,6 +14,22 @@ Why: The refreshed templates should guide new work into the current local workfl
 - [x] Documentation and agent guidance describe the focused handoff, tests, PR, ready, and validation workflow.
 - [x] This dogfood bundle passes its own readiness gate.
 
+## Test Coverage
+
+- [x] AC001 -> tests/test_features.py::FeatureBundleTests::test_create_feature_bundle_in_plain_workspace
+- [x] AC002 -> tests/test_features.py::FeatureBundleTests::test_create_feature_bundle_in_plain_workspace
+- [x] AC003 -> tests/test_features.py::FeatureBundleTests::test_create_feature_bundle_in_plain_workspace
+- [x] AC004 -> tests/test_features.py::FeatureBundleTests::test_new_feature_bundle_validates_but_is_not_ready
+- [x] AC005 -> tests/test_features.py::FeatureBundleTests::test_new_feature_bundle_trace_and_tests_extract_placeholders
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_create_feature_bundle_does_not_overwrite_existing_files
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_create_feature_bundle_force_overwrites_existing_files
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_feature_new_cli_does_not_overwrite_without_force
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_feature_new_cli_force_overwrites
+- [x] AC007 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_agents_file_preserves_project_rules
+- [x] AC007 -> tests/test_agents.py::AgentsTests::test_agents_content_includes_required_commands_and_boundaries
+- [x] AC007 -> tests/test_features.py::FeatureBundleTests::test_create_feature_bundle_in_plain_workspace
+- [x] AC008 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_feature_template_refresh_dogfood_bundle_passes_default_and_coverage_gates
+
 ## Test Plan
 
 - Run `PYTHONPATH=src python3 -m unittest discover -s tests`.
