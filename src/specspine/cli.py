@@ -43,8 +43,10 @@ from .features import (
     build_feature_trace_report,
     build_feature_tasks_report,
     build_issue_draft,
+    build_proposal_files,
     build_pull_request_draft,
     create_feature_bundle,
+    create_proposal_bundle,
     get_feature_status,
     read_feature_metadata,
     render_feature_handoff_json,
@@ -105,6 +107,12 @@ from .workspace import BASE_WORKSPACE_FILES, check_workspace, init_workspace
 def _print_created(paths: list[Path], root: Path) -> None:
     for path in paths:
         print(f"  created {path.relative_to(root)}")
+
+
+def _generate_slug_from_intent(intent: str) -> str:
+    from .proposer import generate_slug_from_intent
+
+    return generate_slug_from_intent(intent)
 
 
 def _print_adapter_statuses(statuses: list[AdapterStatus] | None = None) -> None:
@@ -646,6 +654,23 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="overwrite an existing output file",
     )
+
+    propose_parser = subcommands.add_parser(
+        "propose",
+        help="generate a structured spec bundle from natural language intent",
+    )
+    propose_parser.add_argument("intent", help="natural language description of the feature")
+    propose_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    propose_parser.add_argument("--slug", help="feature slug (auto-generated from intent if omitted)")
+    propose_parser.add_argument("--dry-run", action="store_true", help="print generated content without writing files")
+    propose_parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    propose_parser.add_argument("--force", action="store_true", help="overwrite existing feature files")
+    propose_parser.add_argument("--priority", default="medium", help="feature priority")
+    propose_parser.add_argument("--owner", default="unassigned", help="feature owner")
+    propose_parser.add_argument("--milestone", default="unassigned", help="feature milestone")
+    propose_parser.add_argument("--target-release", default="unassigned", help="feature target release")
+    propose_parser.add_argument("--project", default="unassigned", help="feature project")
+    propose_parser.add_argument("--effort", default="unknown", help="estimated effort")
 
     return parser
 
@@ -1536,6 +1561,176 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(text_body, end="")
             return 0
+
+    if args.command == "propose":
+        root = Path(args.path).expanduser().resolve()
+        intent = args.intent
+
+        try:
+            from .proposer import normalize_intent
+
+            intent, warnings = normalize_intent(intent)
+            if args.slug:
+                slug = args.slug
+            else:
+                slug = _generate_slug_from_intent(intent)
+
+            from .features import validate_feature_slug as _validate_slug
+            slug = _validate_slug(slug)
+        except ValueError as error:
+            print(str(error), file=sys.stderr)
+            return 2
+        except InvalidFeatureSlug as error:
+            print(str(error), file=sys.stderr)
+            return 2
+
+        if args.dry_run:
+            try:
+                files = build_proposal_files(
+                    slug,
+                    intent,
+                    priority=args.priority,
+                    owner=args.owner,
+                    milestone=args.milestone,
+                    target_release=args.target_release,
+                    project=args.project,
+                    effort=args.effort,
+                )
+            except (InvalidFeatureSlug, ValueError) as error:
+                print(str(error), file=sys.stderr)
+                return 2
+
+            targets = {
+                relative_path: root / relative_path
+                for relative_path in files
+            }
+            existing_paths = [
+                str(path.relative_to(root))
+                for path in targets.values()
+                if path.exists()
+            ]
+            if existing_paths and not args.force:
+                print(
+                    f"Feature bundle '{slug}' already has existing files. "
+                    "Use --force to overwrite them.",
+                    file=sys.stderr,
+                )
+                for path in existing_paths:
+                    print(f"  existing {path}", file=sys.stderr)
+                return 1
+
+            metadata = {
+                "effort": args.effort,
+                "milestone": args.milestone,
+                "owner": args.owner,
+                "priority": args.priority,
+                "project": args.project,
+                "target_release": args.target_release,
+            }
+            if args.json:
+                payload = {
+                    "dry_run": bool(args.dry_run),
+                    "existing_paths": existing_paths,
+                    "intent": intent,
+                    "metadata": metadata,
+                    "files": dict(files),
+                    "slug": slug,
+                    "warnings": warnings,
+                    "written_paths": [],
+                }
+                print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
+            else:
+                for warning in warnings:
+                    print(f"Warning: {warning}")
+                print(f"# Proposed feature: {slug}")
+                print(f"# Intent: {intent}")
+                if existing_paths:
+                    print("# Existing files: " + ", ".join(existing_paths))
+                print()
+                for relative_path, content in files.items():
+                    print(f"## {relative_path}")
+                    print()
+                    print(content)
+                    print()
+            return 0
+
+        pre_existing_paths: list[str] = []
+        try:
+            planned_files = build_proposal_files(
+                slug,
+                intent,
+                priority=args.priority,
+                owner=args.owner,
+                milestone=args.milestone,
+                target_release=args.target_release,
+                project=args.project,
+                effort=args.effort,
+            )
+            pre_existing_paths = [
+                relative_path
+                for relative_path in planned_files
+                if (root / relative_path).exists()
+            ]
+            written = create_proposal_bundle(
+                root,
+                slug,
+                intent,
+                priority=args.priority,
+                owner=args.owner,
+                milestone=args.milestone,
+                target_release=args.target_release,
+                project=args.project,
+                effort=args.effort,
+                force=args.force,
+            )
+        except InvalidFeatureSlug as error:
+            print(str(error), file=sys.stderr)
+            return 2
+        except ValueError as error:
+            print(str(error), file=sys.stderr)
+            return 2
+        except FeatureBundleExistsError as error:
+            print(str(error), file=sys.stderr)
+            for path in error.existing_paths:
+                print(f"  existing {path.relative_to(root)}", file=sys.stderr)
+            return 1
+
+        if args.json:
+            files = build_proposal_files(
+                slug,
+                intent,
+                priority=args.priority,
+                owner=args.owner,
+                milestone=args.milestone,
+                target_release=args.target_release,
+                project=args.project,
+                effort=args.effort,
+            )
+            payload = {
+                "dry_run": False,
+                "existing_paths": pre_existing_paths,
+                "intent": intent,
+                "metadata": {
+                    "effort": args.effort,
+                    "milestone": args.milestone,
+                    "owner": args.owner,
+                    "priority": args.priority,
+                    "project": args.project,
+                    "target_release": args.target_release,
+                },
+                "files": dict(files),
+                "slug": slug,
+                "warnings": warnings,
+                "written_paths": [str(path.relative_to(root)) for path in written],
+            }
+            print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
+            return 0
+
+        for warning in warnings:
+            print(f"Warning: {warning}")
+        print(f"Created SpecSpine proposal bundle '{slug}' at {root}")
+        _print_created(written, root)
+        return 0
 
     parser.print_help()
     return 1

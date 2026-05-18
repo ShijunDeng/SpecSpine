@@ -27,6 +27,7 @@
 - Optional workspace readiness policy through `.specspine/policy.yaml`, `specspine policy`, `feature ready --policy`, and `status --feature-summaries --feature-policy`.
 - Optional workspace readiness rollups in `specspine status --json --readiness-summary`, with coverage-required and policy-selected readiness modes.
 - Workspace-level coverage debt reporting through `specspine coverage debt`, with universal and policy-selected coverage-required modes.
+- Natural-language feature proposal generation through `specspine propose`, with deterministic native bundle generation, dry-run previews, JSON output, metadata flags, conflict protection, and no external services.
 - Repository-level quality gate definition export through `specspine gates`, including optional severity, owner, and CI metadata labels.
 - Unit tests and GitHub Actions coverage for the current command surface.
 
@@ -55,7 +56,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine adapters lifecycle . --json` when an agent or maintainer needs local status-to-upstream phase definitions before adapter sync or upstream planning.
 - Use `specspine adapters handoff <slug> . --json` when an agent needs OpenSpec, Spec Kit, and Superpowers handoff steps for one native feature without executing upstream tooling; add `--output-dir .specspine/adapter-handoff/<slug>` when separate reviewable Markdown files, structured JSON files, a safety manifest, and SHA-256 checksums should be materialized locally.
 - Use `specspine validate . --fusion --features` as the project-level gate.
-- Let `specspine feature new <slug> . --title "..." --why "..."` seed the feature's spec, execution, quality, handoff, task issue draft, tests, PR, ready, validation workflow, and initial local triage metadata before implementation begins.
+- Let `specspine propose "..." . --slug <slug>` seed natural-language feature work with populated spec, execution, and quality peers. Use `specspine feature new <slug> . --title "..." --why "..."` when a manual template is more appropriate.
 - Use native feature lifecycle states to move bundles from `proposed` through `validated` or `archived`; prefer `--enforce-transition` for ordered lifecycle advancement while keeping manual updates available by default.
 - Run `specspine feature ready <slug> . --json` before enforced archive updates so readiness blockers are resolved separately from transition rules.
 - Continue dogfooding generated templates and tighten them when repeated manual edits appear.

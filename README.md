@@ -329,7 +329,7 @@ Initializes the SpecSpine workspace structure.
 specspine agents init [path] [--force]
 ```
 
-Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, use `specspine loop packet . --json` when a local loop packet is needed, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, add `--readiness-summary` when workspace ready/not-ready counts are needed, use `coverage debt` when coverage rollups need exact AC gaps, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
+Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, use `specspine loop packet . --json` when a local loop packet is needed, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, add `--readiness-summary` when workspace ready/not-ready counts are needed, use `coverage debt` when coverage rollups need exact AC gaps, preview natural-language requirements with `specspine propose "..." . --slug <slug> --dry-run`, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
 
 ```bash
 specspine doctor [path]
@@ -350,6 +350,14 @@ Creates a native feature bundle:
 The slug may contain lowercase letters, numbers, and hyphens, and must start and end with a letter or number. Existing feature files are not overwritten unless `--force` is passed.
 
 The generated spec file also starts with local triage metadata: `Priority: medium`, `Owner: unassigned`, `Milestone: unassigned`, `Target Release: unassigned`, `Project: unassigned`, and `Effort: unknown`. Those values are the source of truth for local feature-summary, handoff, issue, PR, and sync-plan draft context; execution and quality peers do not repeat them.
+
+```bash
+specspine propose <idea> [path] [--slug SLUG] [--dry-run] [--json] [--force] [--priority VALUE] [--owner VALUE] [--milestone VALUE] [--target-release VALUE] [--project VALUE] [--effort VALUE]
+```
+
+Generates a complete native feature bundle from natural-language intent without network access, subprocesses, upstream CLIs, GitHub calls, token reads, or third-party dependencies. If `--slug` is omitted, SpecSpine derives a deterministic lowercase slug from meaningful intent words and validates it with the same native feature slug rules. Empty, whitespace-only, or punctuation-only intent returns code `2`. Intent longer than 5000 characters is deterministically truncated before generation; text output prints a warning and JSON includes the warning in `warnings`.
+
+Generated specs include populated Why, Scope, EARS-like acceptance criteria, edge cases, constraints, and traceability notes. Generated execution files include checklist tasks with `_Boundary:` and `_Depends:` annotations. Generated quality files include one required check per acceptance criterion and local `## Test Coverage` placeholders. Existing bundles fail unless `--force` is passed, including `--dry-run` previews. `--dry-run` prints generated Markdown without writing files; combine it with `--json` to inspect a stable payload containing `slug`, `metadata`, `files`, `dry_run`, `written_paths`, `existing_paths`, and `warnings`.
 
 ```bash
 specspine feature status <slug> [path] [--set STATUS] [--enforce-transition] [--json]

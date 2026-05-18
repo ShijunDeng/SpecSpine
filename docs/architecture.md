@@ -19,6 +19,7 @@ The CLI is intentionally thin:
 
 - `specspine init` creates the default workspace structure.
 - `specspine agents init` creates project-local `AGENTS.md` instructions for AI coding agents.
+- `specspine propose` generates a native feature bundle from meaningful natural-language intent.
 - `specspine feature new` creates a traceable native feature bundle.
 - `specspine feature status` reads or updates native feature lifecycle state.
 - `specspine feature tasks` exports execution checklist items as stable agent tasks.
@@ -85,6 +86,8 @@ Workspace validation also checks base Markdown workspace files for scaffold plac
 - `quality/features/<slug>.md` for required checks, test plan, review notes, sync-plan review, and release readiness gates.
 
 Each file records the same `Feature ID: <slug>` and starts at `Status: proposed`. The spec peer also starts with local triage metadata: `Priority: medium`, `Owner: unassigned`, `Milestone: unassigned`, `Target Release: unassigned`, `Project: unassigned`, and `Effort: unknown`. Those fields are the source of truth for workspace feature summaries, handoffs, issue drafts, PR drafts, and sync-plan draft context, and are not repeated in execution or quality peers. The generated quality checklists stay unchecked so a new bundle validates as structurally complete but does not pass `specspine feature ready` until implementation, tests, docs or PR draft, `feature ready`, and `validate . --fusion --features` evidence are complete. The command refuses to overwrite existing feature files unless `--force` is passed.
+
+`specspine propose <idea> [path]` uses the same native paths but fills the bundle from deterministic local intent parsing. It rejects empty or punctuation-only intent, truncates intent longer than 5000 characters with a visible warning, auto-generates a validated slug when `--slug` is omitted, preserves metadata flags in the spec peer, supports `--dry-run` previews, enforces same-slug bundle conflicts unless `--force` is passed, and emits stable JSON with generated file content, warnings, and write metadata when requested. It does not call network services, invoke subprocesses, read tokens, call GitHub, or run upstream CLIs.
 
 Native feature lifecycle states are:
 

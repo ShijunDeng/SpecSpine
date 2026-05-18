@@ -22,6 +22,7 @@ PYTHONPATH=src python3 -m specspine gates . --json
 PYTHONPATH=src python3 -m specspine adapters lifecycle . --json
 PYTHONPATH=src python3 -m specspine adapters handoff <slug> . --json
 PYTHONPATH=src python3 -m specspine adapters handoff <slug> . --output-dir .specspine/adapter-handoff/<slug>
+PYTHONPATH=src python3 -m specspine propose "add dark mode toggle" . --slug dark-mode-toggle --dry-run
 PYTHONPATH=src python3 -m specspine validate . --fusion --features
 PYTHONPATH=src python3 -m unittest discover -s tests
 ```
@@ -29,6 +30,7 @@ PYTHONPATH=src python3 -m unittest discover -s tests
 For new user-facing requirements, create a native bundle first:
 
 ```bash
+PYTHONPATH=src python3 -m specspine propose "..." . --slug <slug> --json
 PYTHONPATH=src python3 -m specspine feature new <slug> . --title "..." --why "..."
 PYTHONPATH=src python3 -m specspine feature status <slug> . --json
 PYTHONPATH=src python3 -m specspine feature status <slug> . --set planned --enforce-transition --json
@@ -51,7 +53,7 @@ PYTHONPATH=src python3 -m specspine feature sync-plan <slug> . --output-dir .spe
 
 - Start by reading `specspine status . --json --validate`; use `specspine loop packet . --json` when a worker needs a local, deterministic agent loop packet with feature summaries, readiness counts, lifecycle steps, subagents, validation commands, upstream metadata, and safety notes; add `--validation-warnings` only when scaffold warning check ids are needed; use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features, and add local filters such as `--feature-status validated --feature-ready yes --feature-project "Native feature bundles" --feature-sort effort` for triage; add `--feature-require-coverage` when every candidate must use the stricter local AC coverage gate, or `--feature-policy` when `.specspine/policy.yaml` should decide per feature; use `specspine status . --json --readiness-summary` when an agent or CI job needs ready/not-ready counts for the whole workspace in one packet, and add `--readiness-policy` or `--readiness-require-coverage` for policy-selected or universal coverage gates; use `specspine coverage debt . --json` after coverage-required rollups to see exact feature and AC coverage gaps, or add `--policy` when only policy-selected features should count as required debt; use `specspine policy . --json` for workspace readiness governance; use `specspine gates . --json` when repository-level quality policy is needed; use `specspine adapters lifecycle . --json` for local adapter lifecycle mappings and `specspine adapters handoff <slug> . --json` or `--output-dir .specspine/adapter-handoff/<slug>` for feature-specific adapter handoff context; finish with `specspine validate . --fusion --features` and the unit test command above.
 - Keep feature specs, implementation tasks, and quality checks traceable by `Feature ID`.
-- Use `specspine feature new` as the starting workflow for new requirements; the generated peer files include focused handoff, task issue drafts, tests, PR, ready, and validation guidance, plus sync-plan review.
+- Use `specspine propose "..."` as the starting workflow when the requirement is natural-language intent; it deterministically generates spec, execution, and quality peers with EARS-like acceptance criteria, dependency-annotated tasks, and quality mappings. Use `specspine feature new` when a maintainer wants a manual template instead; generated peer files include focused handoff, task issue drafts, tests, PR, ready, and validation guidance.
 - Keep native feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.
 - Before archiving, run `specspine feature ready <slug> . --json`; use `--require-coverage` for high-risk or release-bound features, use `--policy` when workspace readiness policy should select coverage requirements, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.
 - Start implementation, acceptance, and review handoffs with `specspine feature handoff <slug> . --json`; use `feature tasks`, `feature task-issues`, `feature trace`, `feature ready`, `feature ready --require-coverage`, `feature ready --policy`, and `feature tests` for focused follow-up views. For QA context, add local `## Test Coverage` checklist links such as `- [ ] AC001 -> tests/test_features.py` in `quality/features/<slug>.md`.

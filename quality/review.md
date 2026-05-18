@@ -23,6 +23,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine status --readiness-summary` now exposes an opt-in workspace readiness rollup with ready/not-ready counts, compact per-feature readiness records, coverage-required and policy modes, and focused `feature ready` commands without changing default status output.
 - `specspine coverage debt` now reports exact workspace AC coverage debt from local native feature bundles, including open coverage links, missing targets, unknown AC links, universal mode, and policy-selected mode.
 - `specspine loop packet` now exports a local, deterministic agent loop packet with root, deadline, core_features, summary, context_commands, lifecycle_steps, subagents, validation_commands, safety_notes, upstreams, and recommended_commands.
+- `specspine propose` now turns meaningful natural-language intent into populated native feature bundles with EARS-like acceptance criteria, boundary/dependency-annotated execution tasks, mapped quality checks, dry-run previews, JSON output, metadata flags, conflict protection, and no external calls.
 - `specspine feature status --enforce-transition` now provides an opt-in lifecycle policy that blocks out-of-order writes and requires readiness before enforced archive writes while preserving default manual status updates.
 - `specspine feature pr` now exports offline Pull Request drafts that compose local feature evidence without GitHub API calls, token reads, `gh`, or network access.
 - `specspine feature sync-plan` now exports reviewable GitHub CLI argv plans and optional local artifact directories for feature issues, task issues, and draft PRs without executing `gh`, reading tokens, calling APIs, invoking subprocesses, or using network access.
@@ -43,6 +44,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Use `specspine status . --json --readiness-summary` when agents or CI need workspace-wide ready/not-ready feature counts in one packet; add `--readiness-require-coverage` or `--readiness-policy` when coverage gates should be universal or policy-selected.
 - Use `specspine coverage debt . --json` when a coverage-required readiness rollup shows not-ready features and agents need exact missing AC coverage evidence; add `--policy` to limit required debt to policy-selected features.
 - Treat `specspine loop packet . --json` as the workspace-level local agent loop packet before delegating implementation, validation, or review work. It does not call GitHub, read or write tokens, invoke subprocesses, probe adapters, or access the network.
+- Treat `specspine propose "..." . --json` as the default seed for natural-language feature requests; use `--dry-run` before writing when a reviewer wants to inspect generated artifacts.
 - Treat `specspine feature handoff <slug> . --json` as the default local feature packet for implementation, acceptance, and review agents.
 - Use `specspine feature tasks <slug> . --json` as the focused execution checklist view when an agent only needs tasks.
 - Use `specspine feature task-issues <slug> . --json` when a maintainer or agent needs local task-level issue drafts before any remote GitHub issue exists.
@@ -79,6 +81,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Workspace status can now opt into a `readiness_summary` rollup that reuses feature readiness gates and reports counts, not-ready features, coverage-required records, policy-selected coverage records, and focused local commands.
 - Workspace coverage debt can now be exported as a local report that complements readiness rollups with exact AC gaps and link classifications without running tests or touching GitHub.
 - Loop packets can now be exported as local agent startup packets with feature summaries, readiness counts, lifecycle guidance, subagents, validation commands, safety notes, upstream metadata, and recommended commands.
+- Natural-language proposal generation can now create native spec, execution, and quality bundles deterministically without network access, subprocesses, token reads, GitHub calls, upstream CLIs, or third-party dependencies.
 - Feature execution checklists can now be exported without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be exported as deterministic traceability packets without generation, GitHub credentials, or upstream tool calls.
 - Feature bundles can now be checked with deterministic readiness gates that fail on missing files, inconsistent statuses, trace gaps, incomplete checklist evidence, missing test plans, or open release readiness items.

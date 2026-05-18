@@ -41,6 +41,8 @@ AGENTS_TEMPLATE = """
     specspine validate .
     specspine validate . --features
     specspine validate . --fusion --features
+    specspine propose "..." . --slug <slug> --dry-run
+    specspine propose "..." . --slug <slug> --json
     specspine feature new <slug> . --title "..." --why "..."
     specspine feature status <slug> . --json
     specspine feature status <slug> . --set planned --enforce-transition --json
@@ -65,7 +67,7 @@ AGENTS_TEMPLATE = """
     - Use `specspine loop packet . --json` when a worker needs a local, deterministic agent loop packet. Do not treat loop packet recommended commands as executed commands.
     - Use `specspine gates . --json` when an agent or reviewer needs repository-level quality gate definitions; it exports definitions and does not execute checks.
     - Use `specspine adapters lifecycle . --json` when adapter lifecycle definitions are needed; it exports static local mappings and does not execute upstream tools.
-    - For new requirements, create a feature bundle with `specspine feature new`; the generated peer files include focused handoff, task issue drafts, tests, PR, readiness, and validation guidance, plus sync-plan review.
+    - For new natural-language requirements, start with `specspine propose "..." . --slug <slug> --dry-run` to preview the deterministic native bundle, then rerun without `--dry-run` when the spec, execution, and quality peers should be written. Use `specspine feature new` when a maintainer wants a manual template; the generated peer files include focused handoff, task issue drafts, tests, PR, readiness, and validation guidance, plus sync-plan review.
     - Keep feature peer files on a consistent lifecycle status with `specspine feature status`; prefer `--enforce-transition` when advancing lifecycle state.
     - Before archiving, run `specspine feature ready <slug> . --json`, then archive with `specspine feature status <slug> . --set archived --enforce-transition`.
     - Start feature implementation, review, and acceptance handoffs with `specspine feature handoff <slug> . --json`.
