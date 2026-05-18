@@ -4240,6 +4240,50 @@ class FeatureBundleTests(TestCase):
             }
             self.assertEqual(after, before)
 
+    def test_feature_status_cli_enforced_failure_does_not_leak_environment_tokens(
+        self,
+    ) -> None:
+        secrets = {
+            "GH_TOKEN": "secret-gh-token",
+            "GITHUB_TOKEN": "secret-github-token",
+            "GITHUB_PAT": "secret-github-pat",
+            "GITHUB_API_TOKEN": "secret-github-api-token",
+            "SPECSPINE_INTERNAL_SECRET": "secret-env-value",
+        }
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_workspace(root)
+            create_feature_bundle(root, "add-dark-mode")
+            output = StringIO()
+
+            with patch.dict(os.environ, secrets, clear=False):
+                with redirect_stdout(output):
+                    returncode = main(
+                        [
+                            "feature",
+                            "status",
+                            "add-dark-mode",
+                            str(root),
+                            "--set",
+                            "implemented",
+                            "--enforce-transition",
+                            "--json",
+                        ]
+                    )
+
+            raw_output = output.getvalue()
+            payload = json.loads(raw_output)
+            self.assertEqual(returncode, 1)
+            self.assertEqual(payload["error"], "transition_not_allowed")
+            self.assertIn("transition", payload)
+            self.assertEqual(payload["transition"]["from"], "proposed")
+            self.assertEqual(payload["transition"]["to"], "implemented")
+            self.assertTrue(payload["transition"]["enforced"])
+            self.assertFalse(payload["transition"]["allowed"])
+            for name, value in secrets.items():
+                self.assertNotIn(name, raw_output)
+                self.assertNotIn(value, raw_output)
+
     def test_feature_status_cli_enforced_archived_terminal_does_not_write(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

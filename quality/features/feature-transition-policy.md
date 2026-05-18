@@ -15,6 +15,24 @@ Why: Transition enforcement must block unsafe writes only when explicitly reques
 - [x] Agent template and dogfood artifact tests cover the recommended lifecycle commands.
 - [x] Documentation states that enforcement is opt-in and default manual updates remain compatible.
 
+## Test Coverage
+
+- [x] AC001 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_enforced_allowed_transition_writes_files
+- [x] AC002 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_set_updates_existing_peer_files
+- [x] AC003 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_enforced_allowed_transition_writes_files
+- [x] AC003 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_enforced_all_non_archive_allowed_transitions_write
+- [x] AC003 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_enforced_archived_terminal_does_not_write
+- [x] AC004 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_enforced_mixed_status_fails_before_write
+- [x] AC004 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_enforced_missing_status_fails_before_write
+- [x] AC005 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_enforced_archive_requires_ready_gate
+- [x] AC005 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_enforced_archive_ready_bundle_succeeds
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_enforced_allowed_transition_writes_files
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_enforced_disallowed_transition_does_not_write
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_enforced_failure_does_not_leak_environment_tokens
+- [x] AC006 -> tests/test_features.py::FeatureBundleTests::test_feature_status_cli_rejects_invalid_status_and_slug
+- [x] AC007 -> tests/test_agents.py::AgentsTests::test_agents_content_includes_required_commands_and_boundaries
+- [x] AC007 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_feature_transition_policy_dogfood_bundle_passes_default_and_coverage_gates
+
 ## Test Plan
 
 - Run `PYTHONPATH=src python3 -m unittest discover -s tests`.
