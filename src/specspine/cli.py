@@ -28,6 +28,15 @@ from .analysis import (
     render_analysis_json,
     render_analysis_text,
 )
+from .archive import (
+    FeatureArchiveArtifactExistsError,
+    InvalidArchiveId,
+    build_feature_archive_report,
+    feature_archive_report_with_package,
+    render_feature_archive_json,
+    render_feature_archive_text,
+    write_feature_archive_package,
+)
 from .coverage import (
     build_coverage_debt_report,
     render_coverage_debt_json,
@@ -297,6 +306,31 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="overwrite existing output files written by this command",
+    )
+
+    feature_archive_parser = feature_subcommands.add_parser(
+        "archive",
+        help="package local archive evidence for a native feature bundle",
+    )
+    feature_archive_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    feature_archive_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    feature_archive_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    feature_archive_parser.add_argument(
+        "--output-dir",
+        help="write a compact archive package to a directory",
+    )
+    feature_archive_parser.add_argument(
+        "--archive-id",
+        help="stable archive id to include in the report and package",
+    )
+    feature_archive_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite existing archive package files written by this command",
     )
 
     feature_trace_parser = feature_subcommands.add_parser(
@@ -698,6 +732,17 @@ def build_parser() -> argparse.ArgumentParser:
     propose_parser.add_argument("--project", default="unassigned", help="feature project")
     propose_parser.add_argument("--effort", default="unknown", help="estimated effort")
 
+    mcp_parser = subcommands.add_parser("mcp", help="MCP server interface")
+    mcp_sub = mcp_parser.add_subparsers(dest="mcp_command", required=True)
+    mcp_sub.add_parser("server", help="Start MCP stdio server")
+    mcp_config = mcp_sub.add_parser("config", help="Generate MCP client config")
+    mcp_config.add_argument(
+        "--format",
+        choices=["claude-desktop", "vscode", "cursor"],
+        default="claude-desktop",
+    )
+    mcp_config.add_argument("--root", default=".", help="workspace root path")
+
     return parser
 
 
@@ -1028,6 +1073,53 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Wrote feature sync plan artifacts to {artifact_output.output_dir}")
             else:
                 print(text_body, end="")
+            return 0
+
+        if args.feature_command == "archive":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                report = build_feature_archive_report(
+                    root,
+                    args.slug,
+                    archive_id=args.archive_id,
+                )
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except InvalidArchiveId as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not read feature archive evidence: {error}", file=sys.stderr)
+                return 1
+
+            if args.output_dir:
+                output_dir = Path(args.output_dir).expanduser().resolve()
+                try:
+                    package = write_feature_archive_package(
+                        report,
+                        output_dir,
+                        force=args.force,
+                    )
+                    report = feature_archive_report_with_package(report, package)
+                except FeatureArchiveArtifactExistsError as error:
+                    print(str(error), file=sys.stderr)
+                    for path in error.existing_paths:
+                        print(f"  existing {path}", file=sys.stderr)
+                    return 1
+                except OSError as error:
+                    print(f"Could not write feature archive package: {error}", file=sys.stderr)
+                    return 1
+
+            if args.json:
+                print(render_feature_archive_json(report), end="")
+            else:
+                print(render_feature_archive_text(report), end="")
             return 0
 
         if args.feature_command == "trace":
@@ -1778,6 +1870,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Created SpecSpine proposal bundle '{slug}' at {root}")
         _print_created(written, root)
         return 0
+
+    if args.command == "mcp":
+        if args.mcp_command == "server":
+            from .mcp import run_server
+
+            run_server()
+            return 0
+
+        if args.mcp_command == "config":
+            from .mcp import generate_client_config
+
+            config = generate_client_config(fmt=args.format, root=args.root)
+            print(json.dumps(config, indent=2, sort_keys=True))
+            return 0
 
     parser.print_help()
     return 1
