@@ -21,11 +21,19 @@ Why: Repository-level quality policy affects completion decisions, so the export
 ## Test Coverage
 
 - [x] AC001 -> tests/test_gates.py::QualityGateTests::test_gates_json_parses_initialized_workspace_quality_checklist
+- [x] AC002 -> tests/test_gates.py::QualityGateTests::test_gates_json_parses_initialized_workspace_quality_checklist
+- [x] AC002 -> tests/test_gates.py::QualityGateTests::test_gates_json_counts_custom_gate_and_definition_shapes
+- [x] AC003 -> tests/test_gates.py::QualityGateTests::test_gates_json_counts_custom_gate_and_definition_shapes
+- [x] AC003 -> tests/test_gates.py::QualityGateTests::test_gates_text_includes_done_open_markers_and_definition_ids
+- [x] AC004 -> tests/test_gates.py::QualityGateTests::test_gates_json_parses_initialized_workspace_quality_checklist
+- [x] AC005 -> tests/test_gates.py::QualityGateTests::test_gates_json_parses_initialized_workspace_quality_checklist
 - [x] AC006 -> tests/test_gates.py::QualityGateTests::test_gates_text_includes_summary_and_ids
 - [x] AC007 -> tests/test_gates.py::QualityGateTests::test_gates_source_missing_returns_one_with_empty_json_lists
 - [x] AC008 -> tests/test_gates.py::QualityGateTests::test_gates_only_parse_required_checks_and_definition_of_done
 - [x] AC008 -> tests/test_gates.py::QualityGateTests::test_gates_ignore_nested_same_named_headings
 - [x] AC009 -> tests/test_gates.py::QualityGateTests::test_gates_reads_only_quality_checklist_and_skips_external_tools
+- [x] AC010 -> tests/test_gates.py::QualityGateTests::test_quality_gate_definitions_dogfood_bundle_passes_readiness_and_validation
+- [x] AC010 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_quality_gate_definitions_dogfood_bundle_passes_default_and_coverage_gates
 
 ## Test Plan
 
