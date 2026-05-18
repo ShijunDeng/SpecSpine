@@ -38,6 +38,7 @@ The CLI is intentionally thin:
 - `specspine analyze` reports cross-artifact consistency and coverage findings for native feature bundles without changing files.
 - `specspine tests impact` exports a local static source-to-test impact packet without running tests.
 - `specspine consistency scan` exports a local spec-code-test-doc consistency report without running tests.
+- `specspine hygiene scan` exports a local repository hygiene report for generated cache artifacts and denylisted residue.
 - `specspine change risk` exports a local changed-path risk packet for source, test, feature peer, docs, config, and other changes.
 - `specspine security cues` exports local security-sensitive keyword cues for review without proving vulnerabilities or running scanners.
 - `specspine provenance manifest` exports local SHA-256 evidence hashes and optional feature readiness context without printing file contents.
@@ -198,6 +199,10 @@ Impact JSON includes `root`, `changed_files`, `source_modules`, `test_files`, `r
 
 Consistency JSON includes `root`, `feature_filter`, `changed_files`, `features`, `summary`, `recommended_commands`, and `safety_notes`. Each feature record includes source and missing files, implementation references, test references, documentation references, changed references, consistency checks, and summary counts. Missing focused feature bundles return `1`; invalid slugs return `2`. The command is advisory and read-only: it does not execute tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens.
 
+`specspine hygiene scan [path] [--json] [--changed PATH]... [--strict]` is a local repository hygiene report for pre-review and pre-commit checks. It inventories local workspace files, normalizes optional changed paths, reports generated cache artifacts, denylisted repository residue, and denylisted text cues, then emits advisory follow-up commands.
+
+Hygiene JSON includes `root`, `changed_files`, `findings`, `summary`, `recommended_commands`, and `safety_notes`. Findings include stable ids, severity, category, path, message, source, and optional line number. Default mode returns `0` when the report is built; `--strict` returns `1` when high-risk findings are present. The command is advisory and read-only: it does not delete files, run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens.
+
 `specspine change risk [path] [--json] [--changed PATH]... [--feature SLUG]` is a local changed-path risk packet for pre-review triage. It classifies changed paths into source, test, feature spec, feature execution, feature quality, project docs, config, or other; assigns advisory risk levels; infers feature ids from native peer file paths; and composes coverage-required feature readiness evidence for provided or inferred feature ids.
 
 Change risk JSON includes `root`, `feature_id`, `changed_files`, `files`, `feature_evidence`, `summary`, `recommended_commands`, and `safety_notes`. Missing feature bundles return a report with exit code `1`; invalid slugs return `2`. The command is read-only and advisory: it does not execute tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens.
@@ -294,6 +299,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 - `specspine.coverage`: workspace-level coverage debt reporting from native feature ACs and local Test Coverage links.
 - `specspine.analysis`: read-only native feature consistency and coverage analysis across specs, execution tasks, quality checks, readiness blockers, and Test Coverage links.
 - `specspine.impact`: local static source-to-test impact graphing and test command recommendation.
+- `specspine.hygiene`: local repository hygiene scanning for generated artifacts, denylisted residue, changed-path context, and strict failure signals.
 - `specspine.change`: local changed-path classification, risk evidence, feature readiness context, and advisory command recommendation.
 - `specspine.security`: local security-sensitive cue detection, feature readiness context, and advisory command recommendation.
 - `specspine.review`: local pre-merge review packet composition from validation, quality gates, test impact, and optional feature evidence.

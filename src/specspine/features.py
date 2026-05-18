@@ -917,6 +917,7 @@ def build_feature_files(
             - Run `specspine feature tests {slug} . --json` to build the acceptance-test packet.
             - Run `specspine tests impact . --feature {slug} --json` to inspect local source-to-test impact recommendations.
             - Run `specspine consistency scan . --feature {slug} --json` to inspect local spec-code-test-doc drift.
+            - Run `specspine hygiene scan . --json` to inspect generated artifacts and denylisted repository residue.
             - Run `specspine verify matrix {slug} . --json` to inspect AC-level verification evidence.
             - Run `specspine change risk . --feature {slug} --json` to inspect local changed-path risk evidence.
             - Run `specspine security cues . --feature {slug} --json` to inspect local security-sensitive review cues.
@@ -964,6 +965,7 @@ def build_feature_files(
             - [ ] TODO: Docs, release notes, or `specspine feature pr {slug} . --json` output are ready for reviewers.
             - [ ] TODO: `specspine tests impact . --feature {slug} --json` has been reviewed for focused local test commands.
             - [ ] TODO: `specspine consistency scan . --feature {slug} --json` has been reviewed for local spec-code-test-doc drift.
+            - [ ] TODO: `specspine hygiene scan . --json` has been reviewed for generated artifacts and denylisted repository residue.
             - [ ] TODO: `specspine verify matrix {slug} . --json` has been reviewed for AC-level verification evidence.
             - [ ] TODO: `specspine change risk . --feature {slug} --json` has been reviewed for changed-path risk evidence.
             - [ ] TODO: `specspine security cues . --feature {slug} --json` has been reviewed for security-sensitive cues.

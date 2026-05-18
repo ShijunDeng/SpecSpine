@@ -25,6 +25,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - `specspine analyze` now reports read-only native feature consistency, traceability, readiness, and coverage findings with feature filtering and opt-in failing issue exits.
 - `specspine tests impact` now reports local static source-to-test impact recommendations and optional feature coverage targets without running tests, invoking subprocesses, calling network services, or reading tokens.
 - `specspine consistency scan` now reports local spec-code-test-doc consistency evidence by linking feature peers to implementation, test, documentation, and changed-path references without running tests.
+- `specspine hygiene scan` now reports local repository hygiene evidence for generated cache artifacts, denylisted repository residue, and changed-path context without deleting files.
 - `specspine verify matrix` now reports local AC-level verification evidence by composing trace, tests, and coverage-required readiness without running tests.
 - `specspine change risk` now reports local changed-path categories, advisory risk levels, inferred feature ids, feature readiness evidence, and recommended commands without running commands or reading tokens.
 - `specspine security cues` now reports local security-sensitive review keywords without running scanners, proving vulnerabilities, printing secrets, or reading tokens.
@@ -55,6 +56,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Use `specspine analyze . --json` before implementation when reviewers or agents need one read-only packet for cross-artifact consistency, AC task references, readiness blockers, and coverage evidence; use `--fail-on-issues` only for CI-style failure behavior.
 - Use `specspine tests impact . --json`, optionally with `--changed PATH` and `--feature <slug>`, when agents or reviewers need focused local unittest recommendations without executing the tests.
 - Use `specspine consistency scan . --json`, optionally with `--changed PATH` and `--feature <slug>`, when agents or reviewers need local feature-to-code/test/doc drift evidence. Recommended commands are advisory and are not executed.
+- Use `specspine hygiene scan . --json`, optionally with `--changed PATH` and `--strict`, before review or commit when agents or reviewers need local repository hygiene evidence. Recommended commands are advisory and are not executed.
 - Use `specspine verify matrix <slug> . --json` before review or release when reviewers need one AC-level view of local criteria, test cases, coverage links, gaps, and advisory commands. Recommended commands are advisory and are not executed.
 - Use `specspine change risk . --json`, optionally with `--changed PATH` and `--feature <slug>`, before review when reviewers need changed-path classification, local risk levels, inferred feature ids, and readiness evidence. Recommended commands are advisory and are not executed.
 - Use `specspine security cues . --json`, optionally with `--changed PATH` and `--feature <slug>`, before review when reviewers need security-sensitive cue keywords and feature readiness context. Cues are not proof of vulnerabilities, and recommended commands are advisory.
@@ -101,6 +103,7 @@ This repository is now being used as a SpecSpine workspace. Reviews should check
 - Workspace coverage debt can now be exported as a local report that complements readiness rollups with exact AC gaps and link classifications without running tests or touching GitHub.
 - Workspace analysis can now be exported as a local report that combines native feature traceability, readiness blockers, AC-to-task references, coverage link classifications, duplicate AC text, and vague AC wording without writing files or touching external services.
 - Test impact packets can now be exported as local static source-to-test graphs with focused unittest recommendations and feature coverage target commands.
+- Repository hygiene packets can now be exported as local generated-artifact and denylisted-residue reports with changed-path context, safety notes, and strict high-risk exits.
 - Verification matrices can now be exported as local AC-level evidence rows with test cases, coverage links, readiness gaps, safety notes, and advisory commands.
 - Change risk packets can now be exported as local changed-path evidence bundles with source/test/feature/docs/config classification, advisory risk levels, inferred feature ids, feature readiness evidence, safety notes, and advisory commands.
 - Security cue packets can now be exported as local keyword evidence bundles with cue categories, severities, file/line metadata, feature readiness evidence, safety notes, and advisory commands without printing file contents.

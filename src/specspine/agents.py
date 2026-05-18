@@ -41,6 +41,8 @@ AGENTS_TEMPLATE = """
     specspine tests impact . --feature <slug> --json
     specspine consistency scan . --json
     specspine consistency scan . --feature <slug> --json
+    specspine hygiene scan . --json
+    specspine hygiene scan . --strict --json
     specspine verify matrix <slug> . --json
     specspine change risk . --json
     specspine change risk . --feature <slug> --json
@@ -83,12 +85,14 @@ AGENTS_TEMPLATE = """
     - Use `specspine analyze . --json` before implementation to check native feature cross-artifact consistency, task traceability, and coverage evidence without changing files.
     - Use `specspine tests impact . --json` before and after edits to inspect local source-to-test impact recommendations; add `--changed PATH` for focused changes or `--feature <slug>` to include feature coverage targets.
     - Use `specspine consistency scan . --json` before and after implementation to inspect local spec-code-test-doc drift; add `--changed PATH` for focused changes or `--feature <slug>` for one native feature. Recommended commands are advisory and are not executed.
+    - Use `specspine hygiene scan . --json` before review or commit to inspect generated cache artifacts and denylisted repository residue; add `--changed PATH` for focused context and `--strict` when high-risk findings should fail the command.
     - Use `specspine verify matrix <slug> . --json` before review or release to inspect AC-level verification evidence. Do not treat verification matrix recommended commands as executed commands or proof that tests ran.
     - Use `specspine change risk . --json` before review to classify changed paths by source, tests, feature peers, docs, or config and surface local risk evidence; add `--changed PATH` for focused changes or `--feature <slug>` for feature readiness context.
     - Use `specspine security cues . --json` before review to surface local security-sensitive keywords and path cues without proving vulnerabilities; add `--changed PATH` for focused changes or `--feature <slug>` for feature readiness context.
     - Use `specspine provenance manifest . --json` before review or archive to hash local evidence files and export feature provenance without reading file contents into the report; add `--include PATH` for focused artifacts or `--feature <slug>` for native feature evidence.
     - Use `specspine review packet . --json` before review or merge to compose local pre-merge review evidence from validation, quality gates, test impact, and optional feature packets; add `--feature <slug>` for focused native feature evidence. Recommended commands are advisory and are not executed.
     - Use `specspine loop packet . --json` when a worker needs a local, deterministic agent loop packet. Do not treat loop packet recommended commands as executed commands.
+    - Use `specspine hygiene scan . --json` to export local repository hygiene evidence only. Do not treat hygiene scan recommended commands as executed commands.
     - Use `specspine gates . --json` when an agent or reviewer needs repository-level quality gate definitions; it exports definitions and does not execute checks.
     - Use `specspine adapters lifecycle . --json` when adapter lifecycle definitions are needed; it exports static local mappings and does not execute upstream tools.
     - For new natural-language requirements, start with `specspine propose "..." . --slug <slug> --dry-run` to preview the deterministic native bundle, then rerun without `--dry-run` when the spec, execution, and quality peers should be written. Use `specspine feature new` when a maintainer wants a manual template; the generated peer files include focused handoff, task issue drafts, tests, PR, readiness, and validation guidance, plus sync-plan review.
