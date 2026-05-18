@@ -35,6 +35,7 @@ The CLI is intentionally thin:
 - `specspine feature archive` exports local archive evidence and optional package artifacts without marking lifecycle status.
 - `specspine policy` exports optional workspace readiness policy from `.specspine/policy.yaml`.
 - `specspine coverage debt` reports workspace-level AC coverage debt from local feature bundles.
+- `specspine coverage plan` turns missing AC coverage into a read-only reviewer/agent remediation plan.
 - `specspine analyze` reports cross-artifact consistency and coverage findings for native feature bundles without changing files.
 - `specspine tests impact` exports a local static source-to-test impact packet without running tests.
 - `specspine consistency scan` exports a local spec-code-test-doc consistency report without running tests.
@@ -187,6 +188,8 @@ Feature summary filters stay local and are valid only with `--feature-summaries`
 
 Coverage debt JSON includes workspace totals, per-feature missing AC ids, unchecked known-AC coverage link ids, checked links with missing targets, links to unknown AC ids, source files, missing files, policy fields, and focused `feature ready` / `feature tests` commands. Text output keeps summary counts and only debt features. The command returns `0` when the report is built even if debt exists, and it does not run tests, subprocesses, network calls, upstream CLIs, GitHub operations, or token reads.
 
+`specspine coverage plan [path] [--json] [--policy] [--feature SLUG] [--limit N]` composes coverage debt, trace, tests, and metadata into read-only remediation items. Each item expands missing AC ids into source text and lines, candidate test files, suggested unchecked quality links, local follow-up commands, and risk notes. It never writes quality files, runs tests, executes commands, calls network services, calls GitHub, invokes upstream CLIs, reads environment variables, or reads tokens. `--limit` trims returned items only, preserving summary counts.
+
 `specspine analyze [path] [--json] [--feature SLUG] [--fail-on-issues]` is a read-only workspace analysis pass for native feature bundles. It reuses feature discovery, trace parsing, readiness checks with coverage required, task parsing, required check parsing, and local Test Coverage link parsing. It reports missing peer artifacts, readiness blockers, acceptance criteria without execution task references, acceptance criteria without completed local coverage links, tasks without AC/test/quality references, unknown AC coverage links, checked links with missing local targets, open coverage links, duplicate AC text, and vague AC wording.
 
 Analysis JSON includes `root`, `feature_filter`, summary counts, per-feature metrics and issues, a flat issue list, and recommended commands. Text output groups issue rows by feature and prints a clean success message when no issues are found. The command returns `0` when the report is built even if findings exist; only `--fail-on-issues` turns findings into a nonzero exit. It does not write files, run tests, invoke subprocesses, probe adapters, call network services, call GitHub, or read tokens.
@@ -300,7 +303,7 @@ The fusion layer records `vendored_upstream_code: false`. Upstream tools are inv
 - `specspine.adapters`: upstream metadata, availability probes, lifecycle mappings, agent mappings, and initializer command construction.
 - `specspine.fusion`: fusion file generation and workspace initialization.
 - `specspine.policy`: optional workspace policy parsing, warning generation, rendering, and readiness coverage selector evaluation.
-- `specspine.coverage`: workspace-level coverage debt reporting from native feature ACs and local Test Coverage links.
+- `specspine.coverage`: workspace-level coverage debt reporting and read-only remediation planning from native feature ACs and local Test Coverage links.
 - `specspine.analysis`: read-only native feature consistency and coverage analysis across specs, execution tasks, quality checks, readiness blockers, and Test Coverage links.
 - `specspine.impact`: local static source-to-test impact graphing and test command recommendation.
 - `specspine.hygiene`: local repository hygiene scanning for generated artifacts, denylisted residue, changed-path context, and strict failure signals.

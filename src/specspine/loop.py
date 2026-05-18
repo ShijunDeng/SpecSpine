@@ -75,6 +75,11 @@ CONTEXT_COMMANDS: tuple[dict[str, object], ...] = (
         "description": "Inspect local acceptance-criteria coverage debt.",
         "command": "specspine coverage debt . --json --policy",
     },
+    {
+        "id": "coverage-plan",
+        "description": "Plan read-only remediation for missing coverage links.",
+        "command": "specspine coverage plan . --json --policy",
+    },
 )
 
 

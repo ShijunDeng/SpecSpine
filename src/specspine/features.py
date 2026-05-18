@@ -919,6 +919,7 @@ def build_feature_files(
             - Run `specspine consistency scan . --feature {slug} --json` to inspect local spec-code-test-doc drift.
             - Run `specspine hygiene scan . --json` to inspect generated artifacts and denylisted repository residue.
             - Run `specspine retrospective report . --json` before planning the next iteration.
+            - Run `specspine coverage plan . --feature {slug} --json` when missing AC coverage needs read-only remediation steps.
             - Run `specspine verify matrix {slug} . --json` to inspect AC-level verification evidence.
             - Run `specspine change risk . --feature {slug} --json` to inspect local changed-path risk evidence.
             - Run `specspine security cues . --feature {slug} --json` to inspect local security-sensitive review cues.
@@ -968,6 +969,7 @@ def build_feature_files(
             - [ ] TODO: `specspine consistency scan . --feature {slug} --json` has been reviewed for local spec-code-test-doc drift.
             - [ ] TODO: `specspine hygiene scan . --json` has been reviewed for generated artifacts and denylisted repository residue.
             - [ ] TODO: `specspine retrospective report . --json` has been reviewed for local feature improvement signals.
+            - [ ] TODO: `specspine coverage plan . --feature {slug} --json` has been reviewed if missing AC coverage remains.
             - [ ] TODO: `specspine verify matrix {slug} . --json` has been reviewed for AC-level verification evidence.
             - [ ] TODO: `specspine change risk . --feature {slug} --json` has been reviewed for changed-path risk evidence.
             - [ ] TODO: `specspine security cues . --feature {slug} --json` has been reviewed for security-sensitive cues.

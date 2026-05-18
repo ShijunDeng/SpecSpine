@@ -311,7 +311,7 @@ class FeatureBundleTests(TestCase):
             self.assertEqual(test_coverage[0].acceptance_criterion_id, "AC001")
             self.assertEqual(test_coverage[0].target, "tests/...")
             self.assertFalse(test_coverage[0].target_exists)
-            self.assertEqual(len(release_readiness), 15)
+            self.assertEqual(len(release_readiness), 16)
             self.assertTrue(all(not check.done for check in quality_checks))
             self.assertTrue(all(not check.done for check in release_readiness))
 

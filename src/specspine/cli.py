@@ -49,8 +49,11 @@ from .consistency import (
 )
 from .coverage import (
     build_coverage_debt_report,
+    build_coverage_plan_report,
     render_coverage_debt_json,
     render_coverage_debt_text,
+    render_coverage_plan_json,
+    render_coverage_plan_text,
 )
 from .features import (
     FeatureBundleExistsError,
@@ -531,6 +534,30 @@ def build_parser() -> argparse.ArgumentParser:
         "--policy",
         action="store_true",
         help="only require coverage for features selected by workspace readiness policy",
+    )
+    coverage_plan_parser = coverage_subcommands.add_parser(
+        "plan",
+        help="plan local remediation for acceptance-criteria coverage gaps",
+    )
+    coverage_plan_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    coverage_plan_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    coverage_plan_parser.add_argument(
+        "--policy",
+        action="store_true",
+        help="only plan coverage for features selected by workspace readiness policy",
+    )
+    coverage_plan_parser.add_argument(
+        "--feature",
+        help="focus the plan on one native feature slug",
+    )
+    coverage_plan_parser.add_argument(
+        "--limit",
+        type=int,
+        help="limit returned plan items without changing summary counts",
     )
 
     tests_parser = subcommands.add_parser("tests", help="inspect local test impact")
@@ -1692,6 +1719,34 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_coverage_debt_json(report), end="")
             else:
                 print(render_coverage_debt_text(report), end="")
+            return 0
+        if args.coverage_command == "plan":
+            if args.limit is not None and args.limit < 0:
+                print("--limit must be non-negative", file=sys.stderr)
+                return 2
+            try:
+                report = build_coverage_plan_report(
+                    Path(args.path),
+                    use_policy=args.policy,
+                    feature_filter=args.feature,
+                    limit=args.limit,
+                )
+            except InvalidFeatureSlug as error:
+                print(f"Invalid feature slug: {error}", file=sys.stderr)
+                return 2
+            except ValueError as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not read coverage plan: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_coverage_plan_json(report), end="")
+            else:
+                print(render_coverage_plan_text(report), end="")
+            if report["summary"].get("feature_missing"):
+                return 1
             return 0
 
     if args.command == "tests":

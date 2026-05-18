@@ -32,6 +32,7 @@ This repository is an early project skeleton. It includes:
 - A native feature readiness gate: `specspine feature ready`.
 - An optional workspace readiness policy exporter: `specspine policy`.
 - A workspace coverage debt report for exact AC-level coverage gaps: `specspine coverage debt`.
+- A local coverage remediation planner for reviewer/agent follow-up: `specspine coverage plan`.
 - A read-only native feature consistency and coverage analyzer: `specspine analyze`.
 - A local static source-to-test impact packet exporter: `specspine tests impact`.
 - A local spec-code-test-doc consistency scanner: `specspine consistency scan`.
@@ -233,6 +234,8 @@ Report exact workspace coverage debt without running tests:
 specspine coverage debt .
 specspine coverage debt . --json
 specspine coverage debt . --json --policy
+specspine coverage plan . --json
+specspine coverage plan . --feature add-dark-mode --limit 3 --json
 ```
 
 Analyze native feature bundle consistency and coverage without changing files:
@@ -608,6 +611,14 @@ specspine coverage debt [path] [--json] [--policy]
 Reports workspace-level coverage debt for native feature bundles by reading acceptance criteria from specs and `## Test Coverage` links from quality files. Universal mode treats every discovered feature as coverage-required. `--policy` loads `.specspine/policy.yaml` and counts debt only for policy-selected features while still reporting all feature records with `coverage_required=false` for skipped features.
 
 A criterion is covered only when a checked coverage link references that AC id and its local relative target file exists, matching `feature ready --require-coverage`. JSON includes workspace totals, per-feature missing AC ids, open coverage link ids, checked links with missing targets, links to unknown AC ids, source and missing files, policy fields, and focused commands such as `specspine feature ready <slug> . --json --require-coverage`. Text output lists summary counts and only features with debt. The command complements `status --readiness-summary --readiness-require-coverage` by showing exact AC coverage gaps. It returns `0` when the report is built, even if debt exists, and does not run tests, subprocesses, network calls, GitHub operations, upstream CLIs, or token reads.
+
+```bash
+specspine coverage plan [path] [--json] [--policy] [--feature SLUG] [--limit N]
+```
+
+Builds a read-only remediation plan from coverage debt. It lists only coverage-required features with missing acceptance-criterion coverage, expands each missing AC with id, text, source file, and line, and suggests candidate test files, quality `## Test Coverage` links, focused local commands, and risk notes. `--policy` limits plan items to policy-selected coverage requirements. `--feature SLUG` focuses one feature; a missing feature returns `1` with a structured report, while an invalid slug returns `2`. `--limit N` trims returned `items` only and leaves summary counts unchanged. Debt found in the plan still returns `0` because the command is advisory.
+
+JSON includes `root`, `mode`, `feature_filter`, `items`, `summary`, `recommended_commands`, and `safety_notes`. The command treats coverage as a gap signal, not automatic proof of test quality, and does not write quality files, run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens.
 
 ```bash
 specspine analyze [path] [--json] [--feature SLUG] [--fail-on-issues]

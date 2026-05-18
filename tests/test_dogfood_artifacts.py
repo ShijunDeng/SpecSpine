@@ -58,6 +58,7 @@ class DogfoodArtifactsTests(TestCase):
             "feature-metadata-filters",
             "status-readiness-rollup",
             "coverage-debt-report",
+            "coverage-remediation-plan",
             "agent-loop-packet",
             "review-packet",
             "change-risk-packet",
@@ -115,6 +116,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:feature-metadata-filters", "pass"), checks)
         self.assertIn(("feature.status_consistency:status-readiness-rollup", "pass"), checks)
         self.assertIn(("feature.status_consistency:coverage-debt-report", "pass"), checks)
+        self.assertIn(("feature.status_consistency:coverage-remediation-plan", "pass"), checks)
         self.assertIn(("feature.status_consistency:agent-loop-packet", "pass"), checks)
         self.assertIn(("feature.status_consistency:review-packet", "pass"), checks)
         self.assertIn(("feature.status_consistency:change-risk-packet", "pass"), checks)
@@ -142,6 +144,8 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine status . --json --readiness-summary --readiness-policy",
             "PYTHONPATH=src python3 -m specspine coverage debt . --json",
             "PYTHONPATH=src python3 -m specspine coverage debt . --json --policy",
+            "PYTHONPATH=src python3 -m specspine coverage plan . --json",
+            "PYTHONPATH=src python3 -m specspine coverage plan . --feature <slug> --limit 3 --json",
             "PYTHONPATH=src python3 -m specspine consistency scan . --json",
             "PYTHONPATH=src python3 -m specspine consistency scan . --feature <slug> --json",
             "PYTHONPATH=src python3 -m specspine hygiene scan . --json",
@@ -175,7 +179,10 @@ class DogfoodArtifactsTests(TestCase):
             "Keep feature specs, implementation tasks, and quality checks traceable",
             "Use `specspine consistency scan . --json` to export local spec-code-test-doc drift evidence only",
             "Use `specspine hygiene scan . --json` to export local repository hygiene evidence only",
+            "Use `specspine coverage plan . --json` to export local remediation planning evidence only",
+            "Do not treat coverage plan recommended commands as executed commands or proof that tests ran.",
             "Use `specspine retrospective report . --json` to export local retrospective evidence only",
+            "use `specspine coverage plan . --json` to turn missing AC coverage into read-only reviewer or agent remediation steps",
             "Use `specspine change risk . --json` to export local changed-path risk evidence only",
             "Use `specspine security cues . --json` to export local security-sensitive review cues only",
             "Do not treat security cue recommended commands as executed commands or vulnerability proof.",
@@ -320,6 +327,34 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn("specspine retrospective report . --json", agents)
         self.assertIn(
             "Do not treat retrospective recommended commands as executed commands.",
+            agents,
+        )
+
+    def test_coverage_remediation_plan_documentation_and_dogfood_describe_workflow(self) -> None:
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        )
+        product = (REPO_ROOT / "specs" / "product.md").read_text(encoding="utf-8")
+        review = (REPO_ROOT / "quality" / "review.md").read_text(encoding="utf-8")
+        combined_docs = "\n".join([readme, architecture, product, review])
+
+        for snippet in (
+            "specspine coverage plan [path] [--json] [--policy] [--feature SLUG] [--limit N]",
+            "specspine coverage plan . --json",
+            "specspine coverage plan . --feature add-dark-mode --limit 3 --json",
+            "`root`, `mode`, `feature_filter`, `items`, `summary`, `recommended_commands`, and `safety_notes`",
+            "candidate test files",
+            "treats coverage as a gap signal",
+            "does not write quality files, run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, combined_docs)
+
+        self.assertIn("specspine coverage plan . --json", agents)
+        self.assertIn(
+            "Do not treat coverage plan recommended commands as executed commands or proof that tests ran.",
             agents,
         )
 
@@ -1017,6 +1052,25 @@ class DogfoodArtifactsTests(TestCase):
         coverage_report = build_feature_ready_report(
             REPO_ROOT,
             "coverage-debt-report",
+            require_coverage=True,
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+
+    def test_coverage_remediation_plan_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(
+            REPO_ROOT,
+            "coverage-remediation-plan",
+        )
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "coverage-remediation-plan",
             require_coverage=True,
         )
 

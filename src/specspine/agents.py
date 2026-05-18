@@ -35,6 +35,8 @@ AGENTS_TEMPLATE = """
     specspine status . --json --readiness-summary --readiness-policy
     specspine coverage debt . --json
     specspine coverage debt . --json --policy
+    specspine coverage plan . --json
+    specspine coverage plan . --feature <slug> --limit 3 --json
     specspine analyze . --json
     specspine analyze . --json --feature <slug>
     specspine tests impact . --json
@@ -83,11 +85,12 @@ AGENTS_TEMPLATE = """
     - Read `specspine status . --json --validate` before planning or editing; add `--validation-warnings` only when scaffold warning check ids are needed.
     - Use `specspine status . --json --validate --feature-summaries` when choosing or comparing multiple native features; add local filters such as `--feature-status validated --feature-ready yes --feature-sort slug` for triage, and add `--feature-require-coverage` when candidate readiness must include checked local AC coverage links.
     - Use `specspine status . --json --readiness-summary` when an agent or CI job needs whole-workspace ready/not-ready counts; add `--readiness-policy` or `--readiness-require-coverage` when policy or universal coverage gates should apply.
-    - Use `specspine coverage debt . --json` after coverage-required rollups to see exact feature and AC coverage gaps; add `--policy` when only policy-selected features should count as required debt.
+    - Use `specspine coverage debt . --json` after coverage-required rollups to see exact feature and AC coverage gaps; add `--policy` when only policy-selected features should count as required debt. Use `specspine coverage plan . --json` to turn missing AC coverage into read-only reviewer or agent remediation steps; add `--feature <slug>`, `--limit N`, or `--policy` for focused local planning.
     - Use `specspine analyze . --json` before implementation to check native feature cross-artifact consistency, task traceability, and coverage evidence without changing files.
     - Use `specspine tests impact . --json` before and after edits to inspect local source-to-test impact recommendations; add `--changed PATH` for focused changes or `--feature <slug>` to include feature coverage targets.
     - Use `specspine consistency scan . --json` before and after implementation to inspect local spec-code-test-doc drift; add `--changed PATH` for focused changes or `--feature <slug>` for one native feature. Recommended commands are advisory and are not executed.
     - Use `specspine hygiene scan . --json` before review or commit to inspect generated cache artifacts and denylisted repository residue; add `--changed PATH` for focused context and `--strict` when high-risk findings should fail the command.
+    - Use `specspine coverage plan . --json` to export local remediation planning evidence only. Do not treat coverage plan recommended commands as executed commands or proof that tests ran.
     - Use `specspine retrospective report . --json` before planning the next iteration or after review to inspect local feature delivery themes, blockers, coverage gaps, open tasks, and deterministic follow-up recommendations. Add `--feature <slug>` for one native feature or `--limit N` to trim recommendation rows only. Do not treat retrospective recommended commands as executed commands.
     - Use `specspine verify matrix <slug> . --json` before review or release to inspect AC-level verification evidence. Do not treat verification matrix recommended commands as executed commands or proof that tests ran.
     - Use `specspine change risk . --json` before review to classify changed paths by source, tests, feature peers, docs, or config and surface local risk evidence; add `--changed PATH` for focused changes or `--feature <slug>` for feature readiness context.
