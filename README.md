@@ -34,6 +34,7 @@ This repository is an early project skeleton. It includes:
 - A workspace coverage debt report for exact AC-level coverage gaps: `specspine coverage debt`.
 - A read-only native feature consistency and coverage analyzer: `specspine analyze`.
 - A local static source-to-test impact packet exporter: `specspine tests impact`.
+- A local spec-code-test-doc consistency scanner: `specspine consistency scan`.
 - A local acceptance-criterion verification matrix exporter: `specspine verify matrix`.
 - A local changed-path risk packet exporter: `specspine change risk`.
 - A local security-sensitive cue packet exporter: `specspine security cues`.
@@ -251,6 +252,14 @@ specspine tests impact . --changed src/specspine/features.py --json
 specspine tests impact . --feature add-dark-mode --json
 ```
 
+Inspect local spec-code-test-doc drift without running tests:
+
+```bash
+specspine consistency scan .
+specspine consistency scan . --json
+specspine consistency scan . --feature add-dark-mode --changed src/specspine/features.py --json
+```
+
 Inspect AC-level verification evidence without running tests:
 
 ```bash
@@ -409,7 +418,7 @@ Initializes the SpecSpine workspace structure.
 specspine agents init [path] [--force]
 ```
 
-Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, use `specspine loop packet . --json` when a local loop packet is needed, use `specspine verify matrix <slug> . --json`, `specspine change risk . --json`, `specspine security cues . --json`, and `specspine review packet . --json` before review or merge, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, add `--readiness-summary` when workspace ready/not-ready counts are needed, use `coverage debt` when coverage rollups need exact AC gaps, preview natural-language requirements with `specspine propose "..." . --slug <slug> --dry-run`, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
+Creates `AGENTS.md` in the target workspace with concise instructions for Codex, Claude, Gemini, and similar coding agents. The file tells agents to read `specspine status . --json --validate` first, use `specspine loop packet . --json` when a local loop packet is needed, use `specspine consistency scan . --json`, `specspine verify matrix <slug> . --json`, `specspine change risk . --json`, `specspine security cues . --json`, and `specspine review packet . --json` before review or merge, add `--validation-warnings` only when scaffold warning details are needed, add `--feature-summaries` and optional local feature filters only when comparing multiple native features, add `--readiness-summary` when workspace ready/not-ready counts are needed, use `coverage debt` when coverage rollups need exact AC gaps, preview natural-language requirements with `specspine propose "..." . --slug <slug> --dry-run`, validate before and after edits, use native feature bundles for new requirements, keep OpenSpec/Spec Kit/Superpowers as external adapters, avoid GitHub tokens/API calls by default, and only use `--run-upstream` when explicitly requested. Existing files are not overwritten unless `--force` is passed.
 
 ```bash
 specspine doctor [path]
@@ -596,6 +605,16 @@ specspine tests impact [path] [--json] [--changed PATH]... [--feature SLUG]
 Exports a local static test-impact packet for agents, reviewers, and CI authors. It builds a deterministic graph from `src/specspine/*.py` modules to `tests/test_*.py` files using Python import parsing and conservative local text matching, then reports recommended unittest commands without executing them. With no `--changed`, it emits the full graph and recommends `PYTHONPATH=src python3 -m unittest discover -s tests`.
 
 When `--changed` is repeated, source-file changes recommend directly impacted `tests.test_*` modules, changed test files recommend themselves, and files without direct static impact add the full discovery command as an explicit fallback. `--feature SLUG` includes existing local `feature tests` coverage evidence, coverage target paths, and recommended commands for those targets. Missing feature bundles return `1` with a report; invalid feature slugs return `2`. The command reads local files only and does not run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens.
+
+```bash
+specspine consistency scan [path] [--json] [--feature SLUG] [--changed PATH]...
+```
+
+Exports a local spec-code-test-doc consistency report for agents and reviewers. It reads native feature peers, local implementation references, local test coverage links, project documentation references, and optional changed paths to show where feature intent maps to code, tests, and docs.
+
+JSON output includes `root`, `feature_filter`, `changed_files`, `features`, `summary`, `recommended_commands`, and `safety_notes`. Each feature record includes `feature_id`, `status`, `source_files`, `missing_files`, `implementation_references`, `test_references`, `documentation_references`, `changed_references`, `consistency_checks`, and `summary`. Missing focused feature bundles return `1` with a structured report; invalid feature slugs return `2`.
+
+The command is read-only and local. It does not run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens. Recommended commands are advisory and are not executed.
 
 ```bash
 specspine change risk [path] [--json] [--changed PATH]... [--feature SLUG]

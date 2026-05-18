@@ -42,6 +42,11 @@ from .change import (
     render_change_risk_json,
     render_change_risk_text,
 )
+from .consistency import (
+    build_consistency_report,
+    render_consistency_json,
+    render_consistency_text,
+)
 from .coverage import (
     build_coverage_debt_report,
     render_coverage_debt_json,
@@ -587,6 +592,37 @@ def build_parser() -> argparse.ArgumentParser:
         "--feature",
         metavar="SLUG",
         help="include focused native feature readiness evidence",
+    )
+
+    consistency_parser = subcommands.add_parser(
+        "consistency",
+        help="inspect local spec-code consistency",
+    )
+    consistency_subcommands = consistency_parser.add_subparsers(
+        dest="consistency_command",
+        required=True,
+    )
+    consistency_scan_parser = consistency_subcommands.add_parser(
+        "scan",
+        help="export a local spec-code consistency report",
+    )
+    consistency_scan_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    consistency_scan_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    consistency_scan_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="scan one native feature slug",
+    )
+    consistency_scan_parser.add_argument(
+        "--changed",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="changed path; repeat to include more than one",
     )
 
     security_parser = subcommands.add_parser(
@@ -1650,6 +1686,29 @@ def main(argv: list[str] | None = None) -> int:
                 not evidence["has_native_files"]
                 for evidence in report.feature_evidence
             ):
+                return 1
+            return 0
+
+    if args.command == "consistency":
+        if args.consistency_command == "scan":
+            try:
+                report = build_consistency_report(
+                    Path(args.path),
+                    feature_filter=args.feature,
+                    changed_files=tuple(args.changed),
+                )
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not build consistency report: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_consistency_json(report), end="")
+            else:
+                print(render_consistency_text(report), end="")
+            if args.feature and any(not feature.source_files for feature in report.features):
                 return 1
             return 0
 

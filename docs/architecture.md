@@ -37,6 +37,7 @@ The CLI is intentionally thin:
 - `specspine coverage debt` reports workspace-level AC coverage debt from local feature bundles.
 - `specspine analyze` reports cross-artifact consistency and coverage findings for native feature bundles without changing files.
 - `specspine tests impact` exports a local static source-to-test impact packet without running tests.
+- `specspine consistency scan` exports a local spec-code-test-doc consistency report without running tests.
 - `specspine change risk` exports a local changed-path risk packet for source, test, feature peer, docs, config, and other changes.
 - `specspine security cues` exports local security-sensitive keyword cues for review without proving vulnerabilities or running scanners.
 - `specspine provenance manifest` exports local SHA-256 evidence hashes and optional feature readiness context without printing file contents.
@@ -192,6 +193,10 @@ Analysis JSON includes `root`, `feature_filter`, summary counts, per-feature met
 `specspine tests impact [path] [--json] [--changed PATH]... [--feature SLUG]` is a local static impact report for choosing focused test commands before or after agent edits. It inventories `src/specspine/*.py` and `tests/test_*.py`, parses test imports with `ast`, adds conservative local text matches, and maps source modules to test files. With no changed files it recommends full unittest discovery. With changed source or test paths it recommends affected unittest modules, adding full discovery only as a documented fallback when no direct static impact is found. `--feature` composes existing feature test coverage links from `specspine feature tests` so agents can see coverage target paths alongside impact commands.
 
 Impact JSON includes `root`, `changed_files`, `source_modules`, `test_files`, `recommendations`, `summary`, `recommended_commands`, `safety_notes`, and optional `feature`. The command does not execute tests, subprocesses, network calls, upstream CLIs, GitHub operations, or token reads.
+
+`specspine consistency scan [path] [--json] [--feature SLUG] [--changed PATH]...` is a local spec-code-test-doc consistency report for implementation and review handoffs. It inventories native feature peers, extracts local path references from feature artifacts, composes `## Test Coverage` targets from feature tests evidence, scans implementation/test/docs files for feature ids, and marks optional changed paths that intersect feature evidence.
+
+Consistency JSON includes `root`, `feature_filter`, `changed_files`, `features`, `summary`, `recommended_commands`, and `safety_notes`. Each feature record includes source and missing files, implementation references, test references, documentation references, changed references, consistency checks, and summary counts. Missing focused feature bundles return `1`; invalid slugs return `2`. The command is advisory and read-only: it does not execute tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens.
 
 `specspine change risk [path] [--json] [--changed PATH]... [--feature SLUG]` is a local changed-path risk packet for pre-review triage. It classifies changed paths into source, test, feature spec, feature execution, feature quality, project docs, config, or other; assigns advisory risk levels; infers feature ids from native peer file paths; and composes coverage-required feature readiness evidence for provided or inferred feature ids.
 

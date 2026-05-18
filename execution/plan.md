@@ -18,6 +18,7 @@
 - Local native feature archive evidence reporting and package materialization through `specspine feature archive`.
 - Native acceptance-test packet export through `specspine feature tests`.
 - Local static source-to-test impact reporting through `specspine tests impact`.
+- Local spec-code-test-doc consistency reporting through `specspine consistency scan`, linking feature peers to code, tests, docs, and changed paths without running commands.
 - Local acceptance-criterion verification matrix reporting through `specspine verify matrix`.
 - Refreshed native feature bundle templates with focused handoff, task issue draft, tests, PR, readiness, and validation guidance.
 - Fusion layer generation for OpenSpec, Spec Kit, and Superpowers.
@@ -53,6 +54,7 @@ Dogfood SpecSpine as its own fused workspace. The repository should expose real 
 - Use `specspine coverage debt . --json` after coverage-required readiness rollups to locate exact feature and AC coverage gaps; add `--policy` when only policy-selected features should count as required debt.
 - Use `specspine analyze . --json` after tasks are drafted and before implementation to review cross-artifact consistency, AC-to-task traceability, and local coverage evidence; add `--feature <slug>` for a focused packet or `--fail-on-issues` only when CI should fail on findings.
 - Use `specspine tests impact . --json` before or after implementation to inspect static source-to-test recommendations; add `--changed PATH` for focused changes or `--feature <slug>` for feature coverage targets.
+- Use `specspine consistency scan . --json` before or after implementation to inspect local spec-code-test-doc drift; add `--changed PATH` for focused changes or `--feature <slug>` for one native feature.
 - Use `specspine verify matrix <slug> . --json` before review or release to inspect AC-level verification evidence, coverage gaps, and advisory follow-up commands.
 - Use `specspine change risk . --json` before review to classify changed paths by local risk and evidence expectations; add `--changed PATH` and `--feature <slug>` for focused change review.
 - Use `specspine security cues . --json` before review to surface local security-sensitive cues without treating them as proven vulnerabilities; add `--changed PATH` and `--feature <slug>` for focused security review.

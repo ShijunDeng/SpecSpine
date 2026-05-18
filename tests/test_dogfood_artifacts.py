@@ -2,6 +2,7 @@ from pathlib import Path
 from unittest import TestCase
 
 from specspine.change import build_change_risk_report
+from specspine.consistency import build_consistency_report
 from specspine.features import build_feature_ready_report, build_feature_tests_report
 from specspine.provenance import build_provenance_manifest
 from specspine.review import build_review_packet
@@ -62,6 +63,7 @@ class DogfoodArtifactsTests(TestCase):
             "security-cues-packet",
             "provenance-manifest",
             "verification-matrix",
+            "spec-code-consistency",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -117,6 +119,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:security-cues-packet", "pass"), checks)
         self.assertIn(("feature.status_consistency:provenance-manifest", "pass"), checks)
         self.assertIn(("feature.status_consistency:verification-matrix", "pass"), checks)
+        self.assertIn(("feature.status_consistency:spec-code-consistency", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -136,6 +139,8 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine status . --json --readiness-summary --readiness-policy",
             "PYTHONPATH=src python3 -m specspine coverage debt . --json",
             "PYTHONPATH=src python3 -m specspine coverage debt . --json --policy",
+            "PYTHONPATH=src python3 -m specspine consistency scan . --json",
+            "PYTHONPATH=src python3 -m specspine consistency scan . --feature <slug> --json",
             "PYTHONPATH=src python3 -m specspine verify matrix <slug> . --json",
             "PYTHONPATH=src python3 -m specspine change risk . --json",
             "PYTHONPATH=src python3 -m specspine change risk . --feature <slug> --json",
@@ -161,6 +166,7 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine feature tests <slug> . --json",
             "PYTHONPATH=src python3 -m specspine feature pr <slug> . --json",
             "Keep feature specs, implementation tasks, and quality checks traceable",
+            "Use `specspine consistency scan . --json` to export local spec-code-test-doc drift evidence only",
             "Use `specspine change risk . --json` to export local changed-path risk evidence only",
             "Use `specspine security cues . --json` to export local security-sensitive review cues only",
             "Do not treat security cue recommended commands as executed commands or vulnerability proof.",
@@ -226,6 +232,34 @@ class DogfoodArtifactsTests(TestCase):
 
         self.assertIn("specspine change risk . --json", agents)
         self.assertIn("Do not treat change risk recommended commands as executed commands.", agents)
+
+    def test_spec_code_consistency_documentation_and_dogfood_describe_workflow(self) -> None:
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        )
+        product = (REPO_ROOT / "specs" / "product.md").read_text(encoding="utf-8")
+        review = (REPO_ROOT / "quality" / "review.md").read_text(encoding="utf-8")
+        combined_docs = "\n".join([readme, architecture, product, review])
+
+        for snippet in (
+            "specspine consistency scan [path] [--json] [--feature SLUG] [--changed PATH]...",
+            "specspine consistency scan . --json",
+            "specspine consistency scan . --feature add-dark-mode --changed src/specspine/features.py --json",
+            "local spec-code-test-doc",
+            "`root`, `feature_filter`, `changed_files`, `features`, `summary`, `recommended_commands`, and `safety_notes`",
+            "implementation_references",
+            "test_references",
+            "documentation_references",
+            "changed_references",
+            "does not run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, combined_docs)
+
+        self.assertIn("specspine consistency scan . --json", agents)
+        self.assertIn("Do not treat consistency scan recommended commands as executed commands.", agents)
 
     def test_security_cues_packet_documentation_and_dogfood_describe_workflow(self) -> None:
         readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
@@ -601,6 +635,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/verification-matrix.md",
             "execution/features/verification-matrix.md",
             "quality/features/verification-matrix.md",
+            "specs/features/spec-code-consistency.md",
+            "execution/features/spec-code-consistency.md",
+            "quality/features/spec-code-consistency.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -1055,6 +1092,34 @@ class DogfoodArtifactsTests(TestCase):
         self.assertEqual(matrix.feature_id, "verification-matrix")
         self.assertGreaterEqual(matrix.summary["acceptance_criteria"], 1)
         self.assertEqual(matrix.summary["unverified"], 0)
+
+    def test_spec_code_consistency_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(REPO_ROOT, "spec-code-consistency")
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "spec-code-consistency",
+            require_coverage=True,
+        )
+        packet = build_consistency_report(
+            REPO_ROOT,
+            feature_filter="spec-code-consistency",
+            changed_files=("src/specspine/consistency.py",),
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+        self.assertEqual(packet.feature_filter, "spec-code-consistency")
+        self.assertEqual(packet.summary["features_scanned"], 1)
+        self.assertEqual(packet.summary["checks_fail"], 0)
+        self.assertGreaterEqual(packet.summary["implementation_references"], 1)
+        self.assertGreaterEqual(packet.summary["test_references"], 1)
+        self.assertGreaterEqual(packet.summary["documentation_references"], 1)
+        self.assertGreaterEqual(packet.summary["changed_references"], 1)
 
     def test_feature_test_packet_dogfood_exports_test_cases(self) -> None:
         report = build_feature_tests_report(REPO_ROOT, "feature-test-packet")
