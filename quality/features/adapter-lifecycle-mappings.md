@@ -26,7 +26,10 @@ Why: Lifecycle mappings will guide future adapter and remote sync decisions, so 
 - [x] AC005 -> tests/test_adapter_lifecycle.py::AdapterLifecycleTests::test_lifecycle_json_for_plain_workspace_keeps_mappings_without_enabled_configs
 - [x] AC005 -> tests/test_adapter_lifecycle.py::AdapterLifecycleTests::test_lifecycle_json_reports_missing_config_without_failing
 - [x] AC006 -> tests/test_adapter_lifecycle.py::AdapterLifecycleTests::test_lifecycle_text_includes_adapter_names_ids_statuses_and_phases
+- [x] AC007 -> tests/test_adapter_lifecycle.py::AdapterLifecycleTests::test_lifecycle_json_shape_for_fused_workspace
 - [x] AC008 -> tests/test_adapter_lifecycle.py::AdapterLifecycleTests::test_lifecycle_reads_only_fusion_config_and_skips_external_tools
+- [x] AC009 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_adapter_lifecycle_documentation_and_agents_describe_workflow
+- [x] AC010 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_adapter_lifecycle_mappings_dogfood_bundle_passes_default_and_coverage_gates
 
 ## Test Plan
 

@@ -529,6 +529,43 @@ class DogfoodArtifactsTests(TestCase):
             with self.subTest(snippet=snippet):
                 self.assertIn(snippet, agents)
 
+    def test_adapter_lifecycle_documentation_and_agents_describe_workflow(self) -> None:
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        )
+        upstreams = (REPO_ROOT / "docs" / "upstreams.md").read_text(
+            encoding="utf-8"
+        )
+        product = (REPO_ROOT / "specs" / "product.md").read_text(
+            encoding="utf-8"
+        )
+        combined_docs = "\n".join([readme, architecture, upstreams, product])
+
+        for snippet in (
+            "specspine adapters lifecycle [path] [--json]",
+            "specspine adapters lifecycle . --json",
+            "local static lifecycle map between SpecSpine native feature statuses and upstream adapter phases",
+            "local mapping between SpecSpine native feature statuses and upstream phases",
+            "OpenSpec, Spec Kit, and Superpowers",
+            "reads local fusion config",
+            "does not execute `openspec`, `specify`, Superpowers, `gh`, shell commands, GitHub APIs, network calls, or token reads",
+            "without executing shell commands, calling GitHub APIs, requiring `gh`, using network services, reading tokens, invoking upstream CLIs, or adding dependencies",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, combined_docs)
+
+        for snippet in (
+            "specspine adapters lifecycle . --json",
+            "Use `specspine adapters lifecycle . --json` to export adapter lifecycle definitions only; do not treat it as invoking upstream tools.",
+            "OpenSpec, Spec Kit, and Superpowers are external adapters only. Do not vendor upstream source code.",
+            "Do not read or write GitHub tokens",
+            "Use `--run-upstream` only when the user explicitly asks to invoke upstream tools.",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, agents)
+
     def test_adapter_feature_handoff_quality_records_completion_gates(self) -> None:
         quality = (
             REPO_ROOT / "quality" / "features" / "adapter-feature-handoff.md"
@@ -857,12 +894,26 @@ class DogfoodArtifactsTests(TestCase):
         self.assertTrue(coverage_report.coverage_required)
         self.assertEqual(coverage_report.summary["fail"], 0)
 
-    def test_adapter_lifecycle_mappings_dogfood_bundle_passes_its_gate(self) -> None:
-        report = build_feature_ready_report(REPO_ROOT, "adapter-lifecycle-mappings")
+    def test_adapter_lifecycle_mappings_dogfood_bundle_passes_default_and_coverage_gates(
+        self,
+    ) -> None:
+        default_report = build_feature_ready_report(
+            REPO_ROOT,
+            "adapter-lifecycle-mappings",
+        )
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "adapter-lifecycle-mappings",
+            require_coverage=True,
+        )
 
-        self.assertTrue(report.ready)
-        self.assertEqual(report.status, "validated")
-        self.assertEqual(report.summary["fail"], 0)
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
 
     def test_adapter_feature_handoff_dogfood_bundle_passes_its_gate(self) -> None:
         report = build_feature_ready_report(REPO_ROOT, "adapter-feature-handoff")
