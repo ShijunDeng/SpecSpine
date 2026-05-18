@@ -20,9 +20,18 @@ Why: Metadata triage affects agent feature selection, so output and filters must
 
 - [x] AC001 -> tests/test_features.py::FeatureBundleTests::test_create_feature_bundle_in_plain_workspace
 - [x] AC002 -> tests/test_status.py::StatusTests::test_status_json_cli_can_include_feature_summaries
+- [x] AC002 -> tests/test_status.py::StatusTests::test_status_json_cli_output_is_parseable
+- [x] AC003 -> tests/test_status.py::StatusTests::test_status_json_cli_can_include_feature_summaries
+- [x] AC003 -> tests/test_status.py::StatusTests::test_status_feature_priority_and_owner_filters
+- [x] AC004 -> tests/test_status.py::StatusTests::test_status_json_cli_can_include_feature_summaries
+- [x] AC004 -> tests/test_status.py::StatusTests::test_status_feature_priority_and_owner_filters
+- [x] AC005 -> tests/test_status.py::StatusTests::test_status_text_feature_summaries_are_opt_in
 - [x] AC006 -> tests/test_status.py::StatusTests::test_status_feature_summary_options_require_feature_summaries
+- [x] AC006 -> tests/test_status.py::StatusTests::test_status_feature_priority_and_owner_filters
 - [x] AC007 -> tests/test_status.py::StatusTests::test_status_feature_summary_invalid_options_return_two
+- [x] AC008 -> tests/test_status.py::StatusTests::test_status_feature_priority_and_owner_filters
 - [x] AC009 -> tests/test_status.py::StatusTests::test_status_feature_priority_sort_covers_unknown_and_descending
+- [x] AC010 -> tests/test_status.py::StatusTests::test_status_feature_summaries_do_not_call_gh_network_or_read_tokens
 
 ## Test Plan
 
