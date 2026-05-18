@@ -27,7 +27,7 @@ Why: A change risk packet is useful only if it is deterministic, local-only, con
 - [x] AC006 -> tests/test_change.py::ChangeRiskReportTests::test_cli_invalid_slug_returns_two
 - [x] AC007 -> tests/test_change.py::ChangeRiskReportTests::test_builder_is_local_only_and_renderers_are_pure
 - [x] AC008 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_change_risk_packet_documentation_and_dogfood_describe_workflow
-- [x] AC008 -> tests/test_features.py::FeatureBundleTests::test_create_feature_bundle_writes_focused_peer_files
+- [x] AC008 -> tests/test_features.py::FeatureBundleTests::test_create_feature_bundle_in_plain_workspace
 - [x] AC008 -> tests/test_agents.py::AgentsTests::test_agents_content_includes_required_commands_and_boundaries
 
 ## Test Plan

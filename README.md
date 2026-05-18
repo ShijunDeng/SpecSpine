@@ -36,6 +36,7 @@ This repository is an early project skeleton. It includes:
 - A local static source-to-test impact packet exporter: `specspine tests impact`.
 - A local changed-path risk packet exporter: `specspine change risk`.
 - A local security-sensitive cue packet exporter: `specspine security cues`.
+- A local provenance manifest exporter for evidence hashes: `specspine provenance manifest`.
 - A local pre-merge review packet exporter: `specspine review packet`.
 - A native feature handoff packet exporter: `specspine feature handoff`.
 - A native feature acceptance-test packet exporter: `specspine feature tests`.
@@ -256,6 +257,14 @@ Inspect local security-sensitive cues before review:
 specspine security cues .
 specspine security cues . --json
 specspine security cues . --changed src/specspine/features.py --feature add-dark-mode --json
+```
+
+Export local provenance hashes before review or archive:
+
+```bash
+specspine provenance manifest .
+specspine provenance manifest . --json
+specspine provenance manifest . --feature add-dark-mode --include src/specspine/features.py --json
 ```
 
 Compose local pre-merge review evidence without running tests or calling external services:
@@ -584,6 +593,16 @@ Exports a local security-sensitive cue packet for agents and reviewers. It is no
 JSON output includes `root`, `feature_id`, `changed_files`, `files`, `cues`, `feature_evidence`, `summary`, `recommended_commands`, and `safety_notes`. Missing feature bundles return `1` with a report; invalid feature slugs return `2`. Cues are advisory prompts for human or agent review, not proof of a vulnerability.
 
 The command is read-only and local. It does not run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens. Recommended commands are advisory and are not executed.
+
+```bash
+specspine provenance manifest [path] [--json] [--feature SLUG] [--include PATH]...
+```
+
+Exports a local provenance manifest for agents, reviewers, and maintainers. It hashes local evidence artifacts with SHA-256, records file existence and byte counts, and composes optional feature readiness evidence without printing file contents.
+
+JSON output includes `root`, `feature_id`, `artifacts`, `feature_evidence`, `summary`, `recommended_commands`, and `safety_notes`. With `--feature SLUG`, the manifest includes native spec, execution, and quality peer files plus coverage-required readiness evidence. Repeated `--include PATH` values add focused local files. Missing feature bundles return `1` with a report; invalid feature slugs return `2`. Hashes prove only local file bytes at report time, not that tests or commands ran.
+
+The command is read-only and local. It does not run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens. Recommended commands are advisory and are not executed.
 
 ```bash
 specspine review packet [path] [--json] [--feature SLUG] [--changed PATH]...

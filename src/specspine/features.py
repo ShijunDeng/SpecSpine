@@ -918,6 +918,7 @@ def build_feature_files(
             - Run `specspine tests impact . --feature {slug} --json` to inspect local source-to-test impact recommendations.
             - Run `specspine change risk . --feature {slug} --json` to inspect local changed-path risk evidence.
             - Run `specspine security cues . --feature {slug} --json` to inspect local security-sensitive review cues.
+            - Run `specspine provenance manifest . --feature {slug} --json` to hash local evidence artifacts before review or archive.
             - Run `specspine review packet . --feature {slug} --json` to compose local pre-merge review evidence.
             - Run `specspine feature ready {slug} . --json` after implementation evidence is complete.
             - Run `specspine feature pr {slug} . --json` to draft local Pull Request review notes.
@@ -962,6 +963,7 @@ def build_feature_files(
             - [ ] TODO: `specspine tests impact . --feature {slug} --json` has been reviewed for focused local test commands.
             - [ ] TODO: `specspine change risk . --feature {slug} --json` has been reviewed for changed-path risk evidence.
             - [ ] TODO: `specspine security cues . --feature {slug} --json` has been reviewed for security-sensitive cues.
+            - [ ] TODO: `specspine provenance manifest . --feature {slug} --json` has been reviewed for local evidence hashes.
             - [ ] TODO: `specspine review packet . --feature {slug} --json` has been reviewed for local pre-merge evidence.
             - [ ] TODO: `specspine feature sync-plan {slug} . --json` or `--output-dir .specspine/sync-plan/{slug}` has been reviewed before any remote GitHub sync.
             - [ ] TODO: `specspine feature archive {slug} . --json` has been reviewed before marking status archived.

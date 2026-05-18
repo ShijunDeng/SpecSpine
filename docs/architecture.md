@@ -38,6 +38,7 @@ The CLI is intentionally thin:
 - `specspine tests impact` exports a local static source-to-test impact packet without running tests.
 - `specspine change risk` exports a local changed-path risk packet for source, test, feature peer, docs, config, and other changes.
 - `specspine security cues` exports local security-sensitive keyword cues for review without proving vulnerabilities or running scanners.
+- `specspine provenance manifest` exports local SHA-256 evidence hashes and optional feature readiness context without printing file contents.
 - `specspine review packet` composes local pre-merge review evidence from validation, quality gates, test impact, and optional feature packets without running commands.
 - `specspine loop packet` exports a local, deterministic agent loop packet with feature summaries, readiness counts, lifecycle guidance, subagents, validation commands, safety notes, and upstream metadata.
 - `specspine fuse` creates the OpenSpec + Spec Kit + Superpowers fusion layer.
@@ -196,6 +197,10 @@ Change risk JSON includes `root`, `feature_id`, `changed_files`, `files`, `featu
 `specspine security cues [path] [--json] [--changed PATH]... [--feature SLUG]` is a local security-sensitive cue packet for pre-review triage. It classifies changed paths, reads existing local text files, and reports keyword cues for secrets, authentication, sessions, cookies, SQL, subprocess/shell execution, dynamic evaluation, unsafe deserialization, network calls, crypto, permissions, admin behavior, and path traversal. It does not print file contents or secret values, and a cue is not proof of a vulnerability.
 
 Security cues JSON includes `root`, `feature_id`, `changed_files`, `files`, `cues`, `feature_evidence`, `summary`, `recommended_commands`, and `safety_notes`. Missing feature bundles return a report with exit code `1`; invalid slugs return `2`. The command is read-only and advisory: it does not execute tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, or read tokens.
+
+`specspine provenance manifest [path] [--json] [--feature SLUG] [--include PATH]...` is a local provenance and audit manifest for review, release, or archive handoffs. It hashes existing local files with SHA-256, reports file existence and byte counts, treats missing or outside-root includes as structured artifact records, and composes coverage-required feature readiness evidence when a feature slug is provided.
+
+Provenance manifest JSON includes `root`, `feature_id`, `artifacts`, `feature_evidence`, `summary`, `recommended_commands`, and `safety_notes`. It never prints file contents; hashes prove only local file bytes at report time, not that commands or tests ran. Missing feature bundles return a report with exit code `1`; invalid slugs return `2`. The command is read-only and advisory: it does not execute tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens.
 
 `specspine review packet [path] [--json] [--feature SLUG] [--changed PATH]...` is the local pre-merge review packet. It composes the validation summary, repository quality gate definitions, static test impact recommendations, and optional feature handoff, readiness, trace, and tests evidence into one reviewable JSON or text report.
 

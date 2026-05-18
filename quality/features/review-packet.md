@@ -25,7 +25,7 @@ Why: A review packet is useful only if it is deterministic, local-only, clear ab
 - [x] AC005 -> tests/test_review.py::ReviewPacketTests::test_missing_feature_returns_one_with_report
 - [x] AC006 -> tests/test_review.py::ReviewPacketTests::test_report_is_local_only
 - [x] AC007 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_review_packet_documentation_and_dogfood_describe_workflow
-- [x] AC007 -> tests/test_features.py::FeatureBundleTests::test_create_feature_bundle_writes_focused_peer_files
+- [x] AC007 -> tests/test_features.py::FeatureBundleTests::test_create_feature_bundle_in_plain_workspace
 - [x] AC007 -> tests/test_agents.py::AgentsTests::test_agents_content_includes_required_commands_and_boundaries
 
 ## Test Plan

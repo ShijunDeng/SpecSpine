@@ -3,6 +3,7 @@ from unittest import TestCase
 
 from specspine.change import build_change_risk_report
 from specspine.features import build_feature_ready_report, build_feature_tests_report
+from specspine.provenance import build_provenance_manifest
 from specspine.review import build_review_packet
 from specspine.security import build_security_cue_report
 from specspine.status import build_status
@@ -58,6 +59,7 @@ class DogfoodArtifactsTests(TestCase):
             "review-packet",
             "change-risk-packet",
             "security-cues-packet",
+            "provenance-manifest",
         ):
             with self.subTest(slug=slug):
                 dogfood = features[slug]
@@ -111,6 +113,7 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn(("feature.status_consistency:review-packet", "pass"), checks)
         self.assertIn(("feature.status_consistency:change-risk-packet", "pass"), checks)
         self.assertIn(("feature.status_consistency:security-cues-packet", "pass"), checks)
+        self.assertIn(("feature.status_consistency:provenance-manifest", "pass"), checks)
         for upstream in ("openspec", "speckit", "superpowers"):
             self.assertIn((f"fusion.adapter_boundary:{upstream}", "pass"), checks)
 
@@ -134,6 +137,8 @@ class DogfoodArtifactsTests(TestCase):
             "PYTHONPATH=src python3 -m specspine change risk . --feature <slug> --json",
             "PYTHONPATH=src python3 -m specspine security cues . --json",
             "PYTHONPATH=src python3 -m specspine security cues . --feature <slug> --json",
+            "PYTHONPATH=src python3 -m specspine provenance manifest . --json",
+            "PYTHONPATH=src python3 -m specspine provenance manifest . --feature <slug> --json",
             "PYTHONPATH=src python3 -m specspine review packet . --json",
             "PYTHONPATH=src python3 -m specspine review packet . --feature <slug> --json",
             "PYTHONPATH=src python3 -m specspine loop packet . --json",
@@ -155,6 +160,8 @@ class DogfoodArtifactsTests(TestCase):
             "Use `specspine change risk . --json` to export local changed-path risk evidence only",
             "Use `specspine security cues . --json` to export local security-sensitive review cues only",
             "Do not treat security cue recommended commands as executed commands or vulnerability proof.",
+            "Use `specspine provenance manifest . --json` to export local file hashes and feature evidence only",
+            "Do not treat provenance recommended commands as executed commands or as proof that tests ran.",
             "Use `specspine review packet . --json` to export local pre-merge review evidence only",
             "Use `specspine gates . --json` to export quality gate definitions and optional severity/owner/CI metadata only",
             "Use `specspine adapters lifecycle . --json` to export adapter lifecycle definitions only",
@@ -238,6 +245,34 @@ class DogfoodArtifactsTests(TestCase):
         self.assertIn("specspine security cues . --json", agents)
         self.assertIn(
             "Do not treat security cue recommended commands as executed commands or vulnerability proof.",
+            agents,
+        )
+
+    def test_provenance_manifest_documentation_and_dogfood_describe_workflow(self) -> None:
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        )
+        product = (REPO_ROOT / "specs" / "product.md").read_text(encoding="utf-8")
+        review = (REPO_ROOT / "quality" / "review.md").read_text(encoding="utf-8")
+        combined_docs = "\n".join([readme, architecture, product, review])
+
+        for snippet in (
+            "specspine provenance manifest [path] [--json] [--feature SLUG] [--include PATH]...",
+            "specspine provenance manifest . --json",
+            "specspine provenance manifest . --feature add-dark-mode --include src/specspine/features.py --json",
+            "local provenance manifest",
+            "`root`, `feature_id`, `artifacts`, `feature_evidence`, `summary`, `recommended_commands`, and `safety_notes`",
+            "does not run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens",
+            "Hashes prove only local file bytes at report time",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, combined_docs)
+
+        self.assertIn("specspine provenance manifest . --json", agents)
+        self.assertIn(
+            "Do not treat provenance recommended commands as executed commands or as proof that tests ran.",
             agents,
         )
 
@@ -524,6 +559,9 @@ class DogfoodArtifactsTests(TestCase):
             "specs/features/security-cues-packet.md",
             "execution/features/security-cues-packet.md",
             "quality/features/security-cues-packet.md",
+            "specs/features/provenance-manifest.md",
+            "execution/features/provenance-manifest.md",
+            "quality/features/provenance-manifest.md",
         ]
         combined = "\n".join(
             (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -934,6 +972,30 @@ class DogfoodArtifactsTests(TestCase):
         self.assertEqual(packet.feature_id, "security-cues-packet")
         self.assertEqual(packet.summary["changed_files"], 1)
         self.assertGreaterEqual(packet.summary["cues_total"], 1)
+
+    def test_provenance_manifest_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(REPO_ROOT, "provenance-manifest")
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "provenance-manifest",
+            require_coverage=True,
+        )
+        manifest = build_provenance_manifest(
+            REPO_ROOT,
+            feature="provenance-manifest",
+            includes=("src/specspine/provenance.py",),
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+        self.assertEqual(manifest.feature_id, "provenance-manifest")
+        self.assertGreaterEqual(manifest.summary["artifacts_existing"], 3)
+        self.assertGreaterEqual(manifest.summary["hashed_artifacts"], 1)
 
     def test_feature_test_packet_dogfood_exports_test_cases(self) -> None:
         report = build_feature_tests_report(REPO_ROOT, "feature-test-packet")

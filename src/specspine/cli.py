@@ -106,6 +106,11 @@ from .loop import (
     render_loop_packet_text,
 )
 from .policy import load_workspace_policy, render_policy_json, render_policy_text
+from .provenance import (
+    build_provenance_manifest,
+    render_provenance_manifest_json,
+    render_provenance_manifest_text,
+)
 from .review import (
     build_review_packet,
     render_review_packet_json,
@@ -588,6 +593,37 @@ def build_parser() -> argparse.ArgumentParser:
         "--feature",
         metavar="SLUG",
         help="include focused native feature readiness evidence",
+    )
+
+    provenance_parser = subcommands.add_parser(
+        "provenance",
+        help="export local provenance and audit evidence",
+    )
+    provenance_subcommands = provenance_parser.add_subparsers(
+        dest="provenance_command",
+        required=True,
+    )
+    provenance_manifest_parser = provenance_subcommands.add_parser(
+        "manifest",
+        help="export a local provenance manifest",
+    )
+    provenance_manifest_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    provenance_manifest_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    provenance_manifest_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="include focused native feature evidence",
+    )
+    provenance_manifest_parser.add_argument(
+        "--include",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="include a local file in the manifest; repeat to include more than one",
     )
 
     review_parser = subcommands.add_parser("review", help="compose local review packets")
@@ -1595,6 +1631,32 @@ def main(argv: list[str] | None = None) -> int:
             if any(
                 not evidence["has_native_files"]
                 for evidence in report.feature_evidence
+            ):
+                return 1
+            return 0
+
+    if args.command == "provenance":
+        if args.provenance_command == "manifest":
+            try:
+                manifest = build_provenance_manifest(
+                    Path(args.path),
+                    feature=args.feature,
+                    includes=tuple(args.include),
+                )
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not build provenance manifest: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_provenance_manifest_json(manifest), end="")
+            else:
+                print(render_provenance_manifest_text(manifest), end="")
+            if any(
+                not evidence["has_native_files"]
+                for evidence in manifest.feature_evidence
             ):
                 return 1
             return 0
