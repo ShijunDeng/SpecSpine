@@ -15,6 +15,15 @@ Why: Status validation summaries affect the agent context packet and must not tu
 - [x] The repository status JSON lists this feature as `validated`.
 - [x] Token-prefix scan does not find GitHub secret patterns.
 
+## Test Coverage
+
+- [x] AC001 -> tests/test_status.py::StatusTests::test_status_json_cli_output_is_parseable
+- [x] AC002 -> tests/test_status.py::StatusTests::test_status_json_cli_validate_includes_validation_summary
+- [x] AC003 -> tests/test_status.py::StatusTests::test_status_text_cli_validate_includes_brief_summary
+- [x] AC004 -> tests/test_status.py::StatusTests::test_status_validate_reports_failed_checks_but_returns_zero
+- [x] AC005 -> tests/test_status.py::StatusTests::test_status_validate_with_adapters_uses_mock_probe
+- [x] AC006 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_status_validation_summary_dogfood_bundle_passes_default_and_coverage_gates
+
 ## Test Plan
 
 - `PYTHONPATH=src python3 -m unittest discover -s tests`

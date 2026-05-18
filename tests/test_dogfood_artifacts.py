@@ -889,6 +889,27 @@ class DogfoodArtifactsTests(TestCase):
         ]
         self.assertEqual([check.status for check in coverage_checks], ["pass"])
 
+    def test_status_validation_summary_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
+        default_report = build_feature_ready_report(REPO_ROOT, "status-validation-summary")
+        coverage_report = build_feature_ready_report(
+            REPO_ROOT,
+            "status-validation-summary",
+            require_coverage=True,
+        )
+
+        self.assertTrue(default_report.ready)
+        self.assertEqual(default_report.status, "validated")
+        self.assertEqual(default_report.summary["fail"], 0)
+        self.assertTrue(coverage_report.ready)
+        self.assertEqual(coverage_report.status, "validated")
+        self.assertTrue(coverage_report.coverage_required)
+        self.assertEqual(coverage_report.summary["fail"], 0)
+        coverage_checks = [
+            check for check in coverage_report.checks
+            if check.id == "feature.test_coverage"
+        ]
+        self.assertEqual([check.status for check in coverage_checks], ["pass"])
+
     def test_feature_transition_policy_dogfood_bundle_passes_default_and_coverage_gates(self) -> None:
         default_report = build_feature_ready_report(REPO_ROOT, "feature-transition-policy")
         coverage_report = build_feature_ready_report(
