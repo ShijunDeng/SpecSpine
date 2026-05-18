@@ -16,6 +16,23 @@ Why: Filtering and sorting are agent-facing triage behavior, so they must remain
 - [x] Dogfood validation verifies this bundle has consistent `validated` lifecycle status.
 - [x] Dogfood readiness verifies this bundle passes the local feature gate.
 
+## Test Coverage
+
+- [x] AC001 -> tests/test_status.py::StatusTests::test_status_json_cli_output_is_parseable
+- [x] AC001 -> tests/test_status.py::StatusTests::test_status_text_feature_summaries_are_opt_in
+- [x] AC002 -> tests/test_status.py::StatusTests::test_status_json_cli_can_include_feature_summaries
+- [x] AC002 -> tests/test_status.py::StatusTests::test_status_text_feature_summaries_are_opt_in
+- [x] AC003 -> tests/test_status.py::StatusTests::test_status_feature_status_filter_single_and_multiple_values
+- [x] AC003 -> tests/test_status.py::StatusTests::test_status_feature_status_filter_accepts_invalid_and_unknown
+- [x] AC004 -> tests/test_status.py::StatusTests::test_status_feature_ready_filter_accepts_aliases
+- [x] AC005 -> tests/test_status.py::StatusTests::test_status_feature_sort_keys_and_descending_order
+- [x] AC005 -> tests/test_status.py::StatusTests::test_status_text_feature_summaries_apply_filters_and_sorting
+- [x] AC006 -> tests/test_status.py::StatusTests::test_status_feature_summary_filter_no_matches_text_and_json
+- [x] AC007 -> tests/test_status.py::StatusTests::test_status_feature_summary_options_require_feature_summaries
+- [x] AC008 -> tests/test_status.py::StatusTests::test_status_feature_summary_invalid_options_return_two
+- [x] AC009 -> tests/test_status.py::StatusTests::test_status_feature_summaries_do_not_call_gh_network_or_read_tokens
+- [x] AC009 -> tests/test_dogfood_artifacts.py::DogfoodArtifactsTests::test_feature_summary_filters_dogfood_bundle_passes_its_gate
+
 ## Test Plan
 
 - Run `PYTHONPATH=src python3 -m unittest discover -s tests`.
