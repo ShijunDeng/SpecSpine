@@ -94,6 +94,20 @@ from .features import (
     set_feature_status,
     write_feature_sync_plan_artifacts,
 )
+from .guard import (
+    check_spec_consistency,
+    compute_workspace_health,
+    detect_drift,
+    parse_feature_spec,
+    render_check_json,
+    render_check_text,
+    render_drift_json,
+    render_drift_text,
+    render_guard_json,
+    render_guard_text,
+    render_score_json,
+    render_score_text,
+)
 from .fusion import FUSION_REQUIRED_FILES, init_fusion_workspace
 from .gates import (
     build_quality_gate_report,
@@ -957,6 +971,31 @@ def build_parser() -> argparse.ArgumentParser:
     propose_parser.add_argument("--target-release", default="unassigned", help="feature target release")
     propose_parser.add_argument("--project", default="unassigned", help="feature project")
     propose_parser.add_argument("--effort", default="unknown", help="estimated effort")
+
+
+    guard_parser = subcommands.add_parser(
+        "guard",
+        help="inspect spec-to-code consistency and drift",
+    )
+    guard_subcommands = guard_parser.add_subparsers(dest="guard_command", required=True)
+    guard_parse_parser = guard_subcommands.add_parser("parse", help="extract acceptance criteria and map to artifacts")
+    guard_parse_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    guard_parse_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    guard_parse_parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    guard_check_parser = guard_subcommands.add_parser("check", help="check spec-to-code consistency")
+    guard_check_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    guard_check_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    guard_check_parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    guard_drift_parser = guard_subcommands.add_parser("drift", help="detect drift across all features")
+    guard_drift_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    guard_drift_parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    guard_score_parser = guard_subcommands.add_parser("score", help="compute workspace health score")
+    guard_score_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    guard_score_parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    guard_gate_parser = guard_subcommands.add_parser("gate", help="CI gate (exit 0 if score >= threshold)")
+    guard_gate_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    guard_gate_parser.add_argument("--threshold", type=int, default=80, help="minimum score to pass the gate (default: 80)")
+    guard_gate_parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
 
     return parser
 
@@ -2251,6 +2290,64 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Created SpecSpine proposal bundle '{slug}' at {root}")
         _print_created(written, root)
         return 0
+
+    if args.command == "guard":
+        root = Path(args.path).expanduser().resolve()
+        if args.guard_command == "parse":
+            try:
+                result = parse_feature_spec(args.slug, root)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr); return 2
+            except OSError as error:
+                print(f"Could not parse feature spec: {error}", file=sys.stderr); return 1
+            if args.json: print(render_guard_json(result), end="")
+            else: print(render_guard_text(result), end="")
+            return 0 if result.has_native_files else 1
+        if args.guard_command == "check":
+            try:
+                result = check_spec_consistency(args.slug, root)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr); return 2
+            except OSError as error:
+                print(f"Could not check spec consistency: {error}", file=sys.stderr); return 1
+            if args.json: print(render_check_json(result), end="")
+            else: print(render_check_text(result), end="")
+            return 0 if result.status == "all_verified" else 1
+        if args.guard_command == "drift":
+            try: health = compute_workspace_health(root)
+            except OSError as error:
+                print(f"Could not compute workspace health: {error}", file=sys.stderr); return 1
+            drift_features = [f for f in health.features if f.drift_count > 0]
+            if args.json:
+                payload = {"drift_features": [f.as_dict() for f in drift_features], "has_drift": bool(drift_features), "total_features": health.total_features, "workspace_score": health.workspace_score}
+                print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
+            else:
+                lines = ["Drift detection: workspace", f"Has drift: {'yes' if drift_features else 'no'}", "", f"Drift entries ({len(drift_features)}):"]
+                if drift_features:
+                    for f in drift_features: lines.append(f"- {f.slug}: drift_count={f.drift_count}")
+                else: lines.append("- None.")
+                print("\n".join(lines) + "\n", end="")
+            return 1 if drift_features else 0
+        if args.guard_command == "score":
+            try: result = compute_workspace_health(root)
+            except OSError as error:
+                print(f"Could not compute workspace health: {error}", file=sys.stderr); return 1
+            if args.json: print(render_score_json(result), end="")
+            else: print(render_score_text(result), end="")
+            return 0 if result.workspace_score >= 80 else 1
+        if args.guard_command == "gate":
+            try: result = compute_workspace_health(root)
+            except OSError as error:
+                print(f"Could not compute workspace health: {error}", file=sys.stderr); return 1
+            passed = result.workspace_score >= args.threshold
+            payload = {"features": [f.as_dict() for f in result.features], "passed": passed, "score": result.workspace_score, "threshold": args.threshold, "total_features": result.total_features}
+            if args.json: print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
+            else:
+                status = "PASS" if passed else "FAIL"
+                print(f"Guard gate: {status}")
+                print(f"Score: {result.workspace_score}/100 (threshold: {args.threshold})")
+                print(f"Features: {result.total_features}")
+            return 0 if passed else 1
 
     parser.print_help()
     return 1
