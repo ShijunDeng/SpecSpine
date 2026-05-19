@@ -6,19 +6,38 @@ Why: Generate structured test scaffolds from acceptance criteria to close covera
 
 ## Milestones
 
-- TODO: List the meaningful delivery checkpoints.
+- [x] Implement core scaffold dataclasses and utility functions
+- [x] Implement test method generation from AC text
+- [x] Implement test class generation with proper formatting
+- [x] Implement coverage link extraction from quality files
+- [x] Implement remediation plan generation
+- [x] Implement build_ac_test_scaffold main function
+- [x] Implement JSON and text renderers
+- [x] Wire into CLI as `specspine scaffold` command
+- [x] Write comprehensive unit tests
 
 ## Tasks
 
-- [ ] TODO: Break the work into implementation tasks.
+- [x] Define ScaffoldTestMethod, ScaffoldCoverageLink, ScaffoldSkippedCriterion, ScaffoldRemediationStep, and ScaffoldReport dataclasses
+- [x] Implement _slug_to_camel, _ac_id_snake, _extract_ac_keyword utilities
+- [x] Implement _generate_test_method to create method dict from AC
+- [x] Implement _generate_test_class to produce full test class source
+- [x] Implement _existing_coverage_links to parse quality file for covered ACs
+- [x] Implement _update_quality_file for optional quality file updates
+- [x] Implement _build_remediation_plan for actionable remediation steps
+- [x] Implement build_ac_test_scaffold as main orchestration function
+- [x] Implement render_scaffold_json and render_scaffold_text
+- [x] Register `scaffold` subcommand in cli.py with --json flag
 
 ## Dependencies
 
-- TODO: Note upstream decisions, systems, people, or artifacts needed first.
+- Feature trace report (build_feature_trace_report) for AC extraction.
+- Feature bundle path resolution (feature_bundle_paths).
+- Test coverage parsing (parse_test_coverage).
 
 ## Open Questions
 
-- TODO: Track questions that must be answered before or during implementation.
+- None; feature is implemented and tested.
 
 ## Agent Handoff
 
