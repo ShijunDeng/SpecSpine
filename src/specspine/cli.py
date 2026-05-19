@@ -138,6 +138,14 @@ from .gates import (
     render_quality_gate_json,
     render_quality_gate_text,
 )
+from .harness import (
+    build_harness_feedback,
+    build_harness_quality,
+    render_harness_feedback_json,
+    render_harness_feedback_text,
+    render_harness_quality_json,
+    render_harness_quality_text,
+)
 from .hygiene import (
     build_hygiene_scan_report,
     hygiene_report_has_strict_findings,
@@ -1123,6 +1131,47 @@ def build_parser() -> argparse.ArgumentParser:
         help="maximum loop iterations (default: 3)",
     )
     execute_loop_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+
+    harness_parser = subcommands.add_parser(
+        "harness",
+        help="agent self-correction harness with verification and repair",
+    )
+    harness_subcommands = harness_parser.add_subparsers(dest="harness_command", required=True)
+
+    harness_feedback_parser = harness_subcommands.add_parser(
+        "feedback",
+        help="run harness sensors and generate repair strategies for a feature",
+    )
+    harness_feedback_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    harness_feedback_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    harness_feedback_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+
+    harness_repair_parser = harness_subcommands.add_parser(
+        "repair",
+        help="show repair strategies for a feature's failed acceptance criteria",
+    )
+    harness_repair_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    harness_repair_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    harness_repair_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+
+    harness_quality_parser = harness_subcommands.add_parser(
+        "quality",
+        help="compute workspace-level harness quality metrics",
+    )
+    harness_quality_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    harness_quality_parser.add_argument(
         "--json",
         action="store_true",
         help="print stable JSON for agents and scripts",
@@ -2792,6 +2841,82 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(render_loop_text(result), end="")
             return 0 if result["final_status"] == "complete" else 1
+
+    if args.command == "harness":
+        root = Path(args.path).expanduser().resolve()
+        if args.harness_command == "feedback":
+            try:
+                report = build_harness_feedback(args.slug, root)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not build harness feedback: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_harness_feedback_json(report), end="")
+            else:
+                print(render_harness_feedback_text(report), end="")
+            return 0 if report.status == "healthy" else 1
+
+        if args.harness_command == "repair":
+            try:
+                report = build_harness_feedback(args.slug, root)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not build harness feedback: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                payload = {
+                    "feature_id": report.feature_id,
+                    "repair_strategies": [s.as_dict() for s in report.repair_strategies],
+                    "status": report.status,
+                }
+                print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
+            else:
+                lines = [
+                    f"Repair strategies: {report.feature_id}",
+                    f"Status: {report.status}",
+                    "",
+                ]
+                if report.repair_strategies:
+                    for strategy in report.repair_strategies:
+                        lines.append(f"- {strategy.ac_id}:")
+                        lines.append(f"    target: {strategy.target_file}")
+                        lines.append(f"    edit: {strategy.edit_description}")
+                        lines.append(f"    verify: {strategy.verification_command}")
+                        lines.append(f"    success: {strategy.success_criteria}")
+                else:
+                    lines.append("No repair strategies needed.")
+                print("\n".join(lines) + "\n", end="")
+            return 0
+
+        if args.harness_command == "quality":
+            try:
+                report = build_harness_quality(root)
+            except OSError as error:
+                print(f"Could not build harness quality: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_harness_quality_json(report), end="")
+            else:
+                print(render_harness_quality_text(report), end="")
+            return 0
 
     if args.command == "blueprint":
         if args.blueprint_command == "generate":
