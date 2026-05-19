@@ -60,6 +60,20 @@ from .dependency import (
     render_dependency_json,
     render_dependency_text,
 )
+from .evolution import (
+    GitDiffError,
+    InvalidGitBaseError,
+    build_evolution_timeline,
+    calculate_risk_level,
+    classify_changes,
+    generate_remediation_plan,
+    get_git_diff,
+    render_diff_json,
+    render_diff_text,
+    render_evolution_json,
+    render_evolution_text,
+    resolve_impact,
+)
 from .features import (
     FeatureBundleExistsError,
     FeatureBundleNotFoundError,
@@ -1093,6 +1107,58 @@ def build_parser() -> argparse.ArgumentParser:
     retrospective_analytics_parser.add_argument("--json", action="store_true", help="print stable JSON")
     retrospective_analytics_parser.add_argument("--improvements", action="store_true", help="include improvement recommendations")
     retrospective_analytics_parser.add_argument("--feature", metavar="SLUG", help="focus on one feature")
+
+    spec_parser = subcommands.add_parser("spec", help="inspect spec changes and evolution")
+    spec_subcommands = spec_parser.add_subparsers(dest="spec_command", required=True)
+
+    spec_diff_parser = spec_subcommands.add_parser(
+        "diff",
+        help="compute semantic diff for a feature spec bundle",
+    )
+    spec_diff_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    spec_diff_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    spec_diff_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    spec_diff_parser.add_argument(
+        "--base",
+        metavar="COMMIT",
+        help="git commit to diff against",
+    )
+    spec_diff_parser.add_argument(
+        "--unstaged",
+        action="store_true",
+        help="show unstaged changes",
+    )
+    spec_diff_parser.add_argument(
+        "--output",
+        help="write output to a file",
+    )
+    spec_diff_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite existing output file",
+    )
+
+    spec_evolution_parser = spec_subcommands.add_parser(
+        "evolution",
+        help="show evolution timeline for a feature spec bundle",
+    )
+    spec_evolution_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    spec_evolution_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    spec_evolution_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    spec_evolution_parser.add_argument(
+        "--limit",
+        type=int,
+        default=20,
+        help="limit timeline entries (default: 20)",
+    )
 
     return parser
 
@@ -2326,6 +2392,99 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(render_retrospective_text(result), end="")
         return retrospective_report_exit_code(result)
+
+    if args.command == "spec":
+        if args.spec_command == "diff":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                diff_result = get_git_diff(
+                    args.slug,
+                    root,
+                    base=args.base,
+                    unstaged=args.unstaged,
+                )
+                classification = classify_changes(diff_result, args.slug, root)
+                impacts = resolve_impact(classification.changes, args.slug, root)
+                remediation = generate_remediation_plan(
+                    classification.changes, impacts.impacts
+                )
+                payload = {
+                    "slug": args.slug,
+                    "diff": diff_result.as_dict(),
+                    "classification": classification.as_dict(),
+                    "impact": impacts.as_dict(),
+                    "remediation": [a.as_dict() for a in remediation],
+                }
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except InvalidGitBaseError as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except GitDiffError as error:
+                print(str(error), file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not compute spec diff: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                output = render_diff_json(diff_result)
+            else:
+                output = render_diff_text(diff_result)
+
+            if args.output:
+                output_path = Path(args.output).expanduser().resolve()
+                if output_path.exists() and not args.force:
+                    print(
+                        f"Output file already exists: {output_path}. "
+                        "Use --force to overwrite it.",
+                        file=sys.stderr,
+                    )
+                    return 1
+                try:
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(output, encoding="utf-8")
+                except OSError as error:
+                    print(f"Could not write output: {error}", file=sys.stderr)
+                    return 1
+            else:
+                if args.json:
+                    print(json.dumps(payload, indent=2, sort_keys=False) + "\n", end="")
+                else:
+                    print(output, end="")
+            return 0
+
+        if args.spec_command == "evolution":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                diff_result = get_git_diff(args.slug, root)
+                classification = classify_changes(diff_result, args.slug, root)
+                impacts = resolve_impact(classification.changes, args.slug, root)
+                remediation = generate_remediation_plan(
+                    classification.changes, impacts.impacts
+                )
+                timeline = build_evolution_timeline(args.slug, root, limit=args.limit)
+                payload = {
+                    "slug": args.slug,
+                    "diff_summary": diff_result.summary,
+                    "classification": classification.as_dict(),
+                    "impact": impacts.as_dict(),
+                    "remediation": [a.as_dict() for a in remediation],
+                    "timeline": [e.as_dict() for e in timeline],
+                }
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not build evolution timeline: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_evolution_json(payload), end="")
+            else:
+                print(render_evolution_text(payload), end="")
+            return 0
 
     if args.command == "propose":
         root = Path(args.path).expanduser().resolve()
