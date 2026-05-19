@@ -28,6 +28,11 @@ from .analysis import (
     render_analysis_json,
     render_analysis_text,
 )
+from .blueprint import (
+    build_spec_code_blueprint,
+    render_blueprint_json,
+    render_blueprint_text,
+)
 from .archive import (
     FeatureArchiveArtifactExistsError,
     InvalidArchiveId,
@@ -1115,6 +1120,40 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="print stable JSON for agents and scripts",
+    )
+
+    blueprint_parser = subcommands.add_parser(
+        "blueprint",
+        help="generate spec-to-code implementation blueprints",
+    )
+    blueprint_subcommands = blueprint_parser.add_subparsers(
+        dest="blueprint_command",
+        required=True,
+    )
+    blueprint_generate_parser = blueprint_subcommands.add_parser(
+        "generate",
+        help="generate an implementation blueprint from acceptance criteria",
+    )
+    blueprint_generate_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    blueprint_generate_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    blueprint_generate_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    blueprint_generate_parser.add_argument(
+        "--output-dir",
+        help="write blueprint artifacts to a directory",
+    )
+    blueprint_generate_parser.add_argument(
+        "--fail-on-gaps",
+        action="store_true",
+        help="return nonzero when blueprint coverage gaps are found",
+    )
+    blueprint_generate_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite existing output files",
     )
 
     propose_parser = subcommands.add_parser(
@@ -2650,6 +2689,48 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(render_loop_text(result), end="")
             return 0 if result["final_status"] == "complete" else 1
+
+    if args.command == "blueprint":
+        if args.blueprint_command == "generate":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                report = build_spec_code_blueprint(root, args.slug)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not build blueprint: {error}", file=sys.stderr)
+                return 1
+
+            if args.output_dir:
+                output_dir = Path(args.output_dir).expanduser().resolve()
+                output_dir.mkdir(parents=True, exist_ok=True)
+                json_path = output_dir / "blueprint.json"
+                text_path = output_dir / "blueprint.md"
+                if json_path.exists() and not args.force:
+                    print(
+                        f"Blueprint file already exists: {json_path}. "
+                        "Use --force to overwrite it.",
+                        file=sys.stderr,
+                    )
+                    return 1
+                json_path.write_text(render_blueprint_json(report), encoding="utf-8")
+                text_path.write_text(render_blueprint_text(report), encoding="utf-8")
+
+            if args.json:
+                print(render_blueprint_json(report), end="")
+            else:
+                print(render_blueprint_text(report), end="")
+
+            if args.fail_on_gaps:
+                if not report.modules or not report.functions:
+                    return 3
+            return 0
 
     if args.command == "scaffold":
         if args.scaffold_command == "tests":
