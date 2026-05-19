@@ -170,6 +170,11 @@ from .loop import (
     render_loop_packet_json,
     render_loop_packet_text,
 )
+from .orchestration import (
+    build_orchestration_plan,
+    render_orchestration_json,
+    render_orchestration_text,
+)
 from .policy import load_workspace_policy, render_policy_json, render_policy_text
 from .provenance import (
     build_provenance_manifest,
@@ -912,6 +917,30 @@ def build_parser() -> argparse.ArgumentParser:
     loop_packet_parser.add_argument(
         "--deadline",
         help="deadline value to include in the packet",
+    )
+
+    orchestrate_parser = subcommands.add_parser(
+        "orchestrate",
+        help="coordinate multi-agent feature implementation",
+    )
+    orchestrate_subcommands = orchestrate_parser.add_subparsers(
+        dest="orchestrate_command",
+        required=True,
+    )
+    orchestrate_plan_parser = orchestrate_subcommands.add_parser(
+        "plan",
+        help="build an orchestration plan for parallel feature implementation",
+    )
+    orchestrate_plan_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    orchestrate_plan_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    orchestrate_plan_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="focus the orchestration plan on one native feature slug",
     )
 
     status_parser = subcommands.add_parser("status", help="summarize SpecSpine workspace status")
@@ -2409,6 +2438,26 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Wrote loop packet to {output_path}")
             else:
                 print(text_body, end="")
+            return 0
+
+    if args.command == "orchestrate":
+        if args.orchestrate_command == "plan":
+            try:
+                report = build_orchestration_plan(
+                    Path(args.path),
+                    feature_filter=args.feature,
+                )
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not build orchestration plan: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_orchestration_json(report), end="")
+            else:
+                print(render_orchestration_text(report), end="")
             return 0
 
     if args.command == "status":
