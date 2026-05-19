@@ -168,6 +168,12 @@ from .retrospective import (
     render_retrospective_text,
     retrospective_report_exit_code,
 )
+from .release import (
+    build_release_notes_report,
+    render_release_notes_json,
+    render_release_notes_json_lines,
+    render_release_notes_text,
+)
 from .review import (
     build_review_packet,
     render_review_packet_json,
@@ -1294,6 +1300,51 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=20,
         help="limit timeline entries (default: 20)",
+    )
+
+    release_parser = subcommands.add_parser(
+        "release",
+        help="generate release notes from validated and archived features",
+    )
+    release_subcommands = release_parser.add_subparsers(
+        dest="release_command",
+        required=True,
+    )
+    release_notes_parser = release_subcommands.add_parser(
+        "notes",
+        help="generate structured release notes",
+    )
+    release_notes_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    release_notes_parser.add_argument(
+        "--since",
+        metavar="TAG",
+        help="start tag or date for the release range",
+    )
+    release_notes_parser.add_argument(
+        "--until",
+        metavar="TAG",
+        help="end tag or date for the release range",
+    )
+    release_notes_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    release_notes_parser.add_argument(
+        "--format",
+        choices=["markdown", "json", "json-lines"],
+        default="markdown",
+        help="output format (default: markdown)",
+    )
+    release_notes_parser.add_argument(
+        "--group-by",
+        choices=["priority", "project", "status", "effort"],
+        default="priority",
+        help="group features by field (default: priority)",
+    )
+    release_notes_parser.add_argument(
+        "--output",
+        help="write output to a file",
     )
 
     return parser
@@ -2620,6 +2671,58 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_evolution_json(payload), end="")
             else:
                 print(render_evolution_text(payload), end="")
+            return 0
+
+    if args.command == "release":
+        if args.release_command == "notes":
+            root = Path(args.path).expanduser().resolve()
+            group_by = args.group_by
+            valid_group_by = ("priority", "project", "status", "effort")
+            if group_by not in valid_group_by:
+                print(
+                    f"Invalid --group-by value '{group_by}'. Use one of: {', '.join(valid_group_by)}.",
+                    file=sys.stderr,
+                )
+                return 2
+            try:
+                report = build_release_notes_report(
+                    root,
+                    since=args.since,
+                    until=args.until,
+                    group_by=group_by,
+                )
+            except OSError as error:
+                print(f"Could not build release notes: {error}", file=sys.stderr)
+                return 1
+
+            valid_formats = ("markdown", "json", "json-lines")
+            output_format = args.format
+            if args.json:
+                output_format = "json"
+            if output_format not in valid_formats:
+                print(
+                    f"Invalid --format value '{output_format}'. Use one of: {', '.join(valid_formats)}.",
+                    file=sys.stderr,
+                )
+                return 2
+
+            if output_format == "json":
+                output = render_release_notes_json(report)
+            elif output_format == "json-lines":
+                output = render_release_notes_json_lines(report)
+            else:
+                output = render_release_notes_text(report)
+
+            if args.output:
+                output_path = Path(args.output).expanduser().resolve()
+                try:
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(output, encoding="utf-8")
+                except OSError as error:
+                    print(f"Could not write release notes: {error}", file=sys.stderr)
+                    return 1
+
+            print(output, end="")
             return 0
 
     if args.command == "execute":
