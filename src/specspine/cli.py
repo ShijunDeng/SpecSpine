@@ -73,6 +73,11 @@ from .dependency import (
     render_dependency_json,
     render_dependency_text,
 )
+from .drift import (
+    build_drift_monitor_report,
+    render_drift_json,
+    render_drift_text,
+)
 from .executor import (
     build_execution_plan,
     build_grading_rubric,
@@ -1479,6 +1484,45 @@ def build_parser() -> argparse.ArgumentParser:
         help="limit timeline entries (default: 20)",
     )
 
+    drift_parser = subcommands.add_parser(
+        "drift",
+        help="monitor spec-code-test quality drift with historical analysis",
+    )
+    drift_subcommands = drift_parser.add_subparsers(
+        dest="drift_command",
+        required=True,
+    )
+    drift_monitor_parser = drift_subcommands.add_parser(
+        "monitor",
+        help="export a drift audit report across all features",
+    )
+    drift_monitor_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    drift_monitor_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    drift_monitor_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="focus on one native feature slug",
+    )
+    drift_monitor_parser.add_argument(
+        "--baseline",
+        metavar="REF",
+        help="git reference to compare current spec against",
+    )
+    drift_monitor_parser.add_argument(
+        "--since",
+        metavar="DATE",
+        help="only include drift events from this date (YYYY-MM-DD) onward",
+    )
+    drift_monitor_parser.add_argument(
+        "--severity",
+        metavar="LEVEL",
+        help="minimum severity level to report: critical, high, medium, low, or none",
+    )
+
     release_parser = subcommands.add_parser(
         "release",
         help="generate release notes from validated and archived features",
@@ -2882,6 +2926,49 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_evolution_json(payload), end="")
             else:
                 print(render_evolution_text(payload), end="")
+            return 0
+
+    if args.command == "drift":
+        if args.drift_command == "monitor":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                report = build_drift_monitor_report(
+                    root,
+                    feature_filter=args.feature,
+                    baseline=args.baseline,
+                    since=args.since,
+                )
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not build drift monitor report: {error}", file=sys.stderr)
+                return 1
+
+            if args.severity:
+                valid_severities = ("critical", "high", "medium", "low", "none")
+                if args.severity not in valid_severities:
+                    print(
+                        f"Invalid --severity value '{args.severity}'. Use one of: {', '.join(valid_severities)}.",
+                        file=sys.stderr,
+                    )
+                    return 2
+
+                severity_order = ["critical", "high", "medium", "low", "none"]
+                min_idx = severity_order.index(args.severity)
+                filtered_features = tuple(
+                    f for f in report.features
+                    if severity_order.index(f.severity) <= min_idx
+                )
+                from dataclasses import replace
+                report = replace(report, features=filtered_features)
+
+            if args.json:
+                print(render_drift_json(report), end="")
+            else:
+                print(render_drift_text(report), end="")
+            if args.feature and any(not f.spec_drift and not f.code_drift and not f.test_drift and not f.quality_drift for f in report.features):
+                return 0
             return 0
 
     if args.command == "release":
