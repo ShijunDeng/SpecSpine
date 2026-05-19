@@ -1,7 +1,7 @@
 # Spec-Driven CI/CD Pipeline Generator Quality
 
 Feature ID: spec-cicd-pipeline
-Status: proposed
+Status: implemented
 Why: Turn validated SpecSpine bundles into ready-to-use CI/CD pipelines where acceptance criteria become test gates, quality metrics become merge requirements, and feature readiness gates become deployment conditions.
 
 ## Required Checks
