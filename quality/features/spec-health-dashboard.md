@@ -1,7 +1,7 @@
 # Spec Health Dashboard Quality
 
 Feature ID: spec-health-dashboard
-Status: proposed
+Status: implemented
 Why: Unified observability dashboard composing all 54 existing evidence sources into one actionable health report. Provides command-center view of entire spec-driven workflow for agents and maintainers.
 
 ## Required Checks
