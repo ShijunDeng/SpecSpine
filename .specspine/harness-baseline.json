@@ -1,0 +1,82 @@
+{
+  "baseline_comparison": {},
+  "blind_spots": [],
+  "dimensions": [
+    {
+      "coverage_pct": 81.48,
+      "dimension_name": "verification",
+      "missing_sensors": [],
+      "pass_count": 44,
+      "redundant_sensors": [],
+      "sensor_count": 54
+    },
+    {
+      "coverage_pct": 81.48,
+      "dimension_name": "coverage",
+      "missing_sensors": [],
+      "pass_count": 44,
+      "redundant_sensors": [],
+      "sensor_count": 54
+    },
+    {
+      "coverage_pct": 81.48,
+      "dimension_name": "grading",
+      "missing_sensors": [],
+      "pass_count": 44,
+      "redundant_sensors": [],
+      "sensor_count": 54
+    },
+    {
+      "coverage_pct": 83.33,
+      "dimension_name": "validation",
+      "missing_sensors": [],
+      "pass_count": 45,
+      "redundant_sensors": [],
+      "sensor_count": 54
+    },
+    {
+      "coverage_pct": 100.0,
+      "dimension_name": "consistency",
+      "missing_sensors": [],
+      "pass_count": 54,
+      "redundant_sensors": [],
+      "sensor_count": 54
+    },
+    {
+      "coverage_pct": 100.0,
+      "dimension_name": "hygiene",
+      "missing_sensors": [],
+      "pass_count": 54,
+      "redundant_sensors": [],
+      "sensor_count": 54
+    },
+    {
+      "coverage_pct": 100.0,
+      "dimension_name": "security",
+      "missing_sensors": [],
+      "pass_count": 54,
+      "redundant_sensors": [],
+      "sensor_count": 54
+    },
+    {
+      "coverage_pct": 100.0,
+      "dimension_name": "change_risk",
+      "missing_sensors": [],
+      "pass_count": 54,
+      "redundant_sensors": [],
+      "sensor_count": 54
+    }
+  ],
+  "feature_id": "workspace",
+  "improvement_plan": [
+    "Improve verification dimension coverage from 81.48% to 100%.",
+    "Improve coverage dimension coverage from 81.48% to 100%.",
+    "Improve grading dimension coverage from 81.48% to 100%.",
+    "Improve validation dimension coverage from 83.33% to 100%."
+  ],
+  "maturity_score": 3,
+  "safety_notes": [
+    "This harness coverage report is advisory local evidence.",
+    "SpecSpine did not run tests, invoke subprocesses, call network services, call GitHub APIs, invoke upstream CLIs, read environment variables, or read tokens."
+  ]
+}

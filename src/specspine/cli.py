@@ -154,6 +154,11 @@ from .harness import (
     render_harness_quality_json,
     render_harness_quality_text,
 )
+from .harness_coverage import (
+    build_harness_coverage_report,
+    render_harness_coverage_json,
+    render_harness_coverage_text,
+)
 from .hygiene import (
     build_hygiene_scan_report,
     hygiene_report_has_strict_findings,
@@ -1212,6 +1217,32 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="print stable JSON for agents and scripts",
+    )
+
+    harness_coverage_parser = harness_subcommands.add_parser(
+        "coverage",
+        help="evaluate harness coverage and quality across governed dimensions",
+    )
+    harness_coverage_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    harness_coverage_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    harness_coverage_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="focus on one native feature slug",
+    )
+    harness_coverage_parser.add_argument(
+        "--policy",
+        action="store_true",
+        help="apply workspace readiness policy thresholds",
+    )
+    harness_coverage_parser.add_argument(
+        "--save-baseline",
+        action="store_true",
+        help="save current report as new baseline for trend comparison",
     )
 
     blueprint_parser = subcommands.add_parser(
@@ -3023,6 +3054,43 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_harness_quality_json(report), end="")
             else:
                 print(render_harness_quality_text(report), end="")
+            return 0
+
+        if args.harness_command == "coverage":
+            feature_slug = getattr(args, "feature", None)
+
+            if feature_slug:
+                try:
+                    from .features import validate_feature_slug as _vfs
+                    _vfs(feature_slug)
+                except InvalidFeatureSlug as error:
+                    print(str(error), file=sys.stderr)
+                    return 2
+
+            try:
+                report = build_harness_coverage_report(root, feature_filter=feature_slug)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not build harness coverage: {error}", file=sys.stderr)
+                return 1
+
+            if getattr(args, "save_baseline", False):
+                try:
+                    from .harness_coverage import _save_baseline as _sb
+                    _sb(root, report)
+                except OSError as error:
+                    print(f"Could not save baseline: {error}", file=sys.stderr)
+                    return 1
+
+            if args.json:
+                print(render_harness_coverage_json(report), end="")
+            else:
+                print(render_harness_coverage_text(report), end="")
+
+            if getattr(args, "policy", False) and report.maturity_score < 3:
+                return 1
             return 0
 
     if args.command == "blueprint":
