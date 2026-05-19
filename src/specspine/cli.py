@@ -146,6 +146,11 @@ from .gates import (
     render_quality_gate_json,
     render_quality_gate_text,
 )
+from .health import (
+    build_health_report,
+    render_health_json,
+    render_health_text,
+)
 from .harness import (
     build_harness_feedback,
     build_harness_quality,
@@ -1065,6 +1070,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--feature-sort-desc",
         action="store_true",
         help="reverse the selected feature summary sort order",
+    )
+    status_parser.add_argument(
+        "--health",
+        action="store_true",
+        help="show unified health dashboard instead of standard status",
     )
 
     validate_parser = subcommands.add_parser("validate", help="validate SpecSpine workspace contracts")
@@ -2492,6 +2502,20 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
     if args.command == "status":
+        if getattr(args, "health", False) or args.path == "health":
+            health_path = "." if args.path == "health" else args.path
+            try:
+                report = build_health_report(Path(health_path))
+            except OSError as error:
+                print(f"Could not build health report: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_health_json(report), end="")
+            else:
+                print(render_health_text(report), end="")
+            return 0
+
         if args.validation_warnings and not args.validate:
             print("--validation-warnings requires --validate.", file=sys.stderr)
             return 2
