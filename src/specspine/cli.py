@@ -60,6 +60,17 @@ from .dependency import (
     render_dependency_json,
     render_dependency_text,
 )
+from .executor import (
+    build_execution_plan,
+    build_grading_rubric,
+    render_grade_json,
+    render_grade_text,
+    render_loop_json,
+    render_loop_text,
+    render_plan_json,
+    render_plan_text,
+    run_execution_loop,
+)
 from .evolution import (
     GitDiffError,
     InvalidGitBaseError,
@@ -1051,6 +1062,54 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="overwrite an existing output file",
+    )
+
+    execute_parser = subcommands.add_parser(
+        "execute",
+        help="turn specs into execution plans and self-correcting loops",
+    )
+    execute_subcommands = execute_parser.add_subparsers(dest="execute_command", required=True)
+
+    execute_plan_parser = execute_subcommands.add_parser(
+        "plan",
+        help="build a topologically-sorted execution plan from a feature spec",
+    )
+    execute_plan_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    execute_plan_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    execute_plan_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+
+    execute_grade_parser = execute_subcommands.add_parser(
+        "grade",
+        help="build a grading rubric mapping ACs to validation checks",
+    )
+    execute_grade_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    execute_grade_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    execute_grade_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+
+    execute_loop_parser = execute_subcommands.add_parser(
+        "loop",
+        help="run a self-correcting plan-grade-gap loop",
+    )
+    execute_loop_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    execute_loop_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    execute_loop_parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=3,
+        help="maximum loop iterations (default: 3)",
+    )
+    execute_loop_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
     )
 
     propose_parser = subcommands.add_parser(
@@ -2485,6 +2544,74 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(render_evolution_text(payload), end="")
             return 0
+
+    if args.command == "execute":
+        root = Path(args.path).expanduser().resolve()
+        if args.execute_command == "plan":
+            try:
+                result = build_execution_plan(args.slug, root)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not build execution plan: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_plan_json(result), end="")
+            else:
+                print(render_plan_text(result), end="")
+            return 0
+
+        if args.execute_command == "grade":
+            try:
+                result = build_grading_rubric(args.slug, root)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not build grading rubric: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_grade_json(result), end="")
+            else:
+                print(render_grade_text(result), end="")
+            return 0
+
+        if args.execute_command == "loop":
+            if args.max_iterations is not None and args.max_iterations < 1:
+                print("--max-iterations must be at least 1", file=sys.stderr)
+                return 2
+            try:
+                result = run_execution_loop(args.slug, root, max_iterations=args.max_iterations)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not run execution loop: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_loop_json(result), end="")
+            else:
+                print(render_loop_text(result), end="")
+            return 0 if result["final_status"] == "complete" else 1
 
     if args.command == "propose":
         root = Path(args.path).expanduser().resolve()
