@@ -191,6 +191,11 @@ from .impact import (
     render_test_impact_json,
     render_test_impact_text,
 )
+from .impact_analysis import (
+    analyze_feature_impact,
+    render_impact_json,
+    render_impact_text,
+)
 from .loop import (
     build_loop_packet,
     render_loop_packet_json,
@@ -1636,6 +1641,31 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_parser.add_argument(
         "--output",
         help="write output to a file",
+    )
+
+    impact_parser = subcommands.add_parser(
+        "impact",
+        help="analyze feature change impact",
+    )
+    impact_subcommands = impact_parser.add_subparsers(
+        dest="impact_command",
+        required=True,
+    )
+    impact_analyze_parser = impact_subcommands.add_parser(
+        "analyze",
+        help="analyze downstream impact of feature changes",
+    )
+    impact_analyze_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    impact_analyze_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    impact_analyze_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    impact_analyze_parser.add_argument(
+        "--changes",
+        metavar="FILE",
+        help="file describing proposed changes",
     )
 
     return parser
@@ -3691,6 +3721,29 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(text_body, end="")
         return 0
+
+    if args.command == "impact":
+        if args.impact_command == "analyze":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                analysis = analyze_feature_impact(root, args.slug)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not analyze feature impact: {error}", file=sys.stderr)
+                return 1
+
+            if args.json:
+                print(render_impact_json(analysis), end="")
+            else:
+                print(render_impact_text(analysis), end="")
+            return 0
 
     parser.print_help()
     return 1
