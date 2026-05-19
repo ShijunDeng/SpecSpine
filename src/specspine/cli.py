@@ -168,6 +168,11 @@ from .review import (
     render_review_packet_json,
     render_review_packet_text,
 )
+from .scaffold import (
+    build_ac_test_scaffold,
+    render_scaffold_json,
+    render_scaffold_text,
+)
 from .security import (
     build_security_cue_report,
     render_security_cue_json,
@@ -1129,6 +1134,39 @@ def build_parser() -> argparse.ArgumentParser:
     propose_parser.add_argument("--project", default="unassigned", help="feature project")
     propose_parser.add_argument("--effort", default="unknown", help="estimated effort")
 
+    scaffold_parser = subcommands.add_parser(
+        "scaffold",
+        help="generate test scaffolds from acceptance criteria",
+    )
+    scaffold_subcommands = scaffold_parser.add_subparsers(
+        dest="scaffold_command",
+        required=True,
+    )
+    scaffold_tests_parser = scaffold_subcommands.add_parser(
+        "tests",
+        help="generate Python test scaffolds from feature acceptance criteria",
+    )
+    scaffold_tests_parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    scaffold_tests_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    scaffold_tests_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    scaffold_tests_parser.add_argument(
+        "--output-dir",
+        help="write scaffold file to a directory",
+    )
+    scaffold_tests_parser.add_argument(
+        "--update-quality",
+        action="store_true",
+        help="append new coverage links to the quality file Test Coverage section",
+    )
+    scaffold_tests_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite existing scaffold output file",
+    )
 
     retrospective_parser = subcommands.add_parser(
         "retrospective",
@@ -2612,6 +2650,67 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(render_loop_text(result), end="")
             return 0 if result["final_status"] == "complete" else 1
+
+    if args.command == "scaffold":
+        if args.scaffold_command == "tests":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                report = build_ac_test_scaffold(root, args.slug)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except FeatureBundleNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                for path in error.missing_paths:
+                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+                return 1
+            except OSError as error:
+                print(f"Could not build test scaffold: {error}", file=sys.stderr)
+                return 1
+
+            if args.output_dir:
+                output_dir = Path(args.output_dir).expanduser().resolve()
+                output_dir.mkdir(parents=True, exist_ok=True)
+                output_path = output_dir / report.scaffold_file.split("/")[-1]
+            else:
+                output_path = root / report.scaffold_file
+
+            if output_path.exists() and not args.force:
+                print(
+                    f"Scaffold file already exists: {output_path}. "
+                    "Use --force to overwrite it.",
+                    file=sys.stderr,
+                )
+                return 1
+
+            if not args.json or args.output_dir or args.force:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                source_lines: list[str] = []
+                for method in report.test_methods:
+                    method_info = {
+                        "method_name": method.method_name,
+                        "docstring": method.docstring,
+                        "body": method.body,
+                    }
+                    source_lines.append(method_info)
+                from .scaffold import _generate_test_class
+                camel_class = report.test_methods[0].method_name.split("_")[2].title() if report.test_methods else ""
+                source = _generate_test_class(args.slug, source_lines)
+                output_path.write_text(source, encoding="utf-8")
+
+            if args.update_quality and report.coverage_links:
+                from .scaffold import _update_quality_file
+                links_payload = [
+                    {"ac_id": link.ac_id, "target_path": link.target_path}
+                    for link in report.coverage_links
+                ]
+                _update_quality_file(root, args.slug, links_payload)
+
+            if args.json:
+                print(render_scaffold_json(report), end="")
+            else:
+                print(render_scaffold_text(report), end="")
+            return 0
 
     if args.command == "propose":
         root = Path(args.path).expanduser().resolve()
