@@ -16,7 +16,7 @@ Why: Coordinate multiple AI agents implementing features in parallel with confli
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_orchestration.py
 
 ## Test Plan
 

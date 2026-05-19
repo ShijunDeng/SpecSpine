@@ -16,7 +16,7 @@ Why: Unified observability dashboard composing all 54 existing evidence sources 
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_health.py
 
 ## Test Plan
 

@@ -16,7 +16,7 @@ Why: Aggregate validated and archived feature evidence into structured, user-fac
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_release.py
 
 ## Test Plan
 

@@ -16,7 +16,7 @@ Why: Generate compliance-ready audit reports from all spec-driven development ev
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_audit.py
 
 ## Test Plan
 

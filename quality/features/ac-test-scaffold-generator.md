@@ -16,7 +16,7 @@ Why: Generate structured test scaffolds from acceptance criteria to close covera
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_scaffold.py
 
 ## Test Plan
 

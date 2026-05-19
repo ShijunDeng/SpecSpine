@@ -16,7 +16,7 @@ Why: Autonomous spec-to-implementation orchestration with outcomes-based grading
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_execution.py
 
 ## Test Plan
 

@@ -16,7 +16,7 @@ Why: Track spec changes over time, compute semantic diffs between versions, and 
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_evolution.py
 
 ## Test Plan
 

@@ -16,7 +16,7 @@ Why: Evaluate harness coverage and quality across all 8 governed dimensions. Ide
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_harness_coverage.py
 
 ## Test Plan
 

@@ -16,7 +16,7 @@ Why: Turn validated SpecSpine bundles into ready-to-use CI/CD pipelines where ac
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_cicd.py
 
 ## Test Plan
 

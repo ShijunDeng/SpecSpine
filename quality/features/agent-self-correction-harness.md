@@ -16,7 +16,7 @@ Why: Wire SpecSpine verification, coverage debt, and grading rubrics into determ
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_harness.py
 
 ## Test Plan
 

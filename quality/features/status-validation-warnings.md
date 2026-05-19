@@ -12,6 +12,16 @@ Status: validated
 - [x] `--validation-warnings` without `--validate` returns code `2`.
 - [x] Documentation and agent guidance describe the compact default and warning-detail opt-in.
 
+## Test Coverage
+
+- [x] AC001 -> tests/test_validation.py
+- [x] AC002 -> tests/test_validation.py
+- [x] AC003 -> tests/test_validation.py
+- [x] AC004 -> tests/test_status.py
+- [x] AC005 -> tests/test_status.py
+- [x] AC006 -> tests/test_status.py
+- [x] AC007 -> tests/test_status.py
+
 ## Test Plan
 
 - Run focused validation and status unit tests.

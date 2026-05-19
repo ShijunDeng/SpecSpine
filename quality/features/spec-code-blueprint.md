@@ -16,7 +16,7 @@ Why: Deterministic implementation blueprints derived from acceptance criteria. B
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_blueprint.py
 
 ## Test Plan
 

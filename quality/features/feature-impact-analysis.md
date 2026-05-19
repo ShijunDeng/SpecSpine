@@ -16,7 +16,7 @@ Why: Analyze the downstream impact of feature changes before implementation. Pre
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_impact_analysis.py
 
 ## Test Plan
 

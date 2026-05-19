@@ -16,7 +16,7 @@ Why: Track and compare feature implementation metrics across the workspace. Prov
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_benchmark.py
 
 ## Test Plan
 

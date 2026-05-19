@@ -16,7 +16,7 @@ Why: Continuous drift monitoring across all 55 features with historical trend an
 
 Use `- [ ] AC001 -> tests/...` to link existing local test files or test selectors.
 
-- [ ] AC001 -> tests/...
+- [x] AC001 -> tests/test_drift.py
 
 ## Test Plan
 
