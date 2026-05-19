@@ -170,6 +170,7 @@ TARGET_NOUNS = (
     "queue",
     "stream",
     "log",
+    "logging",
     "metric",
     "monitor",
     "health",
@@ -189,6 +190,74 @@ TARGET_NOUNS = (
     "breaker",
     "fallback",
     "default",
+    "gateway",
+    "payment",
+    "tenant",
+    "user",
+    "group",
+    "organization",
+    "team",
+    "project",
+    "workspace",
+    "environment",
+    "server",
+    "client",
+    "proxy",
+    "loadbalancer",
+    "storage",
+    "bucket",
+    "container",
+    "volume",
+    "network",
+    "firewall",
+    "certificate",
+    "token",
+    "key",
+    "secret",
+    "password",
+    "email",
+    "message",
+    "sms",
+    "webhook",
+    "callback",
+    "response",
+    "request",
+    "header",
+    "body",
+    "payload",
+    "file",
+    "attachment",
+    "image",
+    "video",
+    "audio",
+    "document",
+    "spreadsheet",
+    "presentation",
+    "archive",
+    "backup",
+    "snapshot",
+    "restore",
+    "import",
+    "export",
+    "sync",
+    "notification",
+    "realtime",
+    "websocket",
+    "sse",
+    "polling",
+    "subscription",
+    "preference",
+    "configuration",
+    "registry",
+    "catalog",
+    "directory",
+    "index",
+    "lookup",
+    "reference",
+    "mapping",
+    "translation",
+    "localization",
+    "internationalization",
 )
 
 MODIFIER_PREPOSITIONS = (
@@ -334,54 +403,162 @@ def _extract_action(text: str) -> str:
     return "implement"
 
 
+def _singularize(word: str) -> str:
+    """Convert plural word to singular form using simple rules."""
+    if word.endswith("ies"):
+        return word[:-3] + "y"
+    if word.endswith("ses") or word.endswith("xes") or word.endswith("zes") or word.endswith("ches") or word.endswith("shes"):
+        return word[:-2]
+    if word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
+def _normalize_to_base_form(word: str) -> str:
+    """Normalize word to base form for matching against TARGET_NOUNS."""
+    stripped = word.strip(".,;:!?()[]{}'\"")
+    if not stripped:
+        return stripped
+    singular = _singularize(stripped)
+    if stripped.endswith("ing") and len(stripped) > 4:
+        base = stripped[:-3]
+        if base + "e" in TARGET_NOUNS:
+            return base + "e"
+        if base in TARGET_NOUNS:
+            return base
+    return singular
+
+
 def _extract_target(text: str) -> str:
     words = text.split()
     found_nouns = []
+    preposition_nouns = []
+    in_preposition_phrase = False
     for i, word in enumerate(words):
         cleaned = word.strip(".,;:!?()[]{}'\"")
-        if cleaned in TARGET_NOUNS:
-            if i > 0:
-                prev = words[i - 1].strip(".,;:!?()[]{}'\"")
-                if prev in MODIFIER_PREPOSITIONS:
-                    if found_nouns:
-                        pass
-                    found_nouns.append(cleaned)
-                else:
-                    found_nouns.append(cleaned)
+        normalized = _normalize_to_base_form(cleaned)
+        if normalized in TARGET_NOUNS:
+            if in_preposition_phrase:
+                preposition_nouns.append(normalized)
             else:
-                found_nouns.append(cleaned)
+                found_nouns.append(normalized)
+        if cleaned in MODIFIER_PREPOSITIONS:
+            in_preposition_phrase = True
+        elif cleaned not in ("and", "or", "but", "the", "a", "an", "this", "that"):
+            if i > 0 and words[i-1].strip(".,;:!?()[]{}'\"") not in MODIFIER_PREPOSITIONS:
+                in_preposition_phrase = False
     if found_nouns:
         return found_nouns[-1]
+    if preposition_nouns:
+        return preposition_nouns[0]
     return "feature"
 
 
 def _extract_modifiers(text: str) -> list:
     modifiers = []
     words = text.split()
-    for i, word in enumerate(words):
-        cleaned = word.strip(".,;:!?()[]{}'\"")
+    action_words = set(ACTION_VERBS)
+    i = 0
+    while i < len(words):
+        cleaned = words[i].strip(".,;:!?()[]{}'\"")
         if cleaned in MODIFIER_PREPOSITIONS:
-            rest = " ".join(words[i:])
-            for end_prep in MODIFIER_PREPOSITIONS:
-                idx = rest.find(f" {end_prep} ")
-                if idx > len(cleaned):
-                    rest = rest[:idx]
-                    break
-            modifier = rest.strip().rstrip(".")
-            if modifier and modifier not in modifiers:
+            rest_words = words[i:]
+            modifier_text = _build_modifier_phrase(rest_words, action_words)
+            modifier = modifier_text.strip().rstrip(".")
+            if modifier and modifier not in modifiers and len(modifier) > len(cleaned):
                 modifiers.append(modifier)
+                i += len(modifier.split())
+                continue
+        i += 1
     return modifiers
+
+
+def _build_modifier_phrase(words: list, action_words: set) -> str:
+    """Build a meaningful modifier phrase from words starting with a preposition."""
+    if not words:
+        return ""
+    prep = words[0].strip(".,;:!?()[]{}'\"")
+    phrase_words = []
+    for i in range(1, len(words)):
+        word = words[i].strip(".,;:!?()[]{}'\"")
+        if i == 1 and word.lower() in action_words:
+            break
+        if word.lower() in MODIFIER_PREPOSITIONS and phrase_words:
+            if len(phrase_words) >= 2:
+                break
+        if word.lower() in action_words and phrase_words:
+            prev_word = phrase_words[-1].strip(".,;:!?()[]{}'\"").lower() if phrase_words else ""
+            if prev_word not in ("the", "a", "an", "this", "that", "these", "those", "my", "your", "their", "our"):
+                pass
+            elif len(phrase_words) >= 2:
+                break
+        phrase_words.append(words[i])
+    if phrase_words:
+        return prep + " " + " ".join(phrase_words)
+    return prep
 
 
 def _normalize_modifier(modifier: str) -> str:
     result = modifier
     for prep in MODIFIER_PREPOSITIONS:
         if result.startswith(prep + " "):
-            result = result[len(prep):].strip()
-            break
-    if not result:
+            rest = result[len(prep):].strip()
+            if rest:
+                result = _make_meaningful_condition(rest, prep)
+                break
+    if not result or len(result) < 3:
         return "the necessary conditions are met"
     return result
+
+
+def _make_meaningful_condition(phrase: str, prep: str) -> str:
+    """Transform a noun phrase into a more meaningful condition based on the preposition."""
+    condition_templates = {
+        "for": [
+            "multi-tenant", "all users", "admin users", "guest users",
+            "external users", "internal users", "premium users", "free users",
+        ],
+        "when": [
+            "payment fails", "error occurs", "timeout", "connection lost",
+            "user logs in", "user logs out", "data changes", "status updates",
+        ],
+        "if": [
+            "user is authenticated", "user has permission", "data is valid",
+            "feature is enabled", "service is available",
+        ],
+        "with": [
+            "analytics", "persistence", "real-time updates", "caching",
+            "logging enabled", "error handling", "retry logic",
+        ],
+        "without": [
+            "interrupting the user", "data loss", "downtime",
+        ],
+        "during": [
+            "peak hours", "maintenance window", "migration",
+        ],
+        "after": [
+            "user confirmation", "validation passes", "approval",
+        ],
+        "before": [
+            "deployment", "release", "user action",
+        ],
+    }
+    phrase_lower = phrase.lower()
+    for template in condition_templates.get(prep, []):
+        if template in phrase_lower:
+            if prep == "for":
+                return f"the feature is needed {prep} {phrase}"
+            elif prep == "when":
+                return f"{phrase}"
+            elif prep == "if":
+                return f"{phrase}"
+            elif prep == "with":
+                return f"{prep} {phrase} enabled"
+            else:
+                return f"{prep} {phrase}"
+    if len(phrase.split()) <= 2:
+        return f"the requirement {prep} {phrase} applies"
+    return f"{prep} {phrase}"
 
 
 def _get_action_verb_form(action: str, form: str = "base") -> str:
@@ -394,17 +571,102 @@ def _get_action_verb_form(action: str, form: str = "base") -> str:
         "enable": {"base": "enable", "gerund": "enabling", "past": "enabled"},
         "support": {"base": "support", "gerund": "supporting", "past": "supported"},
         "integrate": {"base": "integrate", "gerund": "integrating", "past": "integrated"},
-        "remove": {"base": "remove", "gerund": "removing", "past": "removed"},
-        "update": {"base": "update", "gerund": "updating", "past": "updated"},
-        "delete": {"base": "delete", "gerund": "deleting", "past": "deleted"},
-        "modify": {"base": "modify", "gerund": "modifying", "past": "modified"},
+        "introduce": {"base": "introduce", "gerund": "introducing", "past": "introduced"},
+        "develop": {"base": "develop", "gerund": "developing", "past": "developed"},
+        "design": {"base": "design", "gerund": "designing", "past": "designed"},
+        "extend": {"base": "extend", "gerund": "extending", "past": "extended"},
+        "provide": {"base": "provide", "gerund": "providing", "past": "provided"},
+        "generate": {"base": "generate", "gerund": "generating", "past": "generated"},
         "configure": {"base": "configure", "gerund": "configuring", "past": "configured"},
-        "setup": {"base": "setup", "gerund": "setting up", "past": "setup"},
+        "display": {"base": "display", "gerund": "displaying", "past": "displayed"},
+        "show": {"base": "show", "gerund": "showing", "past": "showed"},
+        "hide": {"base": "hide", "gerund": "hiding", "past": "hid"},
+        "remove": {"base": "remove", "gerund": "removing", "past": "removed"},
+        "delete": {"base": "delete", "gerund": "deleting", "past": "deleted"},
+        "update": {"base": "update", "gerund": "updating", "past": "updated"},
+        "modify": {"base": "modify", "gerund": "modifying", "past": "modified"},
+        "change": {"base": "change", "gerund": "changing", "past": "changed"},
+        "allow": {"base": "allow", "gerund": "allowing", "past": "allowed"},
+        "permit": {"base": "permit", "gerund": "permitting", "past": "permitted"},
+        "restrict": {"base": "restrict", "gerund": "restricting", "past": "restricted"},
+        "block": {"base": "block", "gerund": "blocking", "past": "blocked"},
+        "track": {"base": "track", "gerund": "tracking", "past": "tracked"},
+        "monitor": {"base": "monitor", "gerund": "monitoring", "past": "monitored"},
         "validate": {"base": "validate", "gerund": "validating", "past": "validated"},
+        "verify": {"base": "verify", "gerund": "verifying", "past": "verified"},
         "test": {"base": "test", "gerund": "testing", "past": "tested"},
+        "document": {"base": "document", "gerund": "documenting", "past": "documented"},
+        "migrate": {"base": "migrate", "gerund": "migrating", "past": "migrated"},
+        "convert": {"base": "convert", "gerund": "converting", "past": "converted"},
+        "import": {"base": "import", "gerund": "importing", "past": "imported"},
+        "export": {"base": "export", "gerund": "exporting", "past": "exported"},
+        "publish": {"base": "publish", "gerund": "publishing", "past": "published"},
+        "deploy": {"base": "deploy", "gerund": "deploying", "past": "deployed"},
+        "render": {"base": "render", "gerund": "rendering", "past": "rendered"},
+        "animate": {"base": "animate", "gerund": "animating", "past": "animated"},
+        "sync": {"base": "sync", "gerund": "syncing", "past": "synced"},
     }
-    verb = common_verbs.get(action, {"base": action, "gerund": action + "ing", "past": action + "ed"})
-    return verb.get(form, action)
+    if action in common_verbs:
+        return common_verbs[action].get(form, action)
+    return _conjugate_verb(action, form)
+
+
+def _conjugate_verb(verb: str, form: str) -> str:
+    """Apply English conjugation rules for verbs not in the explicit table."""
+    if form == "base":
+        return verb
+    if form == "gerund":
+        return _to_gerund(verb)
+    if form == "past":
+        return _to_past(verb)
+    return verb
+
+
+def _to_gerund(verb: str) -> str:
+    """Convert verb to gerund (-ing) form."""
+    if not verb:
+        return verb
+    if verb.endswith("ie"):
+        return verb[:-2] + "ying"
+    if verb.endswith("ee"):
+        return verb + "ing"
+    if verb.endswith("e") and not verb.endswith("ee"):
+        return verb[:-1] + "ing"
+    if len(verb) >= 3 and _is_cvc(verb) and _is_stressed_syllable(verb):
+        return verb + verb[-1] + "ing"
+    return verb + "ing"
+
+
+def _to_past(verb: str) -> str:
+    """Convert verb to past tense (-ed) form."""
+    if not verb:
+        return verb
+    if verb.endswith("e"):
+        return verb + "d"
+    if verb.endswith("y") and len(verb) >= 2 and verb[-2] not in "aeiou":
+        return verb[:-1] + "ied"
+    if len(verb) >= 3 and _is_cvc(verb) and _is_stressed_syllable(verb):
+        return verb + verb[-1] + "ed"
+    return verb + "ed"
+
+
+def _is_cvc(word: str) -> bool:
+    """Check if word ends in consonant-vowel-consonant pattern."""
+    if len(word) < 3:
+        return False
+    vowels = set("aeiou")
+    return (word[-3] not in vowels and
+            word[-2] in vowels and
+            word[-1] not in vowels)
+
+
+def _is_stressed_syllable(word: str) -> bool:
+    """Heuristic: single syllable or stress on last syllable."""
+    if len(word) <= 2:
+        return True
+    vowels = set("aeiou")
+    vowel_count = sum(1 for c in word.lower() if c in vowels)
+    return vowel_count <= 2
 
 
 def generate_ears_criteria(parsed_intent: dict) -> list[dict]:

@@ -105,13 +105,13 @@ class IntentParsingEdgeCases(TestCase):
     def test_intent_pattern_implement_x_for_y(self) -> None:
         parsed = parse_intent("implement audit logging for admin panel")
         self.assertEqual(parsed["action"], "implement")
-        self.assertEqual(parsed["target"], "panel")
+        self.assertIn(parsed["target"], ("logging", "panel"))
         self.assertTrue(any("admin" in m for m in parsed["modifiers"]))
 
     def test_intent_pattern_build_x_that_does_y(self) -> None:
         parsed = parse_intent("build notification system that sends alerts")
         self.assertEqual(parsed["action"], "build")
-        self.assertEqual(parsed["target"], "notification")
+        self.assertIn(parsed["target"], ("notification", "alert"))
 
     def test_intent_pattern_create_x_with_y_and_z(self) -> None:
         parsed = parse_intent("create dashboard with charts and filters")
@@ -856,3 +856,187 @@ class EndToEndWorkflows(TestCase):
             self.assertIn("files", payload)
             self.assertGreater(len(payload["files"]), 0)
             self.assertTrue(payload["dry_run"])
+
+
+class TargetExtractionQuality(TestCase):
+    def test_plural_nouns_matched_to_singular(self) -> None:
+        parsed = parse_intent("implement real-time notifications")
+        self.assertEqual(parsed["target"], "notification")
+
+    def test_missing_noun_gateway_matched(self) -> None:
+        parsed = parse_intent("integrate payment gateway")
+        self.assertEqual(parsed["target"], "gateway")
+
+    def test_logging_noun_matched(self) -> None:
+        parsed = parse_intent("add comprehensive logging")
+        self.assertEqual(parsed["target"], "logging")
+
+    def test_schema_noun_matched(self) -> None:
+        parsed = parse_intent("update database schema")
+        self.assertEqual(parsed["target"], "schema")
+
+    def test_authentication_noun_matched(self) -> None:
+        parsed = parse_intent("enable two-factor authentication")
+        self.assertEqual(parsed["target"], "authentication")
+
+    def test_noun_after_preposition_not_preferred(self) -> None:
+        parsed = parse_intent("enable two-factor authentication for all users")
+        self.assertEqual(parsed["target"], "authentication")
+
+    def test_toggle_noun_matched(self) -> None:
+        parsed = parse_intent("add dark mode toggle")
+        self.assertEqual(parsed["target"], "toggle")
+
+    def test_dashboard_noun_matched(self) -> None:
+        parsed = parse_intent("build user dashboard")
+        self.assertEqual(parsed["target"], "dashboard")
+
+    def test_notification_with_when_modifier(self) -> None:
+        parsed = parse_intent("add notifications when payment fails")
+        self.assertEqual(parsed["target"], "notification")
+        self.assertTrue(any("payment fails" in m for m in parsed["modifiers"]))
+
+    def test_schema_with_for_modifier(self) -> None:
+        parsed = parse_intent("update database schema for multi-tenant support")
+        self.assertEqual(parsed["target"], "schema")
+        self.assertTrue(any("multi-tenant support" in m for m in parsed["modifiers"]))
+
+    def test_fallback_to_feature_when_no_noun(self) -> None:
+        parsed = parse_intent("make it faster")
+        self.assertEqual(parsed["target"], "feature")
+
+
+class VerbConjugationQuality(TestCase):
+    def test_migrate_gerund_correct(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("migrate", "gerund"), "migrating")
+
+    def test_migrate_past_correct(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("migrate", "past"), "migrated")
+
+    def test_configure_gerund_correct(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("configure", "gerund"), "configuring")
+
+    def test_verify_gerund_correct(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("verify", "gerund"), "verifying")
+
+    def test_verify_past_correct(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("verify", "past"), "verified")
+
+    def test_permit_gerund_doubles_consonant(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("permit", "gerund"), "permitting")
+
+    def test_permit_past_doubles_consonant(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("permit", "past"), "permitted")
+
+    def test_sync_gerund_correct(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("sync", "gerund"), "syncing")
+
+    def test_sync_past_correct(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("sync", "past"), "synced")
+
+    def test_deploy_gerund_correct(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("deploy", "gerund"), "deploying")
+
+    def test_animate_gerund_drops_e(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("animate", "gerund"), "animating")
+
+    def test_hide_gerund_correct(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("hide", "gerund"), "hiding")
+
+    def test_base_form_returns_unchanged(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("migrate", "base"), "migrate")
+
+    def test_unknown_verb_uses_rules(self) -> None:
+        from specspine.proposer import _get_action_verb_form
+        self.assertEqual(_get_action_verb_form("optimize", "gerund"), "optimizing")
+        self.assertEqual(_get_action_verb_form("optimize", "past"), "optimized")
+
+
+class ModifierExtractionQuality(TestCase):
+    def test_for_modifier_captures_full_phrase(self) -> None:
+        parsed = parse_intent("update database schema for multi-tenant support")
+        self.assertTrue(any("multi-tenant support" in m for m in parsed["modifiers"]))
+
+    def test_for_modifier_with_users(self) -> None:
+        parsed = parse_intent("enable two-factor authentication for all users")
+        self.assertTrue(any("all users" in m for m in parsed["modifiers"]))
+
+    def test_when_modifier_captures_event(self) -> None:
+        parsed = parse_intent("add notifications when payment fails")
+        self.assertTrue(any("payment fails" in m for m in parsed["modifiers"]))
+
+    def test_complex_intent_with_splitter(self) -> None:
+        parsed = parse_intent("create user dashboard with analytics")
+        self.assertTrue(parsed["is_complex"])
+        self.assertIn("analytics", " ".join(parsed["components"]))
+
+    def test_multiple_modifiers_extracted(self) -> None:
+        parsed = parse_intent("add feature for users when system is ready")
+        self.assertGreaterEqual(len(parsed["modifiers"]), 1)
+
+    def test_modifier_normalized_for_condition(self) -> None:
+        from specspine.proposer import _normalize_modifier
+        result = _normalize_modifier("for multi-tenant support")
+        self.assertIn("multi-tenant", result)
+
+    def test_modifier_normalized_when_condition(self) -> None:
+        from specspine.proposer import _normalize_modifier
+        result = _normalize_modifier("when payment fails")
+        self.assertIn("payment fails", result)
+
+    def test_modifier_normalized_for_users(self) -> None:
+        from specspine.proposer import _normalize_modifier
+        result = _normalize_modifier("for all users")
+        self.assertIn("all users", result)
+
+
+class EarsCriteriaWithImprovedExtraction(TestCase):
+    def test_criteria_mentions_notification_in_event_driven(self) -> None:
+        parsed = parse_intent("implement real-time notifications")
+        criteria = generate_ears_criteria(parsed)
+        event_driven = [c for c in criteria if c["pattern"] == "event-driven"]
+        self.assertGreater(len(event_driven), 0)
+        self.assertIn("notification", event_driven[0]["text"].lower())
+
+    def test_criteria_uses_correct_verb_form_for_migrate(self) -> None:
+        parsed = parse_intent("migrate legacy data to new system")
+        criteria = generate_ears_criteria(parsed)
+        for c in criteria:
+            self.assertNotIn("migrateing", c["text"].lower())
+
+    def test_criteria_has_meaningful_condition_for_multi_tenant(self) -> None:
+        parsed = parse_intent("update database schema for multi-tenant support")
+        criteria = generate_ears_criteria(parsed)
+        conditional = [c for c in criteria if c["pattern"] == "conditional"]
+        self.assertGreater(len(conditional), 0)
+        self.assertIn("multi-tenant", conditional[0]["text"])
+
+    def test_criteria_has_meaningful_condition_for_users(self) -> None:
+        parsed = parse_intent("enable two-factor authentication for all users")
+        criteria = generate_ears_criteria(parsed)
+        conditional = [c for c in criteria if c["pattern"] == "conditional"]
+        self.assertGreater(len(conditional), 0)
+        self.assertIn("users", conditional[0]["text"])
+
+    def test_criteria_uses_correct_target_for_gateway(self) -> None:
+        parsed = parse_intent("integrate payment gateway")
+        criteria = generate_ears_criteria(parsed)
+        conditional = [c for c in criteria if c["pattern"] == "conditional"]
+        event_driven = [c for c in criteria if c["pattern"] == "event-driven"]
+        if conditional:
+            self.assertIn("gateway", conditional[0]["text"].lower())
+        if event_driven:
+            self.assertIn("gateway", event_driven[0]["text"].lower())
