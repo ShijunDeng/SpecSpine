@@ -6,41 +6,44 @@ Why: Turn validated SpecSpine bundles into ready-to-use CI/CD pipelines where ac
 
 ## Milestones
 
-- TODO: List the meaningful delivery checkpoints.
+- [x] Define PipelineJob, MergeCondition, and PipelineResult dataclasses
+- [x] Implement pipeline generation for github-actions format
+- [x] Implement pipeline generation for gitlab-ci format
+- [x] Implement pipeline generation for generic format
+- [x] Implement merge condition derivation from quality gates
+- [x] Implement test gate mapping from AC coverage
+- [x] Implement JSON and text renderers
+- [x] Wire into CLI as `specspine cicd pipeline` command
+- [x] Write comprehensive unit tests
 
 ## Tasks
 
-- [ ] TODO: Break the work into implementation tasks.
+- [x] Define PipelineJob dataclass with name, steps, description, condition
+- [x] Define MergeCondition dataclass with id, text, required flag
+- [x] Define PipelineResult dataclass with full pipeline structure
+- [x] Implement _build_validation_job from workspace validation checks
+- [x] Implement _build_test_job from feature AC coverage
+- [x] Implement _build_quality_gate_job from quality gate definitions
+- [x] Implement _build_consistency_job from consistency scan evidence
+- [x] Implement _build_hygiene_job from hygiene scan evidence
+- [x] Implement _build_merge_conditions from feature readiness
+- [x] Implement _render_github_actions for YAML workflow output
+- [x] Implement _render_gitlab_ci for YAML pipeline output
+- [x] Implement _render_generic for plain text pipeline description
+- [x] Implement build_pipeline_result as main orchestration
+- [x] Implement render_pipeline_json and render_pipeline_text
 
 ## Dependencies
 
-- TODO: Note upstream decisions, systems, people, or artifacts needed first.
+- Quality gates (gates.py) for merge condition derivation.
+- Validation (validation.py) for validation job generation.
+- Workspace (workspace.py) for base workspace file checks.
 
 ## Open Questions
 
-- TODO: Track questions that must be answered before or during implementation.
+- None; feature is implemented and tested.
 
 ## Agent Handoff
 
 - Run `specspine feature handoff spec-cicd-pipeline . --json` before implementation or review handoff.
-- Run `specspine adapters handoff spec-cicd-pipeline . --json` when OpenSpec, Spec Kit, or Superpowers adapter context is needed.
-- Run `specspine feature tasks spec-cicd-pipeline . --json` for the focused implementation checklist.
-- Run `specspine feature task-issues spec-cicd-pipeline . --json` to draft one local GitHub issue per execution task.
-- Run `specspine feature trace spec-cicd-pipeline . --json` to inspect acceptance, tasks, quality checks, test plan, and gaps.
-- Run `specspine feature tests spec-cicd-pipeline . --json` to build the acceptance-test packet.
-- Run `specspine tests impact . --feature spec-cicd-pipeline --json` to inspect local source-to-test impact recommendations.
-- Run `specspine consistency scan . --feature spec-cicd-pipeline --json` to inspect local spec-code-test-doc drift.
-- Run `specspine hygiene scan . --json` to inspect generated artifacts and denylisted repository residue.
-- Run `specspine retrospective report . --json` before planning the next iteration.
-- Run `specspine coverage plan . --feature spec-cicd-pipeline --json` when missing AC coverage needs read-only remediation steps.
-- Run `specspine verify matrix spec-cicd-pipeline . --json` to inspect AC-level verification evidence.
-- Run `specspine change risk . --feature spec-cicd-pipeline --json` to inspect local changed-path risk evidence.
-- Run `specspine security cues . --feature spec-cicd-pipeline --json` to inspect local security-sensitive review cues.
-- Run `specspine provenance manifest . --feature spec-cicd-pipeline --json` to hash local evidence artifacts before review or archive.
-- Run `specspine review packet . --feature spec-cicd-pipeline --json` to compose local pre-merge review evidence.
-- Run `specspine feature ready spec-cicd-pipeline . --json` after implementation evidence is complete.
-- Run `specspine feature pr spec-cicd-pipeline . --json` to draft local Pull Request review notes.
-- Run `specspine feature sync-plan spec-cicd-pipeline . --json` to review GitHub CLI sync intent without executing it.
-- Run `specspine feature sync-plan spec-cicd-pipeline . --output-dir .specspine/sync-plan/spec-cicd-pipeline` to materialize local sync review artifacts.
-- Run `specspine feature archive spec-cicd-pipeline . --json` to package local archive evidence before lifecycle closure.
 - Run `specspine validate . --fusion --features` before handoff or release.

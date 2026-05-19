@@ -15,28 +15,49 @@ Turn validated SpecSpine bundles into ready-to-use CI/CD pipelines where accepta
 
 ## Users
 
-- TODO: Identify the users or roles that benefit from this feature.
+- Maintainers who want to generate CI/CD pipelines from spec evidence.
+- Teams adopting spec-driven development who need automated quality gates.
 
 ## Scope
 
-- TODO: Describe the behavior, workflows, and boundaries included in this feature.
+- Add `specspine cicd pipeline [path] [--format <format>] [--feature <slug>] [--json]` command.
+- Support 3 pipeline formats: github-actions, gitlab-ci, generic.
+- Derive pipeline jobs from quality gates, validation checks, and feature readiness.
+- Generate merge conditions from feature readiness criteria.
+- Include test gates mapped to acceptance criteria coverage.
+- Output pipeline YAML for github-actions and gitlab-ci formats.
+- Output JSON report with pipeline structure, jobs, merge conditions, and gates.
 
 ## Non-Goals
 
-- TODO: Record what this feature intentionally will not address.
+- Deploying or executing generated pipelines.
+- Calling CI/CD provider APIs or triggering builds.
+- Customizing pipeline templates beyond the 3 supported formats.
 
 ## Acceptance Criteria
 
-- [ ] TODO: Define one observable outcome that can be mapped directly to a test case.
+- [x] `specspine cicd pipeline [path] [--format <format>]` generates a pipeline for the specified format.
+- [x] Supports github-actions, gitlab-ci, and generic formats.
+- [x] Pipeline includes jobs for validation, testing, consistency, hygiene, and quality gates.
+- [x] Merge conditions derived from feature readiness and quality gate status.
+- [x] Test gates reference acceptance criteria coverage requirements.
+- [x] JSON output includes pipeline structure, jobs, merge conditions, gates, and safety_notes.
+- [x] github-actions format produces valid YAML workflow with proper job dependencies.
+- [x] gitlab-ci format produces valid YAML with proper stage ordering.
+- [x] Invalid format returns exit code 2 with clear error message.
+- [x] Pipeline generation is read-only with no subprocess or network calls.
 
 ## Edge Cases
 
-- TODO: Capture boundary, error, permission, migration, or rollback cases reviewers should check.
+- Empty workspaces generate minimal pipelines with placeholder jobs.
+- Workspaces with failing validation still generate pipelines but mark gates as failing.
 
 ## Constraints
 
-- TODO: Note technical, operational, policy, compatibility, or timing constraints.
+- Read-only generation; no file writes by default.
+- Zero dependencies beyond the existing SpecSpine codebase.
 
 ## Traceability Notes
 
-- TODO: Link acceptance criteria to tasks, tests, docs, rollout evidence, or review notes as work progresses.
+- Implementation: `src/specspine/cicd.py`
+- Tests: `tests/test_cicd.py`, `tests/test_cicd_functional.py`

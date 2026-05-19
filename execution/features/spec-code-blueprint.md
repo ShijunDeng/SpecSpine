@@ -6,41 +6,37 @@ Why: Deterministic implementation blueprints derived from acceptance criteria. B
 
 ## Milestones
 
-- TODO: List the meaningful delivery checkpoints.
+- [x] Define BlueprintFunction and BlueprintModule dataclasses
+- [x] Implement module extraction from AC analysis
+- [x] Implement function signature generation from AC keywords
+- [x] Implement error handling path extraction
+- [x] Implement JSON and text renderers
+- [x] Wire into CLI as `specspine blueprint` command
+- [x] Write comprehensive unit tests
 
 ## Tasks
 
-- [ ] TODO: Break the work into implementation tasks.
+- [x] Define BlueprintFunction dataclass with name, parameters, return_type, description, ac_ids
+- [x] Define BlueprintModule dataclass with module_path, responsibility, functions, ac_ids
+- [x] Define BlueprintEntity dataclass for data entity extraction
+- [x] Define BlueprintErrorPath dataclass for error handling analysis
+- [x] Define BlueprintReport dataclass with full blueprint structure
+- [x] Implement _parse_ac_for_modules to extract module structure
+- [x] Implement _extract_function_signatures from action verbs and target nouns
+- [x] Implement _derive_error_paths from error/exception keywords
+- [x] Implement _build_blueprint_modules as main orchestration
+- [x] Implement render_blueprint_json and render_blueprint_text
 
 ## Dependencies
 
-- TODO: Note upstream decisions, systems, people, or artifacts needed first.
+- Feature bundle parsing (features.py) for AC extraction.
+- Proposer word lists (proposer.py) for action verb and noun analysis.
 
 ## Open Questions
 
-- TODO: Track questions that must be answered before or during implementation.
+- None; feature is implemented and tested.
 
 ## Agent Handoff
 
 - Run `specspine feature handoff spec-code-blueprint . --json` before implementation or review handoff.
-- Run `specspine adapters handoff spec-code-blueprint . --json` when OpenSpec, Spec Kit, or Superpowers adapter context is needed.
-- Run `specspine feature tasks spec-code-blueprint . --json` for the focused implementation checklist.
-- Run `specspine feature task-issues spec-code-blueprint . --json` to draft one local GitHub issue per execution task.
-- Run `specspine feature trace spec-code-blueprint . --json` to inspect acceptance, tasks, quality checks, test plan, and gaps.
-- Run `specspine feature tests spec-code-blueprint . --json` to build the acceptance-test packet.
-- Run `specspine tests impact . --feature spec-code-blueprint --json` to inspect local source-to-test impact recommendations.
-- Run `specspine consistency scan . --feature spec-code-blueprint --json` to inspect local spec-code-test-doc drift.
-- Run `specspine hygiene scan . --json` to inspect generated artifacts and denylisted repository residue.
-- Run `specspine retrospective report . --json` before planning the next iteration.
-- Run `specspine coverage plan . --feature spec-code-blueprint --json` when missing AC coverage needs read-only remediation steps.
-- Run `specspine verify matrix spec-code-blueprint . --json` to inspect AC-level verification evidence.
-- Run `specspine change risk . --feature spec-code-blueprint --json` to inspect local changed-path risk evidence.
-- Run `specspine security cues . --feature spec-code-blueprint --json` to inspect local security-sensitive review cues.
-- Run `specspine provenance manifest . --feature spec-code-blueprint --json` to hash local evidence artifacts before review or archive.
-- Run `specspine review packet . --feature spec-code-blueprint --json` to compose local pre-merge review evidence.
-- Run `specspine feature ready spec-code-blueprint . --json` after implementation evidence is complete.
-- Run `specspine feature pr spec-code-blueprint . --json` to draft local Pull Request review notes.
-- Run `specspine feature sync-plan spec-code-blueprint . --json` to review GitHub CLI sync intent without executing it.
-- Run `specspine feature sync-plan spec-code-blueprint . --output-dir .specspine/sync-plan/spec-code-blueprint` to materialize local sync review artifacts.
-- Run `specspine feature archive spec-code-blueprint . --json` to package local archive evidence before lifecycle closure.
 - Run `specspine validate . --fusion --features` before handoff or release.
