@@ -47,6 +47,14 @@ from .change import (
     render_change_risk_json,
     render_change_risk_text,
 )
+from .cicd import (
+    SAFETY_NOTES,
+    SUPPORTED_FORMATS,
+    generate_pipeline,
+    render_pipeline_json,
+    render_pipeline_text,
+    render_pipeline_yaml,
+)
 from .consistency import (
     build_consistency_report,
     render_consistency_json,
@@ -1209,6 +1217,56 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="overwrite existing output files",
+    )
+
+    cicd_parser = subcommands.add_parser(
+        "cicd",
+        help="generate CI/CD pipelines from spec metadata",
+    )
+    cicd_subcommands = cicd_parser.add_subparsers(
+        dest="cicd_command",
+        required=True,
+    )
+    cicd_generate_parser = cicd_subcommands.add_parser(
+        "generate",
+        help="generate CI/CD pipeline config from spec metadata and quality gates",
+    )
+    cicd_generate_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    cicd_generate_parser.add_argument(
+        "--format",
+        choices=SUPPORTED_FORMATS,
+        default="github-actions",
+        help="pipeline format (default: github-actions)",
+    )
+    cicd_generate_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="include feature-specific readiness gate",
+    )
+    cicd_generate_parser.add_argument(
+        "--output-dir",
+        help="write generated pipeline artifacts to a directory",
+    )
+    cicd_generate_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    cicd_generate_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite existing output files",
+    )
+
+    cicd_validate_parser = cicd_subcommands.add_parser(
+        "validate",
+        help="validate generated pipeline configuration",
+    )
+    cicd_validate_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    cicd_validate_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
     )
 
     propose_parser = subcommands.add_parser(
@@ -2958,6 +3016,85 @@ def main(argv: list[str] | None = None) -> int:
             if args.fail_on_gaps:
                 if not report.modules or not report.functions:
                     return 3
+            return 0
+
+    if args.command == "cicd":
+        if args.cicd_command == "generate":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                result = generate_pipeline(
+                    root,
+                    format=args.format,
+                    feature_slug=args.feature,
+                )
+            except ValueError as error:
+                print(str(error), file=sys.stderr)
+                return 1
+            except FileNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not generate pipeline: {error}", file=sys.stderr)
+                return 1
+
+            if args.output_dir:
+                output_dir = Path(args.output_dir).expanduser().resolve()
+                output_dir.mkdir(parents=True, exist_ok=True)
+                if args.format == "github-actions":
+                    workflow_dir = output_dir / ".github" / "workflows"
+                    workflow_dir.mkdir(parents=True, exist_ok=True)
+                    pipeline_path = workflow_dir / "specspine.yml"
+                elif args.format == "gitlab-ci":
+                    pipeline_path = output_dir / ".gitlab-ci.yml"
+                else:
+                    pipeline_path = output_dir / "specspine-pipeline.sh"
+
+                if pipeline_path.exists() and not args.force:
+                    print(
+                        f"Pipeline file already exists: {pipeline_path}. "
+                        "Use --force to overwrite it.",
+                        file=sys.stderr,
+                    )
+                    return 1
+
+                raw_content = result["raw_content"] if "raw_content" in result else ""
+                if raw_content:
+                    pipeline_path.write_text(raw_content, encoding="utf-8")
+
+            if args.json:
+                print(render_pipeline_json(result), end="")
+            else:
+                print(render_pipeline_text(result), end="")
+            return 0
+
+        if args.cicd_command == "validate":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                pipeline_result = generate_pipeline(root)
+            except ValueError as error:
+                print(str(error), file=sys.stderr)
+                return 1
+            except FileNotFoundError as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not validate pipeline: {error}", file=sys.stderr)
+                return 1
+
+            payload = {
+                "ok": True,
+                "pipeline_type": pipeline_result["pipeline_type"],
+                "jobs_total": len(pipeline_result["jobs"]),
+                "merge_conditions_total": len(pipeline_result["merge_conditions"]),
+                "safety_notes": list(pipeline_result["safety_notes"]),
+            }
+            if args.json:
+                print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
+            else:
+                print(f"Pipeline validation: {pipeline_result['pipeline_type']}")
+                print(f"Jobs: {payload['jobs_total']}")
+                print(f"Merge conditions: {payload['merge_conditions_total']}")
+                print(f"Status: ok")
             return 0
 
     if args.command == "scaffold":
