@@ -28,6 +28,12 @@ from .analysis import (
     render_analysis_json,
     render_analysis_text,
 )
+from .benchmark import (
+    VALID_GROUP_BY,
+    build_benchmark_report,
+    render_benchmark_json,
+    render_benchmark_text,
+)
 from .audit import (
     build_compliance_report,
     render_compliance_json,
@@ -1602,6 +1608,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="group features by field (default: priority)",
     )
     release_notes_parser.add_argument(
+        "--output",
+        help="write output to a file",
+    )
+
+    benchmark_parser = subcommands.add_parser(
+        "benchmark",
+        help="export feature benchmark and performance metrics",
+    )
+    benchmark_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    benchmark_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    benchmark_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="focus on one native feature slug",
+    )
+    benchmark_parser.add_argument(
+        "--group-by",
+        choices=VALID_GROUP_BY,
+        default="priority",
+        help="group features by field (default: priority)",
+    )
+    benchmark_parser.add_argument(
         "--output",
         help="write output to a file",
     )
@@ -3622,6 +3654,42 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Warning: {warning}")
         print(f"Created SpecSpine proposal bundle '{slug}' at {root}")
         _print_created(written, root)
+        return 0
+
+    if args.command == "benchmark":
+        if args.feature:
+            try:
+                from .features import validate_feature_slug as _vfs
+                _vfs(args.feature)
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+        try:
+            report = build_benchmark_report(
+                Path(args.path),
+                feature_filter=args.feature,
+                group_by=args.group_by,
+            )
+        except OSError as error:
+            print(f"Could not build benchmark report: {error}", file=sys.stderr)
+            return 1
+
+        text_body = render_benchmark_text(report)
+        if args.output:
+            output_path = Path(args.output).expanduser().resolve()
+            try:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_text(text_body, encoding="utf-8")
+            except OSError as error:
+                print(f"Could not write benchmark report: {error}", file=sys.stderr)
+                return 1
+
+        if args.json:
+            print(render_benchmark_json(report), end="")
+        elif args.output:
+            print(f"Wrote benchmark report to {output_path}")
+        else:
+            print(text_body, end="")
         return 0
 
     parser.print_help()
