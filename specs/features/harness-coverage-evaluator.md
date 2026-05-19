@@ -1,7 +1,7 @@
 # Harness Coverage Evaluator
 
 Feature ID: harness-coverage-evaluator
-Status: proposed
+Status: implemented
 Priority: medium
 Owner: unassigned
 Milestone: unassigned
