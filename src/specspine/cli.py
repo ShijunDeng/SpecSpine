@@ -28,6 +28,11 @@ from .analysis import (
     render_analysis_json,
     render_analysis_text,
 )
+from .audit import (
+    build_compliance_report,
+    render_compliance_json,
+    render_compliance_text,
+)
 from .blueprint import (
     build_spec_code_blueprint,
     render_blueprint_json,
@@ -1523,6 +1528,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="minimum severity level to report: critical, high, medium, low, or none",
     )
 
+    audit_parser = subcommands.add_parser(
+        "audit",
+        help="generate compliance and audit trail reports",
+    )
+    audit_subcommands = audit_parser.add_subparsers(
+        dest="audit_command",
+        required=True,
+    )
+    audit_report_parser = audit_subcommands.add_parser(
+        "report",
+        help="export a compliance audit report with feature lifecycle and drift history",
+    )
+    audit_report_parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    audit_report_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print stable JSON for agents and scripts",
+    )
+    audit_report_parser.add_argument(
+        "--feature",
+        metavar="SLUG",
+        help="focus on one native feature slug",
+    )
+    audit_report_parser.add_argument(
+        "--since",
+        metavar="DATE",
+        help="only include audit events from this date (YYYY-MM-DD) onward",
+    )
+    audit_report_parser.add_argument(
+        "--output",
+        help="write the report to a file",
+    )
+
     release_parser = subcommands.add_parser(
         "release",
         help="generate release notes from validated and archived features",
@@ -2969,6 +3007,36 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_drift_text(report), end="")
             if args.feature and any(not f.spec_drift and not f.code_drift and not f.test_drift and not f.quality_drift for f in report.features):
                 return 0
+            return 0
+
+    if args.command == "audit":
+        if args.audit_command == "report":
+            root = Path(args.path).expanduser().resolve()
+            try:
+                report = build_compliance_report(
+                    root,
+                    feature_filter=args.feature,
+                    since=args.since,
+                )
+            except InvalidFeatureSlug as error:
+                print(str(error), file=sys.stderr)
+                return 2
+            except OSError as error:
+                print(f"Could not build compliance report: {error}", file=sys.stderr)
+                return 1
+
+            output = render_compliance_json(report) if args.json else render_compliance_text(report)
+
+            if args.output:
+                output_path = Path(args.output).expanduser().resolve()
+                try:
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(output, encoding="utf-8")
+                except OSError as error:
+                    print(f"Could not write audit report: {error}", file=sys.stderr)
+                    return 1
+
+            print(output, end="")
             return 0
 
     if args.command == "release":
