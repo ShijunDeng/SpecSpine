@@ -6,19 +6,46 @@ Why: Track spec changes over time, compute semantic diffs between versions, and 
 
 ## Milestones
 
-- TODO: List the meaningful delivery checkpoints.
+- [x] M001: Core data structures (DiffFileHunk, DiffResult, ClassifiedChange, ClassificationResult, ImpactEntry, ImpactResult, RemediationAction, EvolutionEntry) implemented with frozen dataclasses and as_dict serialization.
+- [x] M002: Git diff computation with hunk parsing and line counting for feature peer files.
+- [x] M003: Change classification detecting AC/task additions, removals, modifications, and metadata changes.
+- [x] M004: Downstream reference discovery across feature traces, test reports, and file content.
+- [x] M005: Impact resolution with severity classification (breaking/warning/info) based on change type and downstream refs.
+- [x] M006: Remediation plan generation with priority-sorted actions for non-info impacts.
+- [x] M007: Evolution timeline construction from git log with change counts and categories.
+- [x] M008: JSON and text renderers for diff and evolution outputs.
 
 ## Tasks
 
-- [ ] TODO: Break the work into implementation tasks.
+- [x] T001: Implement DiffFileHunk and DiffResult dataclasses with summary property and as_dict methods.
+- [x] T002: Implement ClassifiedChange and ClassificationResult dataclasses with summary property.
+- [x] T003: Implement ImpactEntry and ImpactResult dataclasses with summary property.
+- [x] T004: Implement RemediationAction and EvolutionEntry dataclasses with as_dict methods.
+- [x] T005: Implement GitDiffError and InvalidGitBaseError exception classes.
+- [x] T006: Implement _run_git utility with 30-second subprocess timeout.
+- [x] T007: Implement _parse_diff_hunks splitting diff output on @@ markers.
+- [x] T008: Implement _count_lines_in_hunks counting added (+) and removed (-) lines excluding +++/--- headers.
+- [x] T009: Implement get_git_diff computing per-file diff results with optional base reference and unstaged mode.
+- [x] T010: Implement _extract_ac_ids and _extract_task_ids using regex patterns.
+- [x] T011: Implement _extract_feature_refs using DEPENDENCY_PATTERNS and FEATURE_ID_RE.
+- [x] T012: Implement _build_versioned_content loading current and git-based file content for spec/execution/quality.
+- [x] T013: Implement classify_changes comparing before/after versions for AC/task additions, removals, and modifications.
+- [x] T014: Implement metadata change detection comparing Priority, Owner, Milestone, Target Release, Project, Effort, Status fields.
+- [x] T015: Implement _find_downstream_references scanning other features' traces, test reports, and file content.
+- [x] T016: Implement resolve_impact classifying impacts as breaking/warning/info based on change type and downstream references.
+- [x] T017: Implement calculate_risk_level returning risk string based on change type and impact severity.
+- [x] T018: Implement generate_remediation_plan producing priority-sorted RemediationAction list for non-info impacts.
+- [x] T019: Implement build_evolution_timeline from git log with diff stat parsing and category classification.
+- [x] T020: Implement render_diff_json/text and render_evolution_json/text for output formatting.
 
 ## Dependencies
 
-- TODO: Note upstream decisions, systems, people, or artifacts needed first.
+- src/specspine/dependency.py (build_dependency_graph)
+- src/specspine/features.py (FEATURE_FILE_PATHS, InvalidFeatureSlug, build_feature_trace_report, build_feature_tests_report, feature_bundle_paths, list_feature_bundles, validate_feature_slug)
 
 ## Open Questions
 
-- TODO: Track questions that must be answered before or during implementation.
+- None; feature is implemented and tested.
 
 ## Agent Handoff
 

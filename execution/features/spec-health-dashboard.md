@@ -6,19 +6,58 @@ Why: Unified observability dashboard composing all 54 existing evidence sources 
 
 ## Milestones
 
-- TODO: List the meaningful delivery checkpoints.
+- [x] M001: Core data structures (WorkspaceHealth, FeaturePipeline, ValidationHealth, CoverageDebt, ConsistencyDrift, ReadinessGates, QualityGates, DependencyHealth, SecuritySummary, RetrospectiveTheme, HealthReport) implemented with frozen dataclasses and as_dict serialization.
+- [x] M002: Workspace health checking BASE_WORKSPACE_FILES for present/missing status.
+- [x] M003: Feature pipeline aggregating feature counts by status.
+- [x] M004: Validation health aggregating pass/fail/warn/skip counts with top failing rules.
+- [x] M005: Coverage debt tracking features with debt and top uncovered features.
+- [x] M006: Consistency drift tracking check results with top failing features.
+- [x] M007: Readiness gates tracking ready/not-ready features with top blockers.
+- [x] M008: Quality gates, dependency health, security summary, and retrospective theme builders.
+- [x] M009: Health score computation with 7 weighted dimensions and workspace shortcut.
+- [x] M010: Recommended actions and commands generation with JSON/text renderers.
 
 ## Tasks
 
-- [ ] TODO: Break the work into implementation tasks.
+- [x] T001: Implement WorkspaceHealth with complete, present, and missing fields.
+- [x] T002: Implement FeaturePipeline with features_total and by_status dict.
+- [x] T003: Implement ValidationHealth with ok, pass/fail/warn/skip/total counts and top_failing_rules.
+- [x] T004: Implement CoverageDebt with features_with_debt, missing/covered/total ACs, and top_features.
+- [x] T005: Implement ConsistencyDrift with features_scanned, checks pass/fail/warn/total, and top_failing_features.
+- [x] T006: Implement ReadinessGates with features_total, ready, not_ready, blocking_checks_total, gaps_total, and top_blockers.
+- [x] T007: Implement QualityGates with required_total/done/open and definition_total.
+- [x] T008: Implement DependencyHealth with features_total, cycles, critical_path, and critical_path_effort.
+- [x] T009: Implement SecuritySummary with cues_total and high/medium/low counts.
+- [x] T010: Implement RetrospectiveTheme with top_blocker_theme, blocking_checks, gaps, coverage_states, and open_tasks.
+- [x] T011: Implement HealthReport composing all 10 dimensions plus health_score, recommended_actions, recommended_commands, safety_notes.
+- [x] T012: Implement _build_workspace_health using check_workspace with BASE_WORKSPACE_FILES.
+- [x] T013: Implement _build_feature_pipeline using list_feature_bundles with status aggregation.
+- [x] T014: Implement _build_validation_health with OSError fallback returning zeroed ValidationHealth.
+- [x] T015: Implement _build_coverage_debt_data with OSError fallback and top 5 features sorting.
+- [x] T016: Implement _build_consistency_drift with OSError fallback and top 5 failing features.
+- [x] T017: Implement _build_readiness_gates with OSError fallback and top 5 blockers.
+- [x] T018: Implement _build_quality_gates, _build_dependency_health, _build_security_summary, _build_retrospective_theme with OSError fallbacks.
+- [x] T019: Implement compute_health_score with 7 weighted dimensions and 0 shortcut for missing workspace.
+- [x] T020: Implement generate_recommended_actions and _generate_recommended_commands.
+- [x] T021: Implement build_health_report as main entry point composing all dimensions.
+- [x] T022: Implement render_health_json and render_health_text for output formatting.
 
 ## Dependencies
 
-- TODO: Note upstream decisions, systems, people, or artifacts needed first.
+- src/specspine/consistency.py (build_consistency_report)
+- src/specspine/coverage.py (build_coverage_debt_report)
+- src/specspine/dependency.py (build_dependency_graph)
+- src/specspine/features.py (list_feature_bundles)
+- src/specspine/gates.py (build_quality_gate_report)
+- src/specspine/retrospective.py (build_retrospective_report)
+- src/specspine/security.py (build_security_cue_report)
+- src/specspine/status.py (build_readiness_summary, build_status)
+- src/specspine/validation.py (build_validation_report)
+- src/specspine/workspace.py (BASE_WORKSPACE_FILES, check_workspace)
 
 ## Open Questions
 
-- TODO: Track questions that must be answered before or during implementation.
+- None; feature is implemented and tested.
 
 ## Agent Handoff
 

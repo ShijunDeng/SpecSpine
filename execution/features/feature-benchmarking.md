@@ -6,19 +6,48 @@ Why: Track and compare feature implementation metrics across the workspace. Prov
 
 ## Milestones
 
-- TODO: List the meaningful delivery checkpoints.
+- [x] M001: Core data structures (FeatureMetrics, BenchmarkReport) implemented with frozen dataclasses and as_dict serialization.
+- [x] M002: Per-feature metrics computation from spec, execution, and quality files using regex extraction.
+- [x] M003: Validation and consistency data integration with graceful error handling.
+- [x] M004: Aggregate statistics computation (avg, median, p95) across all features.
+- [x] M005: Group-by functionality for priority, status, project, and effort dimensions.
+- [x] M006: Top performer identification using weighted scoring formula.
+- [x] M007: Improvement area identification with primary issue classification.
+- [x] M008: Trend computation for coverage, validation, and drift dimensions.
+- [x] M009: Recommendation generation based on aggregate metrics.
+- [x] M010: JSON and text renderers for benchmark reports.
 
 ## Tasks
 
-- [ ] TODO: Break the work into implementation tasks.
+- [x] T001: Implement FeatureMetrics dataclass with all metric fields (ac_count, task_count, test_count, coverage_pct, etc.).
+- [x] T002: Implement BenchmarkReport dataclass with metrics, aggregates, top_performers, improvement_areas, trends, recommendations.
+- [x] T003: Implement _read_text utility with OSError handling returning empty string.
+- [x] T004: Implement _count_pattern utility for regex-based counting in file content.
+- [x] T005: Implement _compute_feature_metrics extracting AC count from spec, task count from execution, test count and coverage from quality.
+- [x] T006: Integrate validation pass/fail from build_validation_report with OSError fallback.
+- [x] T007: Integrate consistency_fail from build_consistency_report with OSError/InvalidFeatureSlug fallback.
+- [x] T008: Integrate drift_events from build_coverage_debt_report with OSError fallback.
+- [x] T009: Implement _median utility for median computation with odd/even list handling.
+- [x] T010: Implement _percentile utility for percentile computation with interpolation.
+- [x] T011: Implement _aggregate_metrics with overall stats and group-by grouping.
+- [x] T012: Implement _identify_top_performers with weighted scoring formula (coverage*0.4 + drift*0.3 + consistency*0.3).
+- [x] T013: Implement _identify_improvement_areas with inverse scoring and primary_issue classification.
+- [x] T014: Implement _primary_issue classifier checking low_coverage, high_drift, consistency_failures, no_test_links.
+- [x] T015: Implement _compute_trends with coverage_trend, drift_trend, validation_trend classification.
+- [x] T016: Implement _generate_recommendations based on avg_coverage, avg_drift, low-coverage features, and trends.
+- [x] T017: Implement build_benchmark_report as main entry point with feature_filter and group_by parameters.
+- [x] T018: Implement render_benchmark_json and render_benchmark_text for output formatting.
 
 ## Dependencies
 
-- TODO: Note upstream decisions, systems, people, or artifacts needed first.
+- src/specspine/consistency.py (build_consistency_report)
+- src/specspine/coverage.py (build_coverage_debt_report)
+- src/specspine/features.py (FEATURE_FILE_PATHS, feature_bundle_paths, list_feature_bundles, validate_feature_slug, get_feature_status, read_feature_metadata)
+- src/specspine/validation.py (build_validation_report)
 
 ## Open Questions
 
-- TODO: Track questions that must be answered before or during implementation.
+- None; feature is implemented and tested.
 
 ## Agent Handoff
 

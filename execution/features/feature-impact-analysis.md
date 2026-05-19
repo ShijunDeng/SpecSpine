@@ -6,19 +6,44 @@ Why: Analyze the downstream impact of feature changes before implementation. Pre
 
 ## Milestones
 
-- TODO: List the meaningful delivery checkpoints.
+- [x] M001: Core data structures (ImpactItem, ImpactAnalysis) implemented with frozen dataclasses and as_dict serialization.
+- [x] M002: Downstream feature dependency detection via slug reference scanning and shared path matching.
+- [x] M003: Test file impact detection via content scanning, AC text matching, and quality link extraction.
+- [x] M004: Source code impact detection via glob patterns and local path reference resolution.
+- [x] M005: Risk score computation with severity weighting and item count thresholds.
+- [x] M006: Mitigation step generation with category-specific and risk-threshold-based recommendations.
+- [x] M007: Recommended command generation for standard impact analysis workflow.
+- [x] M008: JSON and text renderers for impact analysis output.
 
 ## Tasks
 
-- [ ] TODO: Break the work into implementation tasks.
+- [x] T001: Implement ImpactItem dataclass with type, id, path, severity, reason, affected_acs fields.
+- [x] T002: Implement ImpactAnalysis dataclass with feature_id, total_affected, impacted_features/tests/code, risk_score, mitigation_steps, safety_notes, recommended_commands.
+- [x] T003: Implement _relative_path utility with ValueError fallback to full path.
+- [x] T004: Implement _read_text utility with OSError and UnicodeDecodeError handling.
+- [x] T005: Implement _extract_acceptance_criteria to parse AC items from spec content with ID and text extraction.
+- [x] T006: Implement _find_affected_features scanning all slugs for dependency references and shared path matches.
+- [x] T007: Implement _extract_slugs_from_text using EXPLICIT_DEP_PATTERNS for dependency extraction.
+- [x] T008: Implement _find_affected_tests with three detection methods: content scanning, AC text matching, quality link extraction.
+- [x] T009: Implement _find_referenced_acs extracting AC IDs from test file content.
+- [x] T010: Implement _find_affected_code via src/**/*.py glob scanning and local path reference resolution.
+- [x] T011: Implement _module_name utility converting file paths to dotted module names.
+- [x] T012: Implement _find_slug_symbols extracting def/class symbols from lines mentioning the slug.
+- [x] T013: Implement _compute_risk_score with severity weighting (high=15, medium=8, low=3) and count thresholds.
+- [x] T014: Implement _generate_mitigation_steps with category-specific and risk-threshold steps.
+- [x] T015: Implement _generate_recommended_commands returning 6 standard commands.
+- [x] T016: Implement analyze_feature_impact as main entry point with FeatureBundleNotFoundError for missing specs.
+- [x] T017: Implement render_impact_json and render_impact_text for output formatting.
 
 ## Dependencies
 
-- TODO: Note upstream decisions, systems, people, or artifacts needed first.
+- src/specspine/consistency.py (LOCAL_PATH_RE)
+- src/specspine/dependency.py (EXPLICIT_DEP_PATTERNS, _list_feature_slugs, _read_all_feature_content)
+- src/specspine/features.py (FEATURE_FILE_PATHS, FEATURE_DIRECTORIES, FeatureBundleNotFoundError, InvalidFeatureSlug, read_feature_metadata, validate_feature_slug)
 
 ## Open Questions
 
-- TODO: Track questions that must be answered before or during implementation.
+- None; feature is implemented and tested.
 
 ## Agent Handoff
 

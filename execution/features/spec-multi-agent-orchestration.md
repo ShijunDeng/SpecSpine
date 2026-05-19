@@ -6,19 +6,42 @@ Why: Coordinate multiple AI agents implementing features in parallel with confli
 
 ## Milestones
 
-- TODO: List the meaningful delivery checkpoints.
+- [x] M001: Core data structures (OrchestrationConflict, ParallelGroup, OrchestrationPlan, OrchestrationReport) implemented with frozen dataclasses and as_dict serialization.
+- [x] M002: File conflict detection scanning feature file paths for overlapping references.
+- [x] M003: Contract conflict detection extracting endpoints, schemas, and configs using regex patterns.
+- [x] M004: Semantic conflict detection for conflicting enable/disable configurations.
+- [x] M005: Dependency graph construction and topological sorting for execution ordering.
+- [x] M006: Parallel group computation using in-degree based scheduling.
+- [x] M007: Integration recommendation generation for conflicts and multi-dependency features.
+- [x] M008: JSON and text renderers for orchestration reports.
 
 ## Tasks
 
-- [ ] TODO: Break the work into implementation tasks.
+- [x] T001: Implement OrchestrationConflict dataclass with conflict_type, affected_files, affected_ac_ids, features_involved, severity, description.
+- [x] T002: Implement ParallelGroup dataclass with group_id and features tuple.
+- [x] T003: Implement OrchestrationPlan dataclass with execution_order, parallel_groups, blocked_features, safe_for_parallel.
+- [x] T004: Implement OrchestrationReport dataclass with root, feature_filter, conflicts, plan, integration_recommendations, status, blocking_items, safety_notes.
+- [x] T005: Implement contract regex patterns: CONTRACT_PATTERN, API_ENDPOINT_PATTERNS, SCHEMA_PATTERNS, CONFIG_PATTERNS.
+- [x] T006: Implement _scan_feature_file_paths extracting file path references from feature content.
+- [x] T007: Implement _extract_ac_ids using regex for AC\d{3,4} patterns.
+- [x] T008: Implement _build_dependency_graph using _extract_slugs_from_text from dependency module.
+- [x] T009: Implement _detect_file_conflicts comparing file path sets between feature pairs.
+- [x] T010: Implement _extract_contracts extracting endpoint, schema, and config contracts from content.
+- [x] T011: Implement _detect_contract_conflicts comparing contract sets between feature pairs.
+- [x] T012: Implement _detect_semantic_conflicts detecting conflicting enable/disable configurations.
+- [x] T013: Implement _compute_parallel_groups using in-degree based scheduling with remaining set tracking.
+- [x] T014: Implement _generate_integration_recommendations producing recommendations for file/contract overlap and multi-dependency features.
+- [x] T015: Implement build_orchestration_plan as main entry point with feature_filter support.
+- [x] T016: Implement render_orchestration_json and render_orchestration_text for output formatting.
 
 ## Dependencies
 
-- TODO: Note upstream decisions, systems, people, or artifacts needed first.
+- src/specspine/dependency.py (_extract_slugs_from_text, _list_feature_slugs, _read_all_feature_content, _topological_sort)
+- src/specspine/features.py (FEATURE_FILE_PATHS, read_feature_metadata, validate_feature_slug)
 
 ## Open Questions
 
-- TODO: Track questions that must be answered before or during implementation.
+- None; feature is implemented and tested.
 
 ## Agent Handoff
 

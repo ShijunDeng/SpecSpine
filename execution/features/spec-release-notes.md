@@ -6,19 +6,39 @@ Why: Aggregate validated and archived feature evidence into structured, user-fac
 
 ## Milestones
 
-- TODO: List the meaningful delivery checkpoints.
+- [x] M001: Core data structures (ReleaseEntry, BreakingChange, ReleaseNotesReport) implemented with frozen dataclasses and as_dict serialization.
+- [x] M002: Release feature collection filtering validated/archived status with metadata extraction.
+- [x] M003: Feature grouping by priority/project/status/effort with sorted output.
+- [x] M004: Breaking change detection using 5 regex patterns for removed args, removed fields, changed behavior, deprecations, renames.
+- [x] M005: Summary computation with feature counts, breaking change counts by severity, priority breakdowns, and validation evidence totals.
+- [x] M006: JSON, text, and JSON-lines renderers for multi-format release output.
 
 ## Tasks
 
-- [ ] TODO: Break the work into implementation tasks.
+- [x] T001: Implement ReleaseEntry dataclass with slug, title, priority, status_transition, ac_summary, validation_evidence_count, project, effort.
+- [x] T002: Implement BreakingChange dataclass with feature_id, description, severity, affected_commands tuple.
+- [x] T003: Implement ReleaseNotesReport dataclass with version, date_range, grouped_features, breaking_changes, summary, safety_notes.
+- [x] T004: Implement _BREAKING_CHANGE_PATTERNS with 5 compiled regex patterns and severity/description tuples.
+- [x] T005: Implement _extract_title using first markdown heading or feature ID fallback.
+- [x] T006: Implement _extract_ac_summary counting AC items from spec's Acceptance Criteria section.
+- [x] T007: Implement _count_validation_evidence counting [x] and [X] checkboxes in quality file.
+- [x] T008: Implement _determine_status_transition mapping status to transition string (validated->newly validated, archived->released).
+- [x] T009: Implement _collect_release_features filtering validated/archived features with metadata extraction.
+- [x] T010: Implement _group_features grouping by priority/project/status/effort with sorted keys and entries.
+- [x] T011: Implement _detect_breaking_changes scanning spec/execution content for breaking change patterns.
+- [x] T012: Implement _compute_summary with feature counts, breaking change severity counts, priority counts, and validation evidence total.
+- [x] T013: Implement _safety_notes returning immutable tuple of 3 safety messages.
+- [x] T014: Implement build_release_notes_report as main entry point with since/until/group_by parameters.
+- [x] T015: Implement render_release_notes_json and render_release_notes_text for standard output.
+- [x] T016: Implement render_release_notes_json_lines for streaming newline-delimited JSON output.
 
 ## Dependencies
 
-- TODO: Note upstream decisions, systems, people, or artifacts needed first.
+- src/specspine/features.py (FEATURE_FILE_PATHS, FEATURE_PRIORITIES, FEATURE_STATUSES, FeatureBundleNotFoundError, InvalidFeatureSlug, _extract_markdown_section, _extract_scalar, list_feature_bundles, read_feature_metadata)
 
 ## Open Questions
 
-- TODO: Track questions that must be answered before or during implementation.
+- None; feature is implemented and tested.
 
 ## Agent Handoff
 

@@ -6,19 +6,48 @@ Why: Wire SpecSpine verification, coverage debt, and grading rubrics into determ
 
 ## Milestones
 
-- TODO: List the meaningful delivery checkpoints.
+- [x] M001: Core data structures (HarnessFeedbackSensor, RepairStrategy, HarnessQualityReport, HarnessFeedbackReport) implemented with frozen dataclasses and as_dict serialization.
+- [x] M002: Computational sensors (verification_matrix, coverage_debt, grading_rubric, validation_contract) implemented with graceful error handling.
+- [x] M003: Inferential sensors (consistency_scan, hygiene_scan, security_cues, change_risk) implemented with graceful error handling.
+- [x] M004: Repair strategy generation with AC-specific and sensor-level failure strategies.
+- [x] M005: Root cause classification into 5 categories (missing_spec, missing_code, missing_test, stale_coverage, contract_violation).
+- [x] M006: Harness quality scoring across 8 dimensions with workspace-level aggregation.
+- [x] M007: JSON and text renderers for feedback reports and quality reports.
+- [x] M008: Safety notes included in all reports.
 
 ## Tasks
 
-- [ ] TODO: Break the work into implementation tasks.
+- [x] T001: Implement HarnessFeedbackSensor dataclass with sensor_type, name, status, output, ac_ids fields and as_dict method.
+- [x] T002: Implement RepairStrategy dataclass with ac_id, target_file, edit_description, verification_command, success_criteria fields.
+- [x] T003: Implement HarnessQualityReport dataclass with feature_id, governed_dimensions, sensor_count, harness_coverage_pct, dimension_scores.
+- [x] T004: Implement HarnessFeedbackReport dataclass with all sensor, strategy, root_cause, and quality fields.
+- [x] T005: Implement _read_feature_contents to load spec, execution, quality files from feature bundle paths.
+- [x] T006: Implement _extract_ac_ids to parse AC identifiers from spec content.
+- [x] T007: Implement _run_computational_sensors with 4 sensors: verification_matrix, coverage_debt, grading_rubric, validation_contract.
+- [x] T008: Implement _run_inferential_sensors with 4 sensors: consistency_scan, hygiene_scan, security_cues, change_risk.
+- [x] T009: Implement _generate_repair_strategies with AC-specific strategies and SENSOR_FAILURE fallback.
+- [x] T010: Implement _classify_root_causes with keyword-based categorization into 5 buckets.
+- [x] T011: Implement _collect_gaps_from_sensors to aggregate sensor failures and flagged AC IDs.
+- [x] T012: Implement build_harness_feedback as the main entry point combining all sensors, strategies, and quality scoring.
+- [x] T013: Implement build_harness_quality for workspace-level and feature-level quality scoring.
+- [x] T014: Implement render_harness_feedback_json and render_harness_feedback_text for output formatting.
+- [x] T015: Implement render_harness_quality_json and render_harness_quality_text for output formatting.
+- [x] T016: Add immutable safety_notes to all reports.
 
 ## Dependencies
 
-- TODO: Note upstream decisions, systems, people, or artifacts needed first.
+- src/specspine/consistency.py (build_consistency_report)
+- src/specspine/coverage.py (build_coverage_debt_report)
+- src/specspine/executor.py (build_grading_rubric)
+- src/specspine/features.py (feature_bundle_paths, parse_acceptance_criteria, validate_feature_slug, list_feature_bundles)
+- src/specspine/hygiene.py (build_hygiene_scan_report)
+- src/specspine/security.py (build_security_cue_report)
+- src/specspine/change.py (build_change_risk_report)
+- src/specspine/verification.py (build_verification_matrix)
 
 ## Open Questions
 
-- TODO: Track questions that must be answered before or during implementation.
+- None; feature is implemented and tested.
 
 ## Agent Handoff
 
