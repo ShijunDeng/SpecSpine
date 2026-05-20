@@ -2645,20 +2645,14 @@ def _cmd_impact(args) -> int:
     return 1
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="specspine",
-        description="SpecSpine: the backbone for spec-driven AI execution.",
-    )
-    parser.add_argument("--version", action="version", version=f"specspine {__version__}")
-
-    subcommands = parser.add_subparsers(dest="command", required=True)
-
-    init_parser = subcommands.add_parser("init", help="initialize a SpecSpine workspace")
+def _build_init_parser(subparsers) -> None:
+    init_parser = subparsers.add_parser("init", help="initialize a SpecSpine workspace")
     init_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     init_parser.add_argument("--force", action="store_true", help="overwrite existing SpecSpine files")
 
-    agents_parser = subcommands.add_parser("agents", help="manage AI coding agent instructions")
+
+def _build_agents_parser(subparsers) -> None:
+    agents_parser = subparsers.add_parser("agents", help="manage AI coding agent instructions")
     agents_subcommands = agents_parser.add_subparsers(dest="agents_command", required=True)
     agents_init_parser = agents_subcommands.add_parser(
         "init",
@@ -2667,7 +2661,9 @@ def build_parser() -> argparse.ArgumentParser:
     agents_init_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     agents_init_parser.add_argument("--force", action="store_true", help="overwrite AGENTS.md")
 
-    fuse_parser = subcommands.add_parser(
+
+def _build_fuse_parser(subparsers) -> None:
+    fuse_parser = subparsers.add_parser(
         "fuse",
         help="initialize the OpenSpec + Spec Kit + Superpowers fusion layer",
     )
@@ -2688,7 +2684,9 @@ def build_parser() -> argparse.ArgumentParser:
     fuse_parser.add_argument("--skip-speckit", action="store_true", help="do not enable the Spec Kit adapter")
     fuse_parser.add_argument("--skip-superpowers", action="store_true", help="do not enable the Superpowers adapter")
 
-    feature_parser = subcommands.add_parser("feature", help="manage native SpecSpine features")
+
+def _build_feature_parser(subparsers) -> None:
+    feature_parser = subparsers.add_parser("feature", help="manage native SpecSpine features")
     feature_subcommands = feature_parser.add_subparsers(dest="feature_command", required=True)
 
     feature_new_parser = feature_subcommands.add_parser(
@@ -2959,7 +2957,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="comma-separated list of feature slugs to include",
     )
 
-    doctor_parser = subcommands.add_parser("doctor", help="check SpecSpine workspace files")
+
+def _build_doctor_parser(subparsers) -> None:
+    doctor_parser = subparsers.add_parser("doctor", help="check SpecSpine workspace files")
     doctor_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     doctor_parser.add_argument(
         "--fusion",
@@ -2972,7 +2972,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="also check external adapter availability",
     )
 
-    gates_parser = subcommands.add_parser("gates", help="export repository quality gate definitions")
+
+def _build_gates_parser(subparsers) -> None:
+    gates_parser = subparsers.add_parser("gates", help="export repository quality gate definitions")
     gates_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     gates_parser.add_argument(
         "--json",
@@ -2980,7 +2982,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="print stable JSON for agents and scripts",
     )
 
-    policy_parser = subcommands.add_parser("policy", help="export workspace readiness policy")
+
+def _build_policy_parser(subparsers) -> None:
+    policy_parser = subparsers.add_parser("policy", help="export workspace readiness policy")
     policy_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     policy_parser.add_argument(
         "--json",
@@ -2988,7 +2992,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="print stable JSON for agents and scripts",
     )
 
-    coverage_parser = subcommands.add_parser("coverage", help="inspect local coverage evidence")
+
+def _build_coverage_parser(subparsers) -> None:
+    coverage_parser = subparsers.add_parser("coverage", help="inspect local coverage evidence")
     coverage_subcommands = coverage_parser.add_subparsers(
         dest="coverage_command",
         required=True,
@@ -3033,7 +3039,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="limit returned plan items without changing summary counts",
     )
 
-    tests_parser = subcommands.add_parser("tests", help="inspect local test impact")
+
+def _build_tests_parser(subparsers) -> None:
+    tests_parser = subparsers.add_parser("tests", help="inspect local test impact")
     tests_subcommands = tests_parser.add_subparsers(dest="tests_command", required=True)
     tests_impact_parser = tests_subcommands.add_parser(
         "impact",
@@ -3058,7 +3066,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="include local feature test coverage evidence",
     )
 
-    verify_parser = subcommands.add_parser(
+
+def _build_verify_parser(subparsers) -> None:
+    verify_parser = subparsers.add_parser(
         "verify",
         help="export local verification evidence",
     )
@@ -3078,7 +3088,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="print stable JSON for agents and scripts",
     )
 
-    change_parser = subcommands.add_parser("change", help="inspect local change risk")
+
+def _build_change_parser(subparsers) -> None:
+    change_parser = subparsers.add_parser("change", help="inspect local change risk")
     change_subcommands = change_parser.add_subparsers(
         dest="change_command",
         required=True,
@@ -3106,7 +3118,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="include focused native feature readiness evidence",
     )
 
-    consistency_parser = subcommands.add_parser(
+
+def _build_consistency_parser(subparsers) -> None:
+    consistency_parser = subparsers.add_parser(
         "consistency",
         help="inspect local spec-code consistency",
     )
@@ -3137,7 +3151,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="changed path; repeat to include more than one",
     )
 
-    hygiene_parser = subcommands.add_parser(
+
+def _build_hygiene_parser(subparsers) -> None:
+    hygiene_parser = subparsers.add_parser(
         "hygiene",
         help="inspect local repository hygiene",
     )
@@ -3168,7 +3184,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="return nonzero when high-severity findings are present",
     )
 
-    security_parser = subcommands.add_parser(
+
+def _build_security_parser(subparsers) -> None:
+    security_parser = subparsers.add_parser(
         "security",
         help="inspect local security review cues",
     )
@@ -3199,7 +3217,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="include focused native feature readiness evidence",
     )
 
-    provenance_parser = subcommands.add_parser(
+
+def _build_provenance_parser(subparsers) -> None:
+    provenance_parser = subparsers.add_parser(
         "provenance",
         help="export local provenance and audit evidence",
     )
@@ -3230,7 +3250,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="include a local file in the manifest; repeat to include more than one",
     )
 
-    review_parser = subcommands.add_parser("review", help="compose local review packets")
+
+def _build_review_parser(subparsers) -> None:
+    review_parser = subparsers.add_parser("review", help="compose local review packets")
     review_subcommands = review_parser.add_subparsers(dest="review_command", required=True)
     review_packet_parser = review_subcommands.add_parser(
         "packet",
@@ -3255,7 +3277,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="changed source or test path; repeat to include more than one",
     )
 
-    analyze_parser = subcommands.add_parser(
+
+def _build_analyze_parser(subparsers) -> None:
+    analyze_parser = subparsers.add_parser(
         "analyze",
         help="analyze native feature consistency and coverage without changing files",
     )
@@ -3276,7 +3300,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="return nonzero when analysis finds issues",
     )
 
-    loop_parser = subcommands.add_parser("loop", help="export local agent loop packets")
+
+def _build_loop_parser(subparsers) -> None:
+    loop_parser = subparsers.add_parser("loop", help="export local agent loop packets")
     loop_subcommands = loop_parser.add_subparsers(dest="loop_command", required=True)
     loop_packet_parser = loop_subcommands.add_parser(
         "packet",
@@ -3302,7 +3328,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="deadline value to include in the packet",
     )
 
-    orchestrate_parser = subcommands.add_parser(
+
+def _build_orchestrate_parser(subparsers) -> None:
+    orchestrate_parser = subparsers.add_parser(
         "orchestrate",
         help="coordinate multi-agent feature implementation",
     )
@@ -3326,7 +3354,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="focus the orchestration plan on one native feature slug",
     )
 
-    status_parser = subcommands.add_parser("status", help="summarize SpecSpine workspace status")
+
+def _build_status_parser(subparsers) -> None:
+    status_parser = subparsers.add_parser("status", help="summarize SpecSpine workspace status")
     status_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     status_parser.add_argument(
         "--json",
@@ -3450,7 +3480,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="show unified health dashboard instead of standard status",
     )
 
-    validate_parser = subcommands.add_parser("validate", help="validate SpecSpine workspace contracts")
+
+def _build_validate_parser(subparsers) -> None:
+    validate_parser = subparsers.add_parser("validate", help="validate SpecSpine workspace contracts")
     validate_parser.add_argument("path", nargs="?", default=".", help="workspace path")
     validate_parser.add_argument(
         "--json",
@@ -3473,7 +3505,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="also check enabled external adapter availability",
     )
 
-    adapters_parser = subcommands.add_parser("adapters", help="inspect external adapter integration")
+
+def _build_adapters_parser(subparsers) -> None:
+    adapters_parser = subparsers.add_parser("adapters", help="inspect external adapter integration")
     adapters_subcommands = adapters_parser.add_subparsers(dest="adapters_command", required=True)
 
     adapters_subcommands.add_parser("doctor", help="check OpenSpec, Spec Kit, and Superpowers availability")
@@ -3513,7 +3547,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="overwrite an existing output file",
     )
 
-    execute_parser = subcommands.add_parser(
+
+def _build_execute_parser(subparsers) -> None:
+    execute_parser = subparsers.add_parser(
         "execute",
         help="turn specs into execution plans and self-correcting loops",
     )
@@ -3561,7 +3597,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="print stable JSON for agents and scripts",
     )
 
-    harness_parser = subcommands.add_parser(
+
+def _build_harness_parser(subparsers) -> None:
+    harness_parser = subparsers.add_parser(
         "harness",
         help="agent self-correction harness with verification and repair",
     )
@@ -3628,7 +3666,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="save current report as new baseline for trend comparison",
     )
 
-    blueprint_parser = subcommands.add_parser(
+
+def _build_blueprint_parser(subparsers) -> None:
+    blueprint_parser = subparsers.add_parser(
         "blueprint",
         help="generate spec-to-code implementation blueprints",
     )
@@ -3662,7 +3702,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="overwrite existing output files",
     )
 
-    cicd_parser = subcommands.add_parser(
+
+def _build_cicd_parser(subparsers) -> None:
+    cicd_parser = subparsers.add_parser(
         "cicd",
         help="generate CI/CD pipelines from spec metadata",
     )
@@ -3712,7 +3754,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="print stable JSON for agents and scripts",
     )
 
-    propose_parser = subcommands.add_parser(
+
+def _build_propose_parser(subparsers) -> None:
+    propose_parser = subparsers.add_parser(
         "propose",
         help="generate a structured spec bundle from natural language intent",
     )
@@ -3729,7 +3773,9 @@ def build_parser() -> argparse.ArgumentParser:
     propose_parser.add_argument("--project", default="unassigned", help="feature project")
     propose_parser.add_argument("--effort", default="unknown", help="estimated effort")
 
-    scaffold_parser = subcommands.add_parser(
+
+def _build_scaffold_parser(subparsers) -> None:
+    scaffold_parser = subparsers.add_parser(
         "scaffold",
         help="generate test scaffolds from acceptance criteria",
     )
@@ -3763,7 +3809,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="overwrite existing scaffold output file",
     )
 
-    retrospective_parser = subcommands.add_parser(
+
+def _build_retrospective_parser(subparsers) -> None:
+    retrospective_parser = subparsers.add_parser(
         "retrospective",
         help="build local feature retrospective reports",
     )
@@ -3800,7 +3848,9 @@ def build_parser() -> argparse.ArgumentParser:
     retrospective_analytics_parser.add_argument("--improvements", action="store_true", help="include improvement recommendations")
     retrospective_analytics_parser.add_argument("--feature", metavar="SLUG", help="focus on one feature")
 
-    spec_parser = subcommands.add_parser("spec", help="inspect spec changes and evolution")
+
+def _build_spec_parser(subparsers) -> None:
+    spec_parser = subparsers.add_parser("spec", help="inspect spec changes and evolution")
     spec_subcommands = spec_parser.add_subparsers(dest="spec_command", required=True)
 
     spec_diff_parser = spec_subcommands.add_parser(
@@ -3852,7 +3902,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="limit timeline entries (default: 20)",
     )
 
-    drift_parser = subcommands.add_parser(
+
+def _build_drift_parser(subparsers) -> None:
+    drift_parser = subparsers.add_parser(
         "drift",
         help="monitor spec-code-test quality drift with historical analysis",
     )
@@ -3891,7 +3943,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="minimum severity level to report: critical, high, medium, low, or none",
     )
 
-    audit_parser = subcommands.add_parser(
+
+def _build_audit_parser(subparsers) -> None:
+    audit_parser = subparsers.add_parser(
         "audit",
         help="generate compliance and audit trail reports",
     )
@@ -3924,7 +3978,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the report to a file",
     )
 
-    release_parser = subcommands.add_parser(
+
+def _build_release_parser(subparsers) -> None:
+    release_parser = subparsers.add_parser(
         "release",
         help="generate release notes from validated and archived features",
     )
@@ -3969,7 +4025,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="write output to a file",
     )
 
-    benchmark_parser = subcommands.add_parser(
+
+def _build_benchmark_parser(subparsers) -> None:
+    benchmark_parser = subparsers.add_parser(
         "benchmark",
         help="export feature benchmark and performance metrics",
     )
@@ -3995,7 +4053,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="write output to a file",
     )
 
-    impact_parser = subcommands.add_parser(
+
+def _build_impact_parser(subparsers) -> None:
+    impact_parser = subparsers.add_parser(
         "impact",
         help="analyze feature change impact",
     )
@@ -4019,6 +4079,52 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="FILE",
         help="file describing proposed changes",
     )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="specspine",
+        description="SpecSpine: the backbone for spec-driven AI execution.",
+    )
+    parser.add_argument("--version", action="version", version=f"specspine {__version__}")
+
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    _build_init_parser(subparsers)
+    _build_agents_parser(subparsers)
+    _build_fuse_parser(subparsers)
+    _build_feature_parser(subparsers)
+    _build_doctor_parser(subparsers)
+    _build_gates_parser(subparsers)
+    _build_policy_parser(subparsers)
+    _build_coverage_parser(subparsers)
+    _build_tests_parser(subparsers)
+    _build_verify_parser(subparsers)
+    _build_change_parser(subparsers)
+    _build_consistency_parser(subparsers)
+    _build_hygiene_parser(subparsers)
+    _build_security_parser(subparsers)
+    _build_provenance_parser(subparsers)
+    _build_review_parser(subparsers)
+    _build_analyze_parser(subparsers)
+    _build_loop_parser(subparsers)
+    _build_orchestrate_parser(subparsers)
+    _build_status_parser(subparsers)
+    _build_validate_parser(subparsers)
+    _build_adapters_parser(subparsers)
+    _build_execute_parser(subparsers)
+    _build_harness_parser(subparsers)
+    _build_blueprint_parser(subparsers)
+    _build_cicd_parser(subparsers)
+    _build_propose_parser(subparsers)
+    _build_scaffold_parser(subparsers)
+    _build_retrospective_parser(subparsers)
+    _build_spec_parser(subparsers)
+    _build_drift_parser(subparsers)
+    _build_audit_parser(subparsers)
+    _build_release_parser(subparsers)
+    _build_benchmark_parser(subparsers)
+    _build_impact_parser(subparsers)
 
     return parser
 
