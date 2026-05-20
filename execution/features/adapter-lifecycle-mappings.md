@@ -14,17 +14,17 @@ Why: Adapter lifecycle definitions must be available locally before future sync 
 
 ## Tasks
 
-- [x] Add stable adapter lifecycle mapping records for OpenSpec, Spec Kit, and Superpowers.
-- [x] Cover `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` for every adapter.
-- [x] Include mapping ids, native meanings, upstream phases, upstream artifacts, agent focus, and local commands.
-- [x] Read `.specspine/fusion.yaml` only to determine local enabled state and adapter config paths.
-- [x] Report adapter config existence without reading upstream configs or invoking probes.
-- [x] Add JSON and text renderers for lifecycle reports.
-- [x] Wire `specspine adapters lifecycle [path] [--json]` into the CLI.
-- [x] Keep disabled or missing adapter configs as report data rather than command failures.
-- [x] Add unit tests for JSON shape, fused workspaces, plain workspaces, missing configs, text output, and external-tool isolation.
-- [x] Update README, architecture docs, upstream policy, product spec, execution plan, review notes, and agent guidance.
-- [x] Add this dogfood bundle and verify readiness and validation.
+- [x] AC001 Add stable adapter lifecycle mapping records for OpenSpec, Spec Kit, and Superpowers.
+- [x] AC002 Cover `proposed`, `planned`, `in-progress`, `implemented`, `validated`, and `archived` for every adapter.
+- [x] AC003 Include mapping ids, native meanings, upstream phases, upstream artifacts, agent focus, and local commands.
+- [x] AC004 Read `.specspine/fusion.yaml` only to determine local enabled state and adapter config paths.
+- [x] AC005 Report adapter config existence without reading upstream configs or invoking probes.
+- [x] AC006 Add JSON and text renderers for lifecycle reports.
+- [x] AC007 Wire `specspine adapters lifecycle [path] [--json]` into the CLI.
+- [x] AC008 Keep disabled or missing adapter configs as report data rather than command failures.
+- [x] AC009 Add unit tests for JSON shape, fused workspaces, plain workspaces, missing configs, text output, and external-tool isolation.
+- [x] AC010 Update README, architecture docs, upstream policy, product spec, execution plan, review notes, and agent guidance.
+- [x] AC010 Add this dogfood bundle and verify readiness and validation.
 
 ## Dependencies
 

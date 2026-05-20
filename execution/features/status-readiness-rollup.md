@@ -17,18 +17,18 @@ Why: Workspace status should optionally expose feature readiness counts and bloc
 
 ## Tasks
 
-- [x] Add parser support for `--readiness-summary`.
-- [x] Add parser support for `--readiness-require-coverage` and `--readiness-policy`.
-- [x] Reject readiness-only options without `--readiness-summary` with return code `2`.
-- [x] Build top-level `readiness_summary` only when requested.
-- [x] Reuse `build_feature_ready_report` for every feature readiness decision.
-- [x] Include workspace totals for features, ready/not-ready, blocking checks, gaps, and coverage-required records.
-- [x] Include compact per-feature records with status, readiness, coverage, policy, blocker, gap, missing-file, action, and command fields.
-- [x] Make coverage-required mode require coverage for every feature.
-- [x] Make policy mode load `.specspine/policy.yaml` and report policy-selected coverage counts.
-- [x] Keep default `--feature-summaries` semantics unchanged.
-- [x] Add JSON, text, invalid-option, coverage, policy, and local-only tests.
-- [x] Update README, AGENTS, product, architecture, execution, quality, and docs architecture.
+- [x] AC001 Add parser support for `--readiness-summary`.
+- [x] AC002 Add parser support for `--readiness-require-coverage` and `--readiness-policy`.
+- [x] AC003 Reject readiness-only options without `--readiness-summary` with return code `2`.
+- [x] AC004 Build top-level `readiness_summary` only when requested.
+- [x] AC005 Reuse `build_feature_ready_report` for every feature readiness decision.
+- [x] AC006 Include workspace totals for features, ready/not-ready, blocking checks, gaps, and coverage-required records.
+- [x] AC007 Include compact per-feature records with status, readiness, coverage, policy, blocker, gap, missing-file, action, and command fields.
+- [x] AC008 Make coverage-required mode require coverage for every feature.
+- [x] AC009 Make policy mode load `.specspine/policy.yaml` and report policy-selected coverage counts.
+- [x] AC010 Keep default `--feature-summaries` semantics unchanged.
+- [x] AC011 Add JSON, text, invalid-option, coverage, policy, and local-only tests.
+- [x] AC011 Update README, AGENTS, product, architecture, execution, quality, and docs architecture.
 
 ## Dependencies
 

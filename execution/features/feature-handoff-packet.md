@@ -13,12 +13,14 @@ Why: Agents need one local feature packet that combines status, tasks, trace, re
 
 ## Tasks
 
-- [x] Add handoff report construction and renderers in `src/specspine/features.py`.
-- [x] Register `feature handoff` in `src/specspine/cli.py` with JSON, output, force, and exit-code behavior.
-- [x] Generate deterministic next actions from native files, trace gaps, open tasks, blocking checks, and readiness state.
-- [x] Update README, architecture, product, execution, quality, current `AGENTS.md`, and the `src/specspine/agents.py` template.
-- [x] Add tests for JSON/text, partial bundles, missing bundles, output overwrite and force behavior, JSON plus output, next actions, agent template guidance, and dogfood readiness.
-- [x] Run unit tests, fused feature validation, handoff JSON, readiness JSON, and token-prefix scan.
+- [x] AC001 Add handoff report construction and renderers in `src/specspine/features.py`.
+- [x] AC002 Register `feature handoff` in `src/specspine/cli.py` with JSON, output, force, and exit-code behavior.
+- [x] AC003 Generate deterministic next actions from native files, trace gaps, open tasks, blocking checks, and readiness state.
+- [x] AC004 Update README, architecture, product, execution, quality, current `AGENTS.md`, and the `src/specspine/agents.py` template.
+- [x] AC005 Add tests for JSON/text, partial bundles, missing bundles, output overwrite and force behavior, JSON plus output, next actions, agent template guidance, and dogfood readiness.
+- [x] AC006 Run unit tests, fused feature validation, handoff JSON, readiness JSON, and token-prefix scan.
+- [x] AC007 Handle missing bundles returning 1, invalid slugs returning 2, and partial bundles returning 0 with missing files and gaps.
+- [x] AC008 Update documentation, agent guidance, tests, and this dogfood bundle for the handoff workflow.
 
 ## Dependencies
 

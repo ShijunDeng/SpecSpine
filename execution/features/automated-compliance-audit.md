@@ -17,22 +17,22 @@ Why: Generate compliance-ready audit reports from all spec-driven development ev
 
 ## Tasks
 
-- [x] T001: Implement AuditEvent dataclass with event_type, timestamp, feature_id, description, evidence_hash, actor fields.
-- [x] T002: Implement AuditTrail dataclass with feature_id, events, lifecycle_transitions, validation_evidence, drift_history.
-- [x] T003: Implement ComplianceReport dataclass with root, audit_date, scope, features, compliance_summary, evidence_hashes, recommendations, safety_notes.
-- [x] T004: Implement utility functions _now_iso and _hash_content for timestamping and SHA-256 hashing.
-- [x] T005: Implement _feature_peer_content to read spec/execution/quality file contents for a given slug.
-- [x] T006: Implement _collect_audit_events using git log with format=%H|%ai|%an|%s for each feature's peer files.
-- [x] T007: Implement event type classification based on commit message keywords (lifecycle, validation, test, consistency).
-- [x] T008: Implement evidence hash computation using git show to retrieve file contents at each commit.
-- [x] T009: Implement _build_lifecycle_transitions by parsing Status: field from spec file history with diff-filter=ACDMR.
-- [x] T010: Implement _gather_validation_evidence with AC count, task count, QC count, coverage link counting.
-- [x] T011: Implement AC coverage validation comparing spec ACs against quality file coverage links.
-- [x] T012: Implement _build_drift_history from git log with severity classification (high/low/medium).
-- [x] T013: Implement _generate_compliance_summary with pass_fail_per_dimension, gaps, compliance_rate.
-- [x] T014: Implement build_compliance_report as main entry point iterating all slugs or single feature_filter.
-- [x] T015: Implement render_compliance_json and render_compliance_text for output formatting.
-- [x] T016: Add safety_notes confirming only local files and git log/show are accessed.
+- [x] AC001 T001: Implement AuditEvent dataclass with event_type, timestamp, feature_id, description, evidence_hash, actor fields.
+- [x] AC002 T002: Implement AuditTrail dataclass with feature_id, events, lifecycle_transitions, validation_evidence, drift_history.
+- [x] AC003 T003: Implement ComplianceReport dataclass with root, audit_date, scope, features, compliance_summary, evidence_hashes, recommendations, safety_notes.
+- [x] AC004 T004: Implement utility functions _now_iso and _hash_content for timestamping and SHA-256 hashing.
+- [x] AC005 T005: Implement _feature_peer_content to read spec/execution/quality file contents for a given slug.
+- [x] AC006 T006: Implement _collect_audit_events using git log with format=%H|%ai|%an|%s for each feature's peer files.
+- [x] AC007 T007: Implement event type classification based on commit message keywords (lifecycle, validation, test, consistency).
+- [x] AC008 T008: Implement evidence hash computation using git show to retrieve file contents at each commit.
+- [x] AC009 T009: Implement _build_lifecycle_transitions by parsing Status: field from spec file history with diff-filter=ACDMR.
+- [x] AC010 T010: Implement _gather_validation_evidence with AC count, task count, QC count, coverage link counting.
+- [x] AC010 T011: Implement AC coverage validation comparing spec ACs against quality file coverage links.
+- [x] AC010 T012: Implement _build_drift_history from git log with severity classification (high/low/medium).
+- [x] AC010 T013: Implement _generate_compliance_summary with pass_fail_per_dimension, gaps, compliance_rate.
+- [x] AC010 T014: Implement build_compliance_report as main entry point iterating all slugs or single feature_filter.
+- [x] AC010 T015: Implement render_compliance_json and render_compliance_text for output formatting.
+- [x] AC010 T016: Add safety_notes confirming only local files and git log/show are accessed.
 
 ## Dependencies
 

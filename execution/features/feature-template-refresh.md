@@ -15,13 +15,14 @@ Why: New feature bundles should start with the same spec -> execution -> quality
 
 ## Tasks
 
-- [x] Update `src/specspine/features.py::build_feature_files` with focused spec sections for edge cases, constraints, and traceability notes.
-- [x] Update the generated execution template with an Agent Handoff section listing local handoff, tasks, trace, tests, ready, PR, and validation commands.
-- [x] Update the generated quality template with unchecked acceptance, test coverage, docs or PR draft, ready, validation, and release-readiness gates.
-- [x] Keep `feature new` CLI arguments and overwrite/force behavior unchanged.
-- [x] Update README, docs, specs, execution notes, quality review notes, root `AGENTS.md`, and `src/specspine/agents.py`.
-- [x] Add or update unit tests for the refreshed template workflow.
-- [x] Add validated dogfood peer files for `feature-template-refresh`.
+- [x] AC001 Update `src/specspine/features.py::build_feature_files` with focused spec sections for edge cases, constraints, and traceability notes.
+- [x] AC002 Update the generated execution template with an Agent Handoff section listing local handoff, tasks, trace, tests, ready, PR, and validation commands.
+- [x] AC003 Update the generated quality template with unchecked acceptance, test coverage, docs or PR draft, ready, validation, and release-readiness gates.
+- [x] AC004 Keep `feature new` CLI arguments and overwrite/force behavior unchanged.
+- [x] AC005 Update README, docs, specs, execution notes, quality review notes, root `AGENTS.md`, and `src/specspine/agents.py`.
+- [x] AC006 Add or update unit tests for the refreshed template workflow.
+- [x] AC007 Add validated dogfood peer files for `feature-template-refresh`.
+- [x] AC008 Validate this dogfood feature bundle and confirm it passes the readiness gate.
 
 ## Dependencies
 

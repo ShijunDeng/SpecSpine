@@ -17,14 +17,14 @@ Why: Feature bundles need to advance beyond proposal state while staying file-na
 
 ## Tasks
 
-- [x] Implement allowed status validation.
-- [x] Implement status report JSON fields for feature bundles.
-- [x] Implement status updates for existing peer files.
-- [x] Preserve partial bundle behavior and clear all-missing failure.
-- [x] Add CLI tests for query, set, invalid input, and partial bundles.
-- [x] Add validation tests for allowed, invalid, and mixed statuses.
-- [x] Add dogfood artifact coverage for the repository bundle.
-- [x] Update README, architecture docs, execution plan, tasks, and review notes.
+- [x] AC001 Implement allowed status validation.
+- [x] AC002 Implement status report JSON fields for feature bundles.
+- [x] AC003 Implement status updates for existing peer files.
+- [x] AC004 Preserve partial bundle behavior and clear all-missing failure.
+- [x] AC005 Add CLI tests for query, set, invalid input, and partial bundles.
+- [x] AC006 Add validation tests for allowed, invalid, and mixed statuses.
+- [x] AC007 Add dogfood artifact coverage for the repository bundle.
+- [x] AC007 Update README, architecture docs, execution plan, tasks, and review notes.
 
 ## Dependencies
 

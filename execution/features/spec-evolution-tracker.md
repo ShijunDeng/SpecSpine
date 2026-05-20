@@ -17,26 +17,26 @@ Why: Track spec changes over time, compute semantic diffs between versions, and 
 
 ## Tasks
 
-- [x] T001: Implement DiffFileHunk and DiffResult dataclasses with summary property and as_dict methods.
-- [x] T002: Implement ClassifiedChange and ClassificationResult dataclasses with summary property.
-- [x] T003: Implement ImpactEntry and ImpactResult dataclasses with summary property.
-- [x] T004: Implement RemediationAction and EvolutionEntry dataclasses with as_dict methods.
-- [x] T005: Implement GitDiffError and InvalidGitBaseError exception classes.
-- [x] T006: Implement _run_git utility with 30-second subprocess timeout.
-- [x] T007: Implement _parse_diff_hunks splitting diff output on @@ markers.
-- [x] T008: Implement _count_lines_in_hunks counting added (+) and removed (-) lines excluding +++/--- headers.
-- [x] T009: Implement get_git_diff computing per-file diff results with optional base reference and unstaged mode.
-- [x] T010: Implement _extract_ac_ids and _extract_task_ids using regex patterns.
-- [x] T011: Implement _extract_feature_refs using DEPENDENCY_PATTERNS and FEATURE_ID_RE.
-- [x] T012: Implement _build_versioned_content loading current and git-based file content for spec/execution/quality.
-- [x] T013: Implement classify_changes comparing before/after versions for AC/task additions, removals, and modifications.
-- [x] T014: Implement metadata change detection comparing Priority, Owner, Milestone, Target Release, Project, Effort, Status fields.
-- [x] T015: Implement _find_downstream_references scanning other features' traces, test reports, and file content.
-- [x] T016: Implement resolve_impact classifying impacts as breaking/warning/info based on change type and downstream references.
-- [x] T017: Implement calculate_risk_level returning risk string based on change type and impact severity.
-- [x] T018: Implement generate_remediation_plan producing priority-sorted RemediationAction list for non-info impacts.
-- [x] T019: Implement build_evolution_timeline from git log with diff stat parsing and category classification.
-- [x] T020: Implement render_diff_json/text and render_evolution_json/text for output formatting.
+- [x] AC001 T001: Implement DiffFileHunk and DiffResult dataclasses with summary property and as_dict methods.
+- [x] AC002 T002: Implement ClassifiedChange and ClassificationResult dataclasses with summary property.
+- [x] AC003 T003: Implement ImpactEntry and ImpactResult dataclasses with summary property.
+- [x] AC004 T004: Implement RemediationAction and EvolutionEntry dataclasses with as_dict methods.
+- [x] AC005 T005: Implement GitDiffError and InvalidGitBaseError exception classes.
+- [x] AC006 T006: Implement _run_git utility with 30-second subprocess timeout.
+- [x] AC007 T007: Implement _parse_diff_hunks splitting diff output on @@ markers.
+- [x] AC008 T008: Implement _count_lines_in_hunks counting added (+) and removed (-) lines excluding +++/--- headers.
+- [x] AC009 T009: Implement get_git_diff computing per-file diff results with optional base reference and unstaged mode.
+- [x] AC010 T010: Implement _extract_ac_ids and _extract_task_ids using regex patterns.
+- [x] AC010 T011: Implement _extract_feature_refs using DEPENDENCY_PATTERNS and FEATURE_ID_RE.
+- [x] AC010 T012: Implement _build_versioned_content loading current and git-based file content for spec/execution/quality.
+- [x] AC010 T013: Implement classify_changes comparing before/after versions for AC/task additions, removals, and modifications.
+- [x] AC010 T014: Implement metadata change detection comparing Priority, Owner, Milestone, Target Release, Project, Effort, Status fields.
+- [x] AC010 T015: Implement _find_downstream_references scanning other features' traces, test reports, and file content.
+- [x] AC010 T016: Implement resolve_impact classifying impacts as breaking/warning/info based on change type and downstream references.
+- [x] AC010 T017: Implement calculate_risk_level returning risk string based on change type and impact severity.
+- [x] AC010 T018: Implement generate_remediation_plan producing priority-sorted RemediationAction list for non-info impacts.
+- [x] AC010 T019: Implement build_evolution_timeline from git log with diff stat parsing and category classification.
+- [x] AC010 T020: Implement render_diff_json/text and render_evolution_json/text for output formatting.
 
 ## Dependencies
 

@@ -13,16 +13,17 @@ Why: Provide a reviewable local GitHub CLI synchronization plan without executin
 
 ## Tasks
 
-- [x] Add sync-plan dataclasses and stable command records in `src/specspine/features.py`.
-- [x] Reuse `build_issue_draft`, `build_feature_task_issues_report`, `build_pull_request_draft`, `read_feature_metadata`, and readiness/handoff helpers.
-- [x] Generate feature issue, task issue, and draft PR argv arrays with deterministic labels.
-- [x] Mark every remote-creating command as requiring token/network and not safe to auto-run.
-- [x] Render reviewable text with shell-quoted command lines through the standard library.
-- [x] Register `specspine feature sync-plan` in `src/specspine/cli.py`.
-- [x] Preserve exporter output behavior for text, JSON, `--output`, and `--force`.
-- [x] Cover complete, partial, missing, invalid, output, safety, and dogfood behavior in tests.
-- [x] Update README, architecture docs, product specs, execution plan, review notes, and agent guidance.
-- [x] Verify validation, readiness, unit tests, diff whitespace, and token-prefix scan.
+- [x] AC001 Add sync-plan dataclasses and stable command records in `src/specspine/features.py`.
+- [x] AC002 Reuse `build_issue_draft`, `build_feature_task_issues_report`, `build_pull_request_draft`, `read_feature_metadata`, and readiness/handoff helpers.
+- [x] AC003 Generate feature issue, task issue, and draft PR argv arrays with deterministic labels.
+- [x] AC004 Mark every remote-creating command as requiring token/network and not safe to auto-run.
+- [x] AC005 Render reviewable text with shell-quoted command lines through the standard library.
+- [x] AC006 Register `specspine feature sync-plan` in `src/specspine/cli.py`.
+- [x] AC007 Preserve exporter output behavior for text, JSON, `--output`, and `--force`.
+- [x] AC008 Cover complete, partial, missing, invalid, output, safety, and dogfood behavior in tests.
+- [x] AC009 Update README, architecture docs, product specs, execution plan, review notes, and agent guidance.
+- [x] AC010 Verify validation, readiness, unit tests, diff whitespace, and token-prefix scan.
+- [x] AC011 Add tests proving no subprocess, gh, network, token read, or dependency is required.
 
 ## Dependencies
 

@@ -13,15 +13,15 @@ Why: Workspace status needs an optional repository-grounded feature progress vie
 
 ## Tasks
 
-- [x] Add `include_feature_summaries` support to workspace status construction.
-- [x] Build summaries from `list_feature_bundles` and `build_feature_handoff_report`.
-- [x] Add `--feature-summaries` to the `status` CLI.
-- [x] Render a compact text section only when summaries are present.
-- [x] Preserve `--validate` and `--adapters` behavior with the new flag.
-- [x] Handle invalid feature filenames with not-ready summary output.
-- [x] Update docs, specs, execution plan, quality review, AGENTS.md, and the AGENTS template.
-- [x] Add focused unit and dogfood artifact coverage.
-- [x] Run the required validation, status, readiness, unit, and token-prefix checks.
+- [x] AC001 Add `include_feature_summaries` support to workspace status construction.
+- [x] AC002 Build summaries from `list_feature_bundles` and `build_feature_handoff_report`.
+- [x] AC003 Add `--feature-summaries` to the `status` CLI.
+- [x] AC004 Render a compact text section only when summaries are present.
+- [x] AC005 Preserve `--validate` and `--adapters` behavior with the new flag.
+- [x] AC006 Handle invalid feature filenames with not-ready summary output.
+- [x] AC007 Update docs, specs, execution plan, quality review, AGENTS.md, and the AGENTS template.
+- [x] AC007 Add focused unit and dogfood artifact coverage.
+- [x] AC007 Run the required validation, status, readiness, unit, and token-prefix checks.
 
 ## Dependencies
 

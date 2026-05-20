@@ -15,13 +15,13 @@ Why: Release reviewers need an optional stricter readiness gate that turns expli
 
 ## Tasks
 
-- [x] Add `require_coverage` support to `build_feature_ready_report` while preserving default report compatibility.
-- [x] Add the `--require-coverage` CLI flag for `specspine feature ready`.
-- [x] Implement the `feature.test_coverage` readiness check from existing parsed coverage links.
-- [x] Include `coverage_required` in JSON only when the opt-in gate is active.
-- [x] Add tests for default compatibility, passing coverage, failing coverage, text output, JSON output, exit codes, partial bundles, and local-only safety.
-- [x] Update README, architecture, product, execution, review, and agent guidance.
-- [x] Validate this dogfood bundle with default readiness, coverage-required readiness, and fused feature validation.
+- [x] AC001 Add `require_coverage` support to `build_feature_ready_report` while preserving default report compatibility.
+- [x] AC002 Add the `--require-coverage` CLI flag for `specspine feature ready`.
+- [x] AC003 Implement the `feature.test_coverage` readiness check from existing parsed coverage links.
+- [x] AC004 Include `coverage_required` in JSON only when the opt-in gate is active.
+- [x] AC005 Add tests for default compatibility, passing coverage, failing coverage, text output, JSON output, exit codes, partial bundles, and local-only safety.
+- [x] AC006 Update README, architecture, product, execution, review, and agent guidance.
+- [x] AC007 Validate this dogfood bundle with default readiness, coverage-required readiness, and fused feature validation.
 
 ## Dependencies
 

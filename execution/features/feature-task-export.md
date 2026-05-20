@@ -16,15 +16,15 @@ Why: Agents need a stable task list extracted from native feature execution file
 
 ## Tasks
 
-- [x] Add a task report model with stable JSON serialization.
-- [x] Parse `- [ ]`, `- [x]`, `* [ ]`, and `* [x]` items from `## Tasks`.
-- [x] Preserve source file and source line for every exported task.
-- [x] Render concise text output that an implementation agent can follow.
-- [x] Implement `--output`, overwrite protection, `--force`, and `--json --output`.
-- [x] Return empty task lists for no checklist items and partial bundles with missing execution files.
-- [x] Return non-zero when no native feature files exist for the slug.
-- [x] Add tests for parser details, CLI outputs, missing files, output files, and token-free behavior.
-- [x] Update README, architecture docs, agent guidance, execution plan, tasks, and review notes.
+- [x] AC001 Add a task report model with stable JSON serialization.
+- [x] AC002 Parse `- [ ]`, `- [x]`, `* [ ]`, and `* [x]` items from `## Tasks`.
+- [x] AC003 Preserve source file and source line for every exported task.
+- [x] AC004 Render concise text output that an implementation agent can follow.
+- [x] AC005 Implement `--output`, overwrite protection, `--force`, and `--json --output`.
+- [x] AC006 Return empty task lists for no checklist items and partial bundles with missing execution files.
+- [x] AC007 Return non-zero when no native feature files exist for the slug.
+- [x] AC007 Add tests for parser details, CLI outputs, missing files, output files, and token-free behavior.
+- [x] AC007 Update README, architecture docs, agent guidance, execution plan, tasks, and review notes.
 
 ## Dependencies
 

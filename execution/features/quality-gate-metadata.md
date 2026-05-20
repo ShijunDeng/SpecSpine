@@ -14,15 +14,15 @@ Why: `specspine gates --json` should expose auditable gate metadata without chan
 
 ## Tasks
 
-- [x] Implement case-insensitive parsing for severity, owner, and CI labels.
-- [x] Add stable default metadata values for unlabeled gates.
-- [x] Strip recognized labels from exported gate text while preserving raw text.
-- [x] Add non-failing warnings for unsupported severity labels.
-- [x] Extend quality gate summary counts for severity distribution, owners, and CI checks.
-- [x] Update compact text output to show metadata.
-- [x] Add unit tests for defaults, parsing, warnings, summary counts, text output, missing source, and dogfood artifacts.
-- [x] Update README, product, architecture, execution, quality, checklist, and agent guidance.
-- [x] Run unit tests, repository validation, gates JSON export, and coverage-required feature readiness.
+- [x] AC001 Implement case-insensitive parsing for severity, owner, and CI labels.
+- [x] AC002 Add stable default metadata values for unlabeled gates.
+- [x] AC003 Strip recognized labels from exported gate text while preserving raw text.
+- [x] AC004 Add non-failing warnings for unsupported severity labels.
+- [x] AC005 Extend quality gate summary counts for severity distribution, owners, and CI checks.
+- [x] AC006 Update compact text output to show metadata.
+- [x] AC007 Add unit tests for defaults, parsing, warnings, summary counts, text output, missing source, and dogfood artifacts.
+- [x] AC008 Update README, product, architecture, execution, quality, checklist, and agent guidance.
+- [x] AC008 Run unit tests, repository validation, gates JSON export, and coverage-required feature readiness.
 
 ## Dependencies
 

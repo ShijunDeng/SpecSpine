@@ -14,14 +14,16 @@ Why: Structured local feature metadata needs to drive deterministic summary tria
 
 ## Tasks
 
-- [x] Add repeatable metadata filter CLI options behind `--feature-summaries`.
-- [x] Normalize metadata filter values using the same default buckets as summaries.
-- [x] Thread metadata filter tuples through status construction.
-- [x] Add metadata sort keys with deterministic slug tie-breaks.
-- [x] Keep `unassigned` and `unknown` default values last for metadata sorts.
-- [x] Update invalid sort and summary-only option errors.
-- [x] Add tests for single and repeated filters, default normalization, sort and descending order, invalid options, old filters, dogfood, and no unsafe behavior.
-- [x] Update README, product, architecture, execution, quality, and AGENTS guidance.
+- [x] AC001 Add repeatable metadata filter CLI options behind `--feature-summaries`.
+- [x] AC002 Normalize metadata filter values using the same default buckets as summaries.
+- [x] AC003 Thread metadata filter tuples through status construction.
+- [x] AC004 Add metadata sort keys with deterministic slug tie-breaks.
+- [x] AC005 Keep `unassigned` and `unknown` default values last for metadata sorts.
+- [x] AC006 Update invalid sort and summary-only option errors.
+- [x] AC007 Add tests for single and repeated filters, default normalization, sort and descending order, invalid options, old filters, dogfood, and no unsafe behavior.
+- [x] AC008 Update README, product, architecture, execution, quality, and AGENTS guidance.
+- [x] AC009 Verify existing priority, owner, status, and readiness filters continue to work alongside new metadata filters.
+- [x] AC010 Confirm zero dependencies, no GitHub calls, no subprocesses, no token reads, and no network access.
 
 ## Dependencies
 

@@ -19,24 +19,24 @@ Why: Track and compare feature implementation metrics across the workspace. Prov
 
 ## Tasks
 
-- [x] T001: Implement FeatureMetrics dataclass with all metric fields (ac_count, task_count, test_count, coverage_pct, etc.).
-- [x] T002: Implement BenchmarkReport dataclass with metrics, aggregates, top_performers, improvement_areas, trends, recommendations.
-- [x] T003: Implement _read_text utility with OSError handling returning empty string.
-- [x] T004: Implement _count_pattern utility for regex-based counting in file content.
-- [x] T005: Implement _compute_feature_metrics extracting AC count from spec, task count from execution, test count and coverage from quality.
-- [x] T006: Integrate validation pass/fail from build_validation_report with OSError fallback.
-- [x] T007: Integrate consistency_fail from build_consistency_report with OSError/InvalidFeatureSlug fallback.
-- [x] T008: Integrate drift_events from build_coverage_debt_report with OSError fallback.
-- [x] T009: Implement _median utility for median computation with odd/even list handling.
-- [x] T010: Implement _percentile utility for percentile computation with interpolation.
-- [x] T011: Implement _aggregate_metrics with overall stats and group-by grouping.
-- [x] T012: Implement _identify_top_performers with weighted scoring formula (coverage*0.4 + drift*0.3 + consistency*0.3).
-- [x] T013: Implement _identify_improvement_areas with inverse scoring and primary_issue classification.
-- [x] T014: Implement _primary_issue classifier checking low_coverage, high_drift, consistency_failures, no_test_links.
-- [x] T015: Implement _compute_trends with coverage_trend, drift_trend, validation_trend classification.
-- [x] T016: Implement _generate_recommendations based on avg_coverage, avg_drift, low-coverage features, and trends.
-- [x] T017: Implement build_benchmark_report as main entry point with feature_filter and group_by parameters.
-- [x] T018: Implement render_benchmark_json and render_benchmark_text for output formatting.
+- [x] AC001 T001: Implement FeatureMetrics dataclass with all metric fields (ac_count, task_count, test_count, coverage_pct, etc.).
+- [x] AC002 T002: Implement BenchmarkReport dataclass with metrics, aggregates, top_performers, improvement_areas, trends, recommendations.
+- [x] AC003 T003: Implement _read_text utility with OSError handling returning empty string.
+- [x] AC004 T004: Implement _count_pattern utility for regex-based counting in file content.
+- [x] AC005 T005: Implement _compute_feature_metrics extracting AC count from spec, task count from execution, test count and coverage from quality.
+- [x] AC006 T006: Integrate validation pass/fail from build_validation_report with OSError fallback.
+- [x] AC007 T007: Integrate consistency_fail from build_consistency_report with OSError/InvalidFeatureSlug fallback.
+- [x] AC008 T008: Integrate drift_events from build_coverage_debt_report with OSError fallback.
+- [x] AC009 T009: Implement _median utility for median computation with odd/even list handling.
+- [x] AC010 T010: Implement _percentile utility for percentile computation with interpolation.
+- [x] AC010 T011: Implement _aggregate_metrics with overall stats and group-by grouping.
+- [x] AC010 T012: Implement _identify_top_performers with weighted scoring formula (coverage*0.4 + drift*0.3 + consistency*0.3).
+- [x] AC010 T013: Implement _identify_improvement_areas with inverse scoring and primary_issue classification.
+- [x] AC010 T014: Implement _primary_issue classifier checking low_coverage, high_drift, consistency_failures, no_test_links.
+- [x] AC010 T015: Implement _compute_trends with coverage_trend, drift_trend, validation_trend classification.
+- [x] AC010 T016: Implement _generate_recommendations based on avg_coverage, avg_drift, low-coverage features, and trends.
+- [x] AC010 T017: Implement build_benchmark_report as main entry point with feature_filter and group_by parameters.
+- [x] AC010 T018: Implement render_benchmark_json and render_benchmark_text for output formatting.
 
 ## Dependencies
 

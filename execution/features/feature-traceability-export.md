@@ -13,12 +13,12 @@ Why: Agents need a deterministic local bundle trace that connects intent, implem
 
 ## Tasks
 
-- [x] Add trace report data structures, parsers, JSON rendering, and text rendering in `src/specspine/features.py`.
-- [x] Add the `feature trace` subcommand in `src/specspine/cli.py` with overwrite protection matching existing feature exporters.
-- [x] Add unit tests for parsing, JSON and text output, partial bundles, missing bundles, output overwrite protection, and token-free CLI behavior.
-- [x] Add this repository's `feature-traceability-export` dogfood bundle with validated lifecycle status.
-- [x] Update user-facing command documentation across README, architecture, product, execution, and quality artifacts.
-- [x] Run the unit suite, fused feature validation, and token-pattern scan.
+- [x] AC001 Add trace report data structures, parsers, JSON rendering, and text rendering in `src/specspine/features.py`.
+- [x] AC002 Add the `feature trace` subcommand in `src/specspine/cli.py` with overwrite protection matching existing feature exporters.
+- [x] AC003 Add unit tests for parsing, JSON and text output, partial bundles, missing bundles, output overwrite protection, and token-free CLI behavior.
+- [x] AC004 Add this repository's `feature-traceability-export` dogfood bundle with validated lifecycle status.
+- [x] AC005 Update user-facing command documentation across README, architecture, product, execution, and quality artifacts.
+- [x] AC006 Run the unit suite, fused feature validation, and token-pattern scan.
 
 ## Dependencies
 

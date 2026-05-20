@@ -14,15 +14,15 @@ Why: Provide a local, deterministic scanner that catches generated artifacts and
 
 ## Tasks
 
-- [x] TASK001: AC001 AC002 - Add `src/specspine/hygiene.py` with stable dataclasses, report builder, JSON renderer, and text renderer.
-- [x] TASK002: AC001 AC006 - Wire `specspine hygiene scan` in `src/specspine/cli.py` with `--json`, `--changed`, `--strict`, default exit `0`, and strict high-risk exit `1`.
-- [x] TASK003: AC002 AC003 AC004 - Detect generated artifacts, denylisted paths, and denylisted content cues with deterministic finding metadata.
-- [x] TASK004: AC005 - Normalize and de-duplicate repeated changed paths.
-- [x] TASK005: AC007 - Preserve the read-only local boundary and keep recommended commands advisory.
-- [x] TASK006: AC008 - Update `src/specspine/features.py`, `src/specspine/proposer.py`, `src/specspine/agents.py`, root `AGENTS.md`, and matching template tests.
-- [x] TASK007: AC009 - Update README, architecture, product, execution, and quality docs with command syntax, fields, strict mode, and safety notes.
-- [x] TASK008: AC010 - Replace the dogfood bundle placeholders with validated, checked traceability and coverage evidence.
-- [x] TASK009: AC001 AC010 - Run `tests/test_hygiene.py`, template tests, dogfood tests, full unittest discovery, validation, and forbidden-content scans.
+- [x] AC001 TASK001: AC001 AC002 - Add `src/specspine/hygiene.py` with stable dataclasses, report builder, JSON renderer, and text renderer.
+- [x] AC002 TASK002: AC001 AC006 - Wire `specspine hygiene scan` in `src/specspine/cli.py` with `--json`, `--changed`, `--strict`, default exit `0`, and strict high-risk exit `1`.
+- [x] AC003 TASK003: AC002 AC003 AC004 - Detect generated artifacts, denylisted paths, and denylisted content cues with deterministic finding metadata.
+- [x] AC004 TASK004: AC005 - Normalize and de-duplicate repeated changed paths.
+- [x] AC005 TASK005: AC007 - Preserve the read-only local boundary and keep recommended commands advisory.
+- [x] AC006 TASK006: AC008 - Update `src/specspine/features.py`, `src/specspine/proposer.py`, `src/specspine/agents.py`, root `AGENTS.md`, and matching template tests.
+- [x] AC007 TASK007: AC009 - Update README, architecture, product, execution, and quality docs with command syntax, fields, strict mode, and safety notes.
+- [x] AC008 TASK008: AC010 - Replace the dogfood bundle placeholders with validated, checked traceability and coverage evidence.
+- [x] AC009 TASK009: AC001 AC010 - Run `tests/test_hygiene.py`, template tests, dogfood tests, full unittest discovery, validation, and forbidden-content scans.
 
 ## Dependencies
 

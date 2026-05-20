@@ -15,17 +15,17 @@ Why: SpecSpine should materialize adapter handoff context into local review arti
 
 ## Tasks
 
-- [x] Add artifact dataclasses and overwrite error for adapter handoff exports.
-- [x] Add manifest generation with artifact paths, feature evidence, summary, gaps, blockers, and safety flags.
-- [x] Add focused Markdown output for `openspec`, `speckit`, and `superpowers`.
-- [x] Write `manifest.json`, `combined.md`, and `adapters/*.md` from the existing report object only.
-- [x] Add CLI `--output-dir` and keep `--json` stdout parseable.
-- [x] Allow `--output` and `--output-dir` to work together.
-- [x] Refuse overwrite of managed files unless `--force` is supplied.
-- [x] Preserve unknown files in artifact directories.
-- [x] Add tests for artifact content, manifest shape, overwrite behavior, JSON stdout, output compatibility, unchanged error behavior, and offline boundaries.
-- [x] Update README, upstream docs, architecture docs, product and architecture specs, execution docs, quality review, and AGENTS guidance.
-- [x] Verify dogfood readiness with default and coverage-required gates.
+- [x] AC001 Add artifact dataclasses and overwrite error for adapter handoff exports.
+- [x] AC002 Add manifest generation with artifact paths, feature evidence, summary, gaps, blockers, and safety flags.
+- [x] AC003 Add focused Markdown output for `openspec`, `speckit`, and `superpowers`.
+- [x] AC004 Write `manifest.json`, `combined.md`, and `adapters/*.md` from the existing report object only.
+- [x] AC005 Add CLI `--output-dir` and keep `--json` stdout parseable.
+- [x] AC006 Allow `--output` and `--output-dir` to work together.
+- [x] AC007 Refuse overwrite of managed files unless `--force` is supplied.
+- [x] AC008 Preserve unknown files in artifact directories.
+- [x] AC009 Add tests for artifact content, manifest shape, overwrite behavior, JSON stdout, output compatibility, unchanged error behavior, and offline boundaries.
+- [x] AC010 Update README, upstream docs, architecture docs, product and architecture specs, execution docs, quality review, and AGENTS guidance.
+- [x] AC010 Verify dogfood readiness with default and coverage-required gates.
 
 ## Dependencies
 

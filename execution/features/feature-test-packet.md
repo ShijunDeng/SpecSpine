@@ -14,12 +14,15 @@ Why: QA and testing agents need a local feature packet focused on acceptance tes
 
 ## Tasks
 
-- [x] Add test packet report construction and renderers in `src/specspine/features.py`.
-- [x] Register `feature tests` in `src/specspine/cli.py` with JSON, output, force, and exit-code behavior.
-- [x] Generate deterministic pending test cases from acceptance criteria without inferring implementation files or generating code.
-- [x] Update README, architecture, product, execution, quality, current `AGENTS.md`, and the `src/specspine/agents.py` template.
-- [x] Add tests for JSON/text output, output overwrite and force behavior, partial bundles, missing bundles, invalid slugs, offline/token-free behavior, and dogfood readiness.
-- [x] Add the `feature-test-packet` dogfood peer files with complete local quality evidence.
+- [x] AC001 Add test packet report construction and renderers in `src/specspine/features.py`.
+- [x] AC002 Register `feature tests` in `src/specspine/cli.py` with JSON, output, force, and exit-code behavior.
+- [x] AC003 Generate deterministic pending test cases from acceptance criteria without inferring implementation files or generating code.
+- [x] AC004 Update README, architecture, product, execution, quality, current `AGENTS.md`, and the `src/specspine/agents.py` template.
+- [x] AC005 Add tests for JSON/text output, output overwrite and force behavior, partial bundles, missing bundles, invalid slugs, offline/token-free behavior, and dogfood readiness.
+- [x] AC006 Add the `feature-test-packet` dogfood peer files with complete local quality evidence.
+- [x] AC007 Implement `--output` that writes the text packet, refuses overwrite by default, honors `--force`, and keeps stdout JSON with `--json`.
+- [x] AC008 Handle partial bundles returning 0 with missing files and gaps, missing bundles returning non-zero, and invalid slugs returning 2.
+- [x] AC009 Update documentation, agent guidance, tests, and dogfood artifacts for the testing packet workflow.
 
 ## Dependencies
 

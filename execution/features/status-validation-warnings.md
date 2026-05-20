@@ -9,14 +9,14 @@ The implementation adds local warning checks for generated base workspace Markdo
 
 ## Tasks
 
-- [x] Add deterministic scaffold placeholder phrase checks for base Markdown workspace files.
-- [x] Emit stable `workspace.placeholder:<path>` warning checks with warning severity.
-- [x] Preserve validation `ok` and exit code behavior so warning-only reports pass.
-- [x] Add `status --validation-warnings` with a code `2` error when used without `--validate`.
-- [x] Keep default `status --json --validate` compact by omitting warning details.
-- [x] Add JSON and text status warning detail output when the flag is present.
-- [x] Update README, architecture docs, product spec, execution plan, tasks, review notes, agent guidance, and generated agent template text.
-- [x] Add unit tests for validation warnings, status JSON shape, status text output, flag misuse, and dogfood readiness.
+- [x] AC001 Add deterministic scaffold placeholder phrase checks for base Markdown workspace files.
+- [x] AC002 Emit stable `workspace.placeholder:<path>` warning checks with warning severity.
+- [x] AC003 Preserve validation `ok` and exit code behavior so warning-only reports pass.
+- [x] AC004 Add `status --validation-warnings` with a code `2` error when used without `--validate`.
+- [x] AC005 Keep default `status --json --validate` compact by omitting warning details.
+- [x] AC006 Add JSON and text status warning detail output when the flag is present.
+- [x] AC007 Update README, architecture docs, product spec, execution plan, tasks, review notes, agent guidance, and generated agent template text.
+- [x] AC007 Add unit tests for validation warnings, status JSON shape, status text output, flag misuse, and dogfood readiness.
 
 ## Validation Commands
 

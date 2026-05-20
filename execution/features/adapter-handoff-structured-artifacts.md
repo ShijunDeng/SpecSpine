@@ -15,15 +15,16 @@ Why: Adapter handoff directories should be directly consumable by agents and loc
 
 ## Tasks
 
-- [x] Add a focused per-adapter JSON payload renderer with feature evidence, safety flags, summary, recommended commands, and the adapter entry.
-- [x] Write `combined.json` and `adapters/*.json` alongside the existing Markdown artifacts.
-- [x] Add `combined_json`, `adapter_json`, `checksum_algorithm`, and `artifact_checksums` to the manifest while keeping existing manifest keys.
-- [x] Compute SHA-256 digests from content bytes before writing the manifest and leave `manifest.json` out of the checksum map.
-- [x] Add the new JSON files to command-managed overwrite protection.
-- [x] Add artifact paths and checksum metadata to `--json --output-dir` stdout.
-- [x] Extend adapter handoff tests for JSON file content, manifest paths and checksums, overwrite behavior, JSON stdout metadata, and offline safety.
-- [x] Update docs and close the earlier structured JSON/content hash open question.
-- [x] Validate this dogfood bundle with default and coverage-required readiness gates.
+- [x] AC001 Add a focused per-adapter JSON payload renderer with feature evidence, safety flags, summary, recommended commands, and the adapter entry.
+- [x] AC002 Write `combined.json` and `adapters/*.json` alongside the existing Markdown artifacts.
+- [x] AC003 Add `combined_json`, `adapter_json`, `checksum_algorithm`, and `artifact_checksums` to the manifest while keeping existing manifest keys.
+- [x] AC004 Compute SHA-256 digests from content bytes before writing the manifest and leave `manifest.json` out of the checksum map.
+- [x] AC005 Add the new JSON files to command-managed overwrite protection.
+- [x] AC006 Add artifact paths and checksum metadata to `--json --output-dir` stdout.
+- [x] AC007 Extend adapter handoff tests for JSON file content, manifest paths and checksums, overwrite behavior, JSON stdout metadata, and offline safety.
+- [x] AC008 Update docs and close the earlier structured JSON/content hash open question.
+- [x] AC009 Validate this dogfood bundle with default and coverage-required readiness gates.
+- [x] AC010 Update documentation, architecture notes, agent guidance, and dogfood artifacts for structured adapter handoff.
 
 ## Dependencies
 

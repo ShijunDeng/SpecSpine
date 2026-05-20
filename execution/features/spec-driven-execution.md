@@ -18,22 +18,22 @@ Why: Autonomous spec-to-implementation orchestration with outcomes-based grading
 
 ## Tasks
 
-- [x] T001: Implement ExecutionPlan dataclass with root, feature_id, feature_status, plan_steps, dependency_order, verification_commands, grading_rubric, summary, safety_notes.
-- [x] T002: Implement GradingRubric dataclass with feature_id and rubric_items.
-- [x] T003: Implement ExecutionLoopResult dataclass with feature_id, iterations, final_status, remaining_gaps.
-- [x] T004: Implement regex patterns for checkbox tasks, AC IDs, dependency patterns, and task dependency patterns.
-- [x] T005: Implement _parse_task_dependencies extracting task dependency IDs from text.
-- [x] T006: Implement _read_feature_contents loading spec, execution, quality files from feature bundle paths.
-- [x] T007: Implement _build_steps_from_contents parsing tasks, mapping to ACs, resolving dependencies, and building step dicts.
-- [x] T008: Implement _topo_sort_steps using topological_sort with cycle fallback.
-- [x] T009: Implement _build_verification_commands returning 6 standard commands.
-- [x] T010: Implement _build_grading_rubric_internal evaluating AC coverage completeness and quality check status.
-- [x] T011: Implement build_execution_plan as main entry point with FeatureBundleNotFoundError for empty bundles.
-- [x] T012: Implement build_grading_rubric as standalone entry point for rubric-only queries.
-- [x] T013: Implement run_execution_loop with configurable max_iterations and early termination on no gaps.
-- [x] T014: Implement render_plan_json and render_plan_text for plan output formatting.
-- [x] T015: Implement render_grade_json and render_grade_text for grade output formatting.
-- [x] T016: Implement render_loop_json and render_loop_text for loop output formatting.
+- [x] AC001 T001: Implement ExecutionPlan dataclass with root, feature_id, feature_status, plan_steps, dependency_order, verification_commands, grading_rubric, summary, safety_notes.
+- [x] AC002 T002: Implement GradingRubric dataclass with feature_id and rubric_items.
+- [x] AC003 T003: Implement ExecutionLoopResult dataclass with feature_id, iterations, final_status, remaining_gaps.
+- [x] AC004 T004: Implement regex patterns for checkbox tasks, AC IDs, dependency patterns, and task dependency patterns.
+- [x] AC005 T005: Implement _parse_task_dependencies extracting task dependency IDs from text.
+- [x] AC006 T006: Implement _read_feature_contents loading spec, execution, quality files from feature bundle paths.
+- [x] AC007 T007: Implement _build_steps_from_contents parsing tasks, mapping to ACs, resolving dependencies, and building step dicts.
+- [x] AC008 T008: Implement _topo_sort_steps using topological_sort with cycle fallback.
+- [x] AC009 T009: Implement _build_verification_commands returning 6 standard commands.
+- [x] AC010 T010: Implement _build_grading_rubric_internal evaluating AC coverage completeness and quality check status.
+- [x] AC010 T011: Implement build_execution_plan as main entry point with FeatureBundleNotFoundError for empty bundles.
+- [x] AC010 T012: Implement build_grading_rubric as standalone entry point for rubric-only queries.
+- [x] AC010 T013: Implement run_execution_loop with configurable max_iterations and early termination on no gaps.
+- [x] AC010 T014: Implement render_plan_json and render_plan_text for plan output formatting.
+- [x] AC010 T015: Implement render_grade_json and render_grade_text for grade output formatting.
+- [x] AC010 T016: Implement render_loop_json and render_loop_text for loop output formatting.
 
 ## Dependencies
 

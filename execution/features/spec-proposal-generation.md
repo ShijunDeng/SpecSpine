@@ -13,7 +13,7 @@ Why: Generate structured spec bundles from natural language intent using determi
 
 ## Tasks
 
-- [x] T001: Create `src/specspine/proposer.py` with intent parsing module
+- [x] AC001 T001: Create `src/specspine/proposer.py` with intent parsing module
   _Boundary: src/specspine/proposer.py (new file)
   _Depends: none
   - Parse intent text into semantic components (action, target, modifiers, conditions)
@@ -21,7 +21,7 @@ Why: Generate structured spec bundles from natural language intent using determi
   - Detect complexity hints (multi-component intents, integration keywords)
   - All logic is deterministic, regex/string-based, zero dependencies
 
-- [x] T002: Implement EARS criterion generator
+- [x] AC002 T002: Implement EARS criterion generator
   _Boundary: src/specspine/proposer.py
   _Depends: T001
   - Generate EARS-format criteria from parsed intent components
@@ -31,7 +31,7 @@ Why: Generate structured spec bundles from natural language intent using determi
   - Minimum 3 criteria, maximum 8 (based on intent complexity)
   - Each criterion gets a stable ID (AC001, AC002, ...)
 
-- [x] T003: Implement task decomposition generator
+- [x] AC003 T003: Implement task decomposition generator
   _Boundary: src/specspine/proposer.py
   _Depends: T001
   - Break intent into implementation tasks (setup, core logic, integration, verification)
@@ -40,7 +40,7 @@ Why: Generate structured spec bundles from natural language intent using determi
   - Order tasks topologically so independent tasks can run in parallel
   - Generate at least 3 tasks, maximum 12
 
-- [x] T004: Implement quality check generator
+- [x] AC004 T004: Implement quality check generator
   _Boundary: src/specspine/proposer.py
   _Depends: T001, T002
   - Generate one quality check per acceptance criterion
@@ -48,7 +48,7 @@ Why: Generate structured spec bundles from natural language intent using determi
   - Generate test coverage placeholders mapping AC IDs to test file patterns
   - Add release readiness checks referencing specspine validation commands
 
-- [x] T005: Add `build_proposal_files()` function to features.py
+- [x] AC005 T005: Add `build_proposal_files()` function to features.py
   _Boundary: src/specspine/features.py
   _Depends: T001, T002, T003, T004
   - Signature: `build_proposal_files(slug, intent, *, metadata=None) -> dict[str, str]`
@@ -56,7 +56,7 @@ Why: Generate structured spec bundles from natural language intent using determi
   - Calls proposer module for criterion, task, and quality generation
   - Returns same dict structure as `build_feature_files()`
 
-- [x] T006: Add `propose` subcommand to CLI
+- [x] AC006 T006: Add `propose` subcommand to CLI
   _Boundary: src/specspine/cli.py
   _Depends: T005
   - Usage: `specspine propose <idea> <root> [--slug SLUG] [--dry-run] [--json] [--force]`
@@ -66,7 +66,7 @@ Why: Generate structured spec bundles from natural language intent using determi
   - `--force`: overwrites existing bundle
   - `--priority`, `--owner`, `--effort`: optional metadata overrides
 
-- [x] T007: Write unit tests for proposer module
+- [x] AC007 T007: Write unit tests for proposer module
   _Boundary: tests/test_propose.py (new file)
   _Depends: T001, T002, T003, T004, T005, T006
   - Test intent parsing: simple, complex, multi-component intents
@@ -76,12 +76,26 @@ Why: Generate structured spec bundles from natural language intent using determi
   - Test CLI: dry-run, json output, force overwrite, slug auto-generation
   - Test end-to-end: propose -> validate -> ready cycle
 
-- [x] T008: Update agent guidance and documentation
+- [x] AC008 T008: Update agent guidance and documentation
   _Boundary: AGENTS.md, README.md
   _Depends: T006
   - Add `specspine propose` to AGENTS.md common commands
   - Add propose workflow to AGENTS.md working rules
   - Document propose in README.md as the recommended starting point for new features
+
+- [x] AC009 T009: Implement `--json` output mode for structured JSON agent consumption
+  _Boundary: src/specspine/cli.py, src/specspine/proposer.py
+  _Depends: T005
+  - Add `--json` flag to propose CLI
+  - Output generated spec, execution, and quality content as structured JSON
+  - Include feature metadata and generated AC/task/quality mappings in JSON
+
+- [x] AC010 T010: Handle complex multi-part intent decomposition
+  _Boundary: src/specspine/proposer.py
+  _Depends: T001
+  - Detect multi-component intents using "and", "with", "plus", ";" separators
+  - Produce decomposed acceptance criteria reflecting each component
+  - Produce decomposed tasks reflecting each component with dependency annotations
 
 ## Dependencies
 

@@ -16,16 +16,16 @@ Why: Deterministic implementation blueprints derived from acceptance criteria. B
 
 ## Tasks
 
-- [x] Define BlueprintFunction dataclass with name, parameters, return_type, description, ac_ids
-- [x] Define BlueprintModule dataclass with module_path, responsibility, functions, ac_ids
-- [x] Define BlueprintEntity dataclass for data entity extraction
-- [x] Define BlueprintErrorPath dataclass for error handling analysis
-- [x] Define BlueprintReport dataclass with full blueprint structure
-- [x] Implement _parse_ac_for_modules to extract module structure
-- [x] Implement _extract_function_signatures from action verbs and target nouns
-- [x] Implement _derive_error_paths from error/exception keywords
-- [x] Implement _build_blueprint_modules as main orchestration
-- [x] Implement render_blueprint_json and render_blueprint_text
+- [x] AC001 Define BlueprintFunction dataclass with name, parameters, return_type, description, ac_ids
+- [x] AC002 Define BlueprintModule dataclass with module_path, responsibility, functions, ac_ids
+- [x] AC003 Define BlueprintEntity dataclass for data entity extraction
+- [x] AC004 Define BlueprintErrorPath dataclass for error handling analysis
+- [x] AC005 Define BlueprintReport dataclass with full blueprint structure
+- [x] AC006 Implement _parse_ac_for_modules to extract module structure
+- [x] AC007 Implement _extract_function_signatures from action verbs and target nouns
+- [x] AC008 Implement _derive_error_paths from error/exception keywords
+- [x] AC009 Implement _build_blueprint_modules as main orchestration
+- [x] AC010 Implement render_blueprint_json and render_blueprint_text
 
 ## Dependencies
 

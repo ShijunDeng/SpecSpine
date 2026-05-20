@@ -18,16 +18,16 @@ Why: Generate structured test scaffolds from acceptance criteria to close covera
 
 ## Tasks
 
-- [x] Define ScaffoldTestMethod, ScaffoldCoverageLink, ScaffoldSkippedCriterion, ScaffoldRemediationStep, and ScaffoldReport dataclasses
-- [x] Implement _slug_to_camel, _ac_id_snake, _extract_ac_keyword utilities
-- [x] Implement _generate_test_method to create method dict from AC
-- [x] Implement _generate_test_class to produce full test class source
-- [x] Implement _existing_coverage_links to parse quality file for covered ACs
-- [x] Implement _update_quality_file for optional quality file updates
-- [x] Implement _build_remediation_plan for actionable remediation steps
-- [x] Implement build_ac_test_scaffold as main orchestration function
-- [x] Implement render_scaffold_json and render_scaffold_text
-- [x] Register `scaffold` subcommand in cli.py with --json flag
+- [x] AC001 Define ScaffoldTestMethod, ScaffoldCoverageLink, ScaffoldSkippedCriterion, ScaffoldRemediationStep, and ScaffoldReport dataclasses
+- [x] AC002 Implement _slug_to_camel, _ac_id_snake, _extract_ac_keyword utilities
+- [x] AC003 Implement _generate_test_method to create method dict from AC
+- [x] AC004 Implement _generate_test_class to produce full test class source
+- [x] AC005 Implement _existing_coverage_links to parse quality file for covered ACs
+- [x] AC006 Implement _update_quality_file for optional quality file updates
+- [x] AC007 Implement _build_remediation_plan for actionable remediation steps
+- [x] AC008 Implement build_ac_test_scaffold as main orchestration function
+- [x] AC009 Implement render_scaffold_json and render_scaffold_text
+- [x] AC010 Register `scaffold` subcommand in cli.py with --json flag
 
 ## Dependencies
 

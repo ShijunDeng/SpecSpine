@@ -15,14 +15,14 @@ Why: Agents need one status packet that can include both workspace context and l
 
 ## Tasks
 
-- [x] Add `--validate` to the status command.
-- [x] Build status validation summaries from `build_validation_report`.
-- [x] Include workspace, fusion, and feature checks by default.
-- [x] Include adapter availability checks only when `--adapters` is also passed.
-- [x] Preserve the existing no-validation status JSON shape.
-- [x] Keep status command return code `0` for report-only behavior.
-- [x] Update README, architecture docs, agent guidance, execution tasks, and review notes.
-- [x] Add unit tests for JSON, text, failure, mock adapter, and dogfood behavior.
+- [x] AC001 Add `--validate` to the status command.
+- [x] AC002 Build status validation summaries from `build_validation_report`.
+- [x] AC003 Include workspace, fusion, and feature checks by default.
+- [x] AC004 Include adapter availability checks only when `--adapters` is also passed.
+- [x] AC005 Preserve the existing no-validation status JSON shape.
+- [x] AC006 Keep status command return code `0` for report-only behavior.
+- [x] AC006 Update README, architecture docs, agent guidance, execution tasks, and review notes.
+- [x] AC006 Add unit tests for JSON, text, failure, mock adapter, and dogfood behavior.
 
 ## Dependencies
 

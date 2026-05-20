@@ -13,14 +13,14 @@ Why: Let maintainers review GitHub CLI body files and manifest locally before an
 
 ## Tasks
 
-- [x] Add sync-plan artifact dataclasses, manifest builder, command script renderer, and writer in `src/specspine/features.py`.
-- [x] Register `--output-dir DIR` in `src/specspine/cli.py`.
-- [x] Preflight command-owned output files and require `--force` before overwriting them.
-- [x] Write body files for feature issues, task issues, and draft Pull Requests using stable relative paths.
-- [x] Write `commands.sh` with review-only comments and shell-quoted `gh` commands using local `--body-file` paths.
-- [x] Keep JSON stdout unchanged while allowing artifact directory writes.
-- [x] Add focused tests for artifact content, overwrite behavior, command safety, and external-call isolation.
-- [x] Update README, docs, specs, execution, review, and agent guidance.
+- [x] AC001 Add sync-plan artifact dataclasses, manifest builder, command script renderer, and writer in `src/specspine/features.py`.
+- [x] AC002 Register `--output-dir DIR` in `src/specspine/cli.py`.
+- [x] AC003 Preflight command-owned output files and require `--force` before overwriting them.
+- [x] AC004 Write body files for feature issues, task issues, and draft Pull Requests using stable relative paths.
+- [x] AC005 Write `commands.sh` with review-only comments and shell-quoted `gh` commands using local `--body-file` paths.
+- [x] AC006 Keep JSON stdout unchanged while allowing artifact directory writes.
+- [x] AC007 Add focused tests for artifact content, overwrite behavior, command safety, and external-call isolation.
+- [x] AC008 Update README, docs, specs, execution, review, and agent guidance.
 
 ## Dependencies
 

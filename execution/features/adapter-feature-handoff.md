@@ -15,19 +15,19 @@ Why: Agents need a feature-specific adapter handoff packet that joins native Spe
 
 ## Tasks
 
-- [x] Add adapter handoff dataclasses for report entries and recommended upstream steps.
-- [x] Compose feature id, status, readiness, source files, missing files, gaps, blockers, and summary from existing native feature reports.
-- [x] Select each adapter's lifecycle mapping from the current native feature status.
-- [x] Add OpenSpec recommended CLI argv for `status --json`, `instructions apply --change <slug> --json`, and `validate --all --json`.
-- [x] Add Spec Kit recommended agent actions for Spec, Plan, Tasks, and Implement.
-- [x] Add Superpowers recommended agent actions for brainstorming, writing-plans, test-driven-development, subagent-driven-development, requesting-code-review, and verification-before-completion.
-- [x] Mark every upstream step as non-remote, token-free, network-free, unsafe to auto-run, and unexecuted.
-- [x] Add JSON and Markdown renderers for the adapter feature handoff.
-- [x] Wire `specspine adapters handoff <slug> [path] [--json] [--output FILE] [--force]`.
-- [x] Preserve partial bundle success and missing bundle or invalid slug exit codes.
-- [x] Add tests for JSON shape, text output, output file behavior, mapping selection, safe steps, partial bundles, error codes, and no subprocess/network/probe/token reads.
-- [x] Update README, architecture docs, upstream docs, product and architecture specs, execution plan and tasks, quality review notes, and agent instructions.
-- [x] Add this validated dogfood bundle and verify readiness and validation.
+- [x] AC001 Add adapter handoff dataclasses for report entries and recommended upstream steps.
+- [x] AC002 Compose feature id, status, readiness, source files, missing files, gaps, blockers, and summary from existing native feature reports.
+- [x] AC003 Select each adapter's lifecycle mapping from the current native feature status.
+- [x] AC004 Add OpenSpec recommended CLI argv for `status --json`, `instructions apply --change <slug> --json`, and `validate --all --json`.
+- [x] AC005 Add Spec Kit recommended agent actions for Spec, Plan, Tasks, and Implement.
+- [x] AC006 Add Superpowers recommended agent actions for brainstorming, writing-plans, test-driven-development, subagent-driven-development, requesting-code-review, and verification-before-completion.
+- [x] AC007 Mark every upstream step as non-remote, token-free, network-free, unsafe to auto-run, and unexecuted.
+- [x] AC008 Add JSON and Markdown renderers for the adapter feature handoff.
+- [x] AC009 Wire `specspine adapters handoff <slug> [path] [--json] [--output FILE] [--force]`.
+- [x] AC010 Preserve partial bundle success and missing bundle or invalid slug exit codes.
+- [x] AC010 Add tests for JSON shape, text output, output file behavior, mapping selection, safe steps, partial bundles, error codes, and no subprocess/network/probe/token reads.
+- [x] AC010 Update README, architecture docs, upstream docs, product and architecture specs, execution plan and tasks, quality review notes, and agent instructions.
+- [x] AC010 Add this validated dogfood bundle and verify readiness and validation.
 
 ## Dependencies
 

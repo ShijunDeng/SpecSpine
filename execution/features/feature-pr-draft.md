@@ -12,12 +12,13 @@ Why: Review and release agents need a Pull Request-shaped local artifact that co
 
 ## Tasks
 
-- [x] Add a `PullRequestDraft` report and renderers in `src/specspine/features.py`.
-- [x] Compose PR draft content from existing handoff, trace, readiness, release readiness, and source-file evidence.
-- [x] Register `feature pr` in `src/specspine/cli.py` with JSON, output, force, and exit-code behavior matching existing exporters.
-- [x] Add unit tests for text output, JSON shape, output overwrite protection, partial bundles, missing bundles, invalid slugs, and no GitHub token/API dependency.
-- [x] Update README, architecture docs, product specs, project execution notes, review notes, AGENTS.md, and the generated agent template.
-- [x] Add this validated dogfood feature bundle and verify it passes `feature ready`.
+- [x] AC001 Add a `PullRequestDraft` report and renderers in `src/specspine/features.py`.
+- [x] AC002 Compose PR draft content from existing handoff, trace, readiness, release readiness, and source-file evidence.
+- [x] AC003 Register `feature pr` in `src/specspine/cli.py` with JSON, output, force, and exit-code behavior matching existing exporters.
+- [x] AC004 Add unit tests for text output, JSON shape, output overwrite protection, partial bundles, missing bundles, invalid slugs, and no GitHub token/API dependency.
+- [x] AC005 Update README, architecture docs, product specs, project execution notes, review notes, AGENTS.md, and the generated agent template.
+- [x] AC006 Add this validated dogfood feature bundle and verify it passes `feature ready`.
+- [x] AC007 Ensure the command remains offline, deterministic, zero-dependency, and free of GitHub token/API assumptions.
 
 ## Dependencies
 

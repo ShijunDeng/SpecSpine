@@ -17,23 +17,23 @@ Why: Analyze the downstream impact of feature changes before implementation. Pre
 
 ## Tasks
 
-- [x] T001: Implement ImpactItem dataclass with type, id, path, severity, reason, affected_acs fields.
-- [x] T002: Implement ImpactAnalysis dataclass with feature_id, total_affected, impacted_features/tests/code, risk_score, mitigation_steps, safety_notes, recommended_commands.
-- [x] T003: Implement _relative_path utility with ValueError fallback to full path.
-- [x] T004: Implement _read_text utility with OSError and UnicodeDecodeError handling.
-- [x] T005: Implement _extract_acceptance_criteria to parse AC items from spec content with ID and text extraction.
-- [x] T006: Implement _find_affected_features scanning all slugs for dependency references and shared path matches.
-- [x] T007: Implement _extract_slugs_from_text using EXPLICIT_DEP_PATTERNS for dependency extraction.
-- [x] T008: Implement _find_affected_tests with three detection methods: content scanning, AC text matching, quality link extraction.
-- [x] T009: Implement _find_referenced_acs extracting AC IDs from test file content.
-- [x] T010: Implement _find_affected_code via src/**/*.py glob scanning and local path reference resolution.
-- [x] T011: Implement _module_name utility converting file paths to dotted module names.
-- [x] T012: Implement _find_slug_symbols extracting def/class symbols from lines mentioning the slug.
-- [x] T013: Implement _compute_risk_score with severity weighting (high=15, medium=8, low=3) and count thresholds.
-- [x] T014: Implement _generate_mitigation_steps with category-specific and risk-threshold steps.
-- [x] T015: Implement _generate_recommended_commands returning 6 standard commands.
-- [x] T016: Implement analyze_feature_impact as main entry point with FeatureBundleNotFoundError for missing specs.
-- [x] T017: Implement render_impact_json and render_impact_text for output formatting.
+- [x] AC001 T001: Implement ImpactItem dataclass with type, id, path, severity, reason, affected_acs fields.
+- [x] AC002 T002: Implement ImpactAnalysis dataclass with feature_id, total_affected, impacted_features/tests/code, risk_score, mitigation_steps, safety_notes, recommended_commands.
+- [x] AC003 T003: Implement _relative_path utility with ValueError fallback to full path.
+- [x] AC004 T004: Implement _read_text utility with OSError and UnicodeDecodeError handling.
+- [x] AC005 T005: Implement _extract_acceptance_criteria to parse AC items from spec content with ID and text extraction.
+- [x] AC006 T006: Implement _find_affected_features scanning all slugs for dependency references and shared path matches.
+- [x] AC007 T007: Implement _extract_slugs_from_text using EXPLICIT_DEP_PATTERNS for dependency extraction.
+- [x] AC008 T008: Implement _find_affected_tests with three detection methods: content scanning, AC text matching, quality link extraction.
+- [x] AC009 T009: Implement _find_referenced_acs extracting AC IDs from test file content.
+- [x] AC010 T010: Implement _find_affected_code via src/**/*.py glob scanning and local path reference resolution.
+- [x] AC010 T011: Implement _module_name utility converting file paths to dotted module names.
+- [x] AC010 T012: Implement _find_slug_symbols extracting def/class symbols from lines mentioning the slug.
+- [x] AC010 T013: Implement _compute_risk_score with severity weighting (high=15, medium=8, low=3) and count thresholds.
+- [x] AC010 T014: Implement _generate_mitigation_steps with category-specific and risk-threshold steps.
+- [x] AC010 T015: Implement _generate_recommended_commands returning 6 standard commands.
+- [x] AC010 T016: Implement analyze_feature_impact as main entry point with FeatureBundleNotFoundError for missing specs.
+- [x] AC010 T017: Implement render_impact_json and render_impact_text for output formatting.
 
 ## Dependencies
 

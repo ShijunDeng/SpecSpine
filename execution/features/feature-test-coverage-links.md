@@ -14,13 +14,14 @@ Why: Testing agents need explicit local coverage links from acceptance criteria 
 
 ## Tasks
 
-- [x] Add a `FeatureTestCoverageLink` record and `## Test Coverage` parser in `src/specspine/features.py`.
-- [x] Add `test_coverage` to `FeatureTestsReport` JSON and summary counts.
-- [x] Attach matching coverage links to acceptance test cases and derive `covered`, `planned`, or `pending` status.
-- [x] Render Test Coverage in text output and show linked targets on test case lines.
-- [x] Update the `feature new` quality template with Test Coverage guidance.
-- [x] Update README, architecture, product, execution, review, and agent guidance.
-- [x] Add unit tests and dogfood artifact coverage for explicit coverage links.
+- [x] AC001 Add a `FeatureTestCoverageLink` record and `## Test Coverage` parser in `src/specspine/features.py`.
+- [x] AC002 Add `test_coverage` to `FeatureTestsReport` JSON and summary counts.
+- [x] AC003 Attach matching coverage links to acceptance test cases and derive `covered`, `planned`, or `pending` status.
+- [x] AC004 Render Test Coverage in text output and show linked targets on test case lines.
+- [x] AC005 Update the `feature new` quality template with Test Coverage guidance.
+- [x] AC006 Update README, architecture, product, execution, review, and agent guidance.
+- [x] AC007 Add unit tests and dogfood artifact coverage for explicit coverage links.
+- [x] AC008 Add tests for parser behavior, JSON and text output, summary counts, coverage association, target existence, offline behavior, template generation, and dogfood readiness.
 
 ## Dependencies
 

@@ -13,14 +13,14 @@ Why: Scan completed feature bundles to compute deterministic local retrospective
 
 ## Tasks
 
-- [x] TASK001: AC001 AC002 AC005 AC006 - Add `src/specspine/retrospective.py` with stable report builder, summary/theme aggregation, recommendation ranking, JSON renderer, and text renderer.
-- [x] TASK002: AC001 AC003 AC004 AC007 - Wire `specspine retrospective report` in `src/specspine/cli.py` with `--json`, `--feature`, `--limit`, invalid slug handling, invalid limit handling, and missing bundle exit behavior.
-- [x] TASK003: AC001 AC002 AC003 AC004 AC005 AC006 AC007 - Add `tests/test_retrospective.py` for clean workspace output, focused feature output, missing/invalid feature behavior, limit behavior, theme aggregation, deterministic ranking, and safety notes.
-- [x] TASK004: AC008 - Update `src/specspine/agents.py`, `AGENTS.md`, feature templates, proposer templates, and template tests with the retrospective command.
-- [x] TASK005: AC009 - Update README, architecture, product, execution, and quality docs with workflow, JSON fields, limit behavior, and safety boundary.
-- [x] TASK006: AC010 - Replace this dogfood bundle's placeholder content with checked implementation, coverage, test plan, and release-readiness evidence.
-- [x] TASK007: AC010 - Update dogfood tests to include `feature-retrospective` status consistency, documentation snippets, no-placeholder checks, and readiness gates.
-- [x] TASK008: AC001 AC010 - Run focused retrospective tests, template tests, dogfood tests, full unittest discovery, validation, hygiene scan, and forbidden-content scans.
+- [x] AC001 TASK001: AC001 AC002 AC005 AC006 - Add `src/specspine/retrospective.py` with stable report builder, summary/theme aggregation, recommendation ranking, JSON renderer, and text renderer.
+- [x] AC002 TASK002: AC001 AC003 AC004 AC007 - Wire `specspine retrospective report` in `src/specspine/cli.py` with `--json`, `--feature`, `--limit`, invalid slug handling, invalid limit handling, and missing bundle exit behavior.
+- [x] AC003 TASK003: AC001 AC002 AC003 AC004 AC005 AC006 AC007 - Add `tests/test_retrospective.py` for clean workspace output, focused feature output, missing/invalid feature behavior, limit behavior, theme aggregation, deterministic ranking, and safety notes.
+- [x] AC004 TASK004: AC008 - Update `src/specspine/agents.py`, `AGENTS.md`, feature templates, proposer templates, and template tests with the retrospective command.
+- [x] AC005 TASK005: AC009 - Update README, architecture, product, execution, and quality docs with workflow, JSON fields, limit behavior, and safety boundary.
+- [x] AC006 TASK006: AC010 - Replace this dogfood bundle's placeholder content with checked implementation, coverage, test plan, and release-readiness evidence.
+- [x] AC007 TASK007: AC010 - Update dogfood tests to include `feature-retrospective` status consistency, documentation snippets, no-placeholder checks, and readiness gates.
+- [x] AC008 TASK008: AC001 AC010 - Run focused retrospective tests, template tests, dogfood tests, full unittest discovery, validation, hygiene scan, and forbidden-content scans.
 
 ## Dependencies
 

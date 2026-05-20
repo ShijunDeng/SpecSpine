@@ -12,12 +12,12 @@ Status: validated
 
 ## Tasks
 
-- [x] T001: Build a local impact module that inventories `src/specspine/*.py` and `tests/test_*.py`.
-- [x] T002: Parse test imports with `ast` and add conservative deterministic text matches.
-- [x] T003: Recommend unittest commands for changed source files, changed test files, and unmapped fallback cases.
-- [x] T004: Include feature Test Coverage targets when `--feature` is provided.
-- [x] T005: Wire the CLI, JSON renderer, text renderer, and exit-code behavior.
-- [x] T006: Add focused tests and update documentation.
+- [x] AC001 T001: Build a local impact module that inventories `src/specspine/*.py` and `tests/test_*.py`.
+- [x] AC002 T002: Parse test imports with `ast` and add conservative deterministic text matches.
+- [x] AC003 T003: Recommend unittest commands for changed source files, changed test files, and unmapped fallback cases.
+- [x] AC004 T004: Include feature Test Coverage targets when `--feature` is provided.
+- [x] AC005 T005: Wire the CLI, JSON renderer, text renderer, and exit-code behavior.
+- [x] AC006 T006: Add focused tests and update documentation.
 
 ## Dependencies
 

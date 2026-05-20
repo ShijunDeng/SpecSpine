@@ -18,18 +18,18 @@ Why: Evaluate harness coverage and quality across all 8 governed dimensions. Ide
 
 ## Tasks
 
-- [x] Define HarnessDimensionCoverage dataclass with dimension metrics
-- [x] Define HarnessCoverageReport dataclass with full report structure
-- [x] Implement _collect_sensors_for_feature to gather harness sensors
-- [x] Implement _evaluate_dimensions to compute per-dimension coverage
-- [x] Implement _detect_blind_spots for zero-sensor dimensions
-- [x] Implement _detect_redundancy for overlapping sensor coverage
-- [x] Implement _compute_maturity_score on 0-5 scale
-- [x] Implement _generate_improvement_plan with actionable recommendations
-- [x] Implement _load_baseline and _save_baseline for trend tracking
-- [x] Implement _compare_with_baseline for maturity delta and trend
-- [x] Implement build_harness_coverage_report as main orchestration
-- [x] Implement render_harness_coverage_json and render_harness_coverage_text
+- [x] AC001 Define HarnessDimensionCoverage dataclass with dimension metrics
+- [x] AC002 Define HarnessCoverageReport dataclass with full report structure
+- [x] AC003 Implement _collect_sensors_for_feature to gather harness sensors
+- [x] AC004 Implement _evaluate_dimensions to compute per-dimension coverage
+- [x] AC005 Implement _detect_blind_spots for zero-sensor dimensions
+- [x] AC006 Implement _detect_redundancy for overlapping sensor coverage
+- [x] AC007 Implement _compute_maturity_score on 0-5 scale
+- [x] AC008 Implement _generate_improvement_plan with actionable recommendations
+- [x] AC009 Implement _load_baseline and _save_baseline for trend tracking
+- [x] AC010 Implement _compare_with_baseline for maturity delta and trend
+- [x] AC010 Implement build_harness_coverage_report as main orchestration
+- [x] AC010 Implement render_harness_coverage_json and render_harness_coverage_text
 
 ## Dependencies
 

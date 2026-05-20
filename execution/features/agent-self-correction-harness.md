@@ -17,22 +17,22 @@ Why: Wire SpecSpine verification, coverage debt, and grading rubrics into determ
 
 ## Tasks
 
-- [x] T001: Implement HarnessFeedbackSensor dataclass with sensor_type, name, status, output, ac_ids fields and as_dict method.
-- [x] T002: Implement RepairStrategy dataclass with ac_id, target_file, edit_description, verification_command, success_criteria fields.
-- [x] T003: Implement HarnessQualityReport dataclass with feature_id, governed_dimensions, sensor_count, harness_coverage_pct, dimension_scores.
-- [x] T004: Implement HarnessFeedbackReport dataclass with all sensor, strategy, root_cause, and quality fields.
-- [x] T005: Implement _read_feature_contents to load spec, execution, quality files from feature bundle paths.
-- [x] T006: Implement _extract_ac_ids to parse AC identifiers from spec content.
-- [x] T007: Implement _run_computational_sensors with 4 sensors: verification_matrix, coverage_debt, grading_rubric, validation_contract.
-- [x] T008: Implement _run_inferential_sensors with 4 sensors: consistency_scan, hygiene_scan, security_cues, change_risk.
-- [x] T009: Implement _generate_repair_strategies with AC-specific strategies and SENSOR_FAILURE fallback.
-- [x] T010: Implement _classify_root_causes with keyword-based categorization into 5 buckets.
-- [x] T011: Implement _collect_gaps_from_sensors to aggregate sensor failures and flagged AC IDs.
-- [x] T012: Implement build_harness_feedback as the main entry point combining all sensors, strategies, and quality scoring.
-- [x] T013: Implement build_harness_quality for workspace-level and feature-level quality scoring.
-- [x] T014: Implement render_harness_feedback_json and render_harness_feedback_text for output formatting.
-- [x] T015: Implement render_harness_quality_json and render_harness_quality_text for output formatting.
-- [x] T016: Add immutable safety_notes to all reports.
+- [x] AC001 T001: Implement HarnessFeedbackSensor dataclass with sensor_type, name, status, output, ac_ids fields and as_dict method.
+- [x] AC002 T002: Implement RepairStrategy dataclass with ac_id, target_file, edit_description, verification_command, success_criteria fields.
+- [x] AC003 T003: Implement HarnessQualityReport dataclass with feature_id, governed_dimensions, sensor_count, harness_coverage_pct, dimension_scores.
+- [x] AC004 T004: Implement HarnessFeedbackReport dataclass with all sensor, strategy, root_cause, and quality fields.
+- [x] AC005 T005: Implement _read_feature_contents to load spec, execution, quality files from feature bundle paths.
+- [x] AC006 T006: Implement _extract_ac_ids to parse AC identifiers from spec content.
+- [x] AC007 T007: Implement _run_computational_sensors with 4 sensors: verification_matrix, coverage_debt, grading_rubric, validation_contract.
+- [x] AC008 T008: Implement _run_inferential_sensors with 4 sensors: consistency_scan, hygiene_scan, security_cues, change_risk.
+- [x] AC009 T009: Implement _generate_repair_strategies with AC-specific strategies and SENSOR_FAILURE fallback.
+- [x] AC010 T010: Implement _classify_root_causes with keyword-based categorization into 5 buckets.
+- [x] AC010 T011: Implement _collect_gaps_from_sensors to aggregate sensor failures and flagged AC IDs.
+- [x] AC010 T012: Implement build_harness_feedback as the main entry point combining all sensors, strategies, and quality scoring.
+- [x] AC010 T013: Implement build_harness_quality for workspace-level and feature-level quality scoring.
+- [x] AC010 T014: Implement render_harness_feedback_json and render_harness_feedback_text for output formatting.
+- [x] AC010 T015: Implement render_harness_quality_json and render_harness_quality_text for output formatting.
+- [x] AC010 T016: Add immutable safety_notes to all reports.
 
 ## Dependencies
 

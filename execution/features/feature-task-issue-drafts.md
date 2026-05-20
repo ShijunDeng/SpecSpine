@@ -13,12 +13,13 @@ Why: Provide local task-level GitHub issue draft packages from native feature ex
 
 ## Tasks
 
-- [x] Add task issue draft dataclasses, report construction, JSON renderer, and text renderer in `src/specspine/features.py`.
-- [x] Register `specspine feature task-issues` in `src/specspine/cli.py` with matching exporter semantics.
-- [x] Add generated template and recommended-command references for task issue drafts.
-- [x] Add unit and dogfood tests for JSON, text, partial bundles, missing bundles, invalid slugs, output overwrite, and offline guarantees.
-- [x] Update README, architecture, product, execution, quality, AGENTS, and agent template docs.
-- [x] Validate the dogfood bundle with readiness, report, and workspace validation commands.
+- [x] AC001 Add task issue draft dataclasses, report construction, JSON renderer, and text renderer in `src/specspine/features.py`.
+- [x] AC002 Register `specspine feature task-issues` in `src/specspine/cli.py` with matching exporter semantics.
+- [x] AC003 Add generated template and recommended-command references for task issue drafts.
+- [x] AC004 Add unit and dogfood tests for JSON, text, partial bundles, missing bundles, invalid slugs, output overwrite, and offline guarantees.
+- [x] AC005 Update README, architecture, product, execution, quality, AGENTS, and agent template docs.
+- [x] AC006 Validate the dogfood bundle with readiness, report, and workspace validation commands.
+- [x] AC007 Update documentation, agent guidance, generated templates, tests, and dogfood artifacts for the task issue draft workflow.
 
 ## Dependencies
 

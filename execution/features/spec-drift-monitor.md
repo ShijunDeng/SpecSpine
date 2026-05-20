@@ -19,24 +19,24 @@ Why: Continuous drift monitoring across all 55 features with historical trend an
 
 ## Tasks
 
-- [x] T001: Implement DriftEvent dataclass with event_type, severity, timestamp, description, affected_acs, affected_tasks.
-- [x] T002: Implement FeatureDriftRecord with feature_id, severity, spec/code/test/quality_drift tuples, drift_events, cascade_risk.
-- [x] T003: Implement DriftAuditReport with root, scan_metadata, features, summary, trends, compliance, recommended_commands, safety_notes.
-- [x] T004: Implement utility functions _now_iso and _git_commit for timestamping and git HEAD resolution.
-- [x] T005: Implement AC/task/QC/coverage link extraction regex patterns.
-- [x] T006: Implement _feature_peer_content and _baseline_peer_content for current and git-based file content retrieval.
-- [x] T007: Implement _detect_spec_drift comparing current vs baseline ACs with removed/added classification.
-- [x] T008: Implement _detect_code_drift checking orphaned source paths and task-to-AC reference completeness.
-- [x] T009: Implement _detect_test_drift checking stale test links and uncovered spec ACs.
-- [x] T010: Implement _detect_quality_drift checking missing QC/coverage links and non-tests/ paths.
-- [x] T011: Implement _classify_severity returning highest severity across all event types.
-- [x] T012: Implement _build_drift_history from git log with keyword-based severity classification.
-- [x] T013: Implement _correlate_cross_feature_drift marking cascade_risk for dependency-linked critical features.
-- [x] T014: Implement _build_compliance_section with SHA-256 evidence hash and per-dimension pass/fail.
-- [x] T015: Implement _severity_distribution counting features by severity level.
-- [x] T016: Implement _recommended_commands with deduplication.
-- [x] T017: Implement build_drift_monitor_report as main entry point with feature_filter, baseline, and since parameters.
-- [x] T018: Implement render_drift_json and render_drift_text for output formatting.
+- [x] AC001 T001: Implement DriftEvent dataclass with event_type, severity, timestamp, description, affected_acs, affected_tasks.
+- [x] AC002 T002: Implement FeatureDriftRecord with feature_id, severity, spec/code/test/quality_drift tuples, drift_events, cascade_risk.
+- [x] AC003 T003: Implement DriftAuditReport with root, scan_metadata, features, summary, trends, compliance, recommended_commands, safety_notes.
+- [x] AC004 T004: Implement utility functions _now_iso and _git_commit for timestamping and git HEAD resolution.
+- [x] AC005 T005: Implement AC/task/QC/coverage link extraction regex patterns.
+- [x] AC006 T006: Implement _feature_peer_content and _baseline_peer_content for current and git-based file content retrieval.
+- [x] AC007 T007: Implement _detect_spec_drift comparing current vs baseline ACs with removed/added classification.
+- [x] AC008 T008: Implement _detect_code_drift checking orphaned source paths and task-to-AC reference completeness.
+- [x] AC009 T009: Implement _detect_test_drift checking stale test links and uncovered spec ACs.
+- [x] AC010 T010: Implement _detect_quality_drift checking missing QC/coverage links and non-tests/ paths.
+- [x] AC010 T011: Implement _classify_severity returning highest severity across all event types.
+- [x] AC010 T012: Implement _build_drift_history from git log with keyword-based severity classification.
+- [x] AC010 T013: Implement _correlate_cross_feature_drift marking cascade_risk for dependency-linked critical features.
+- [x] AC010 T014: Implement _build_compliance_section with SHA-256 evidence hash and per-dimension pass/fail.
+- [x] AC010 T015: Implement _severity_distribution counting features by severity level.
+- [x] AC010 T016: Implement _recommended_commands with deduplication.
+- [x] AC010 T017: Implement build_drift_monitor_report as main entry point with feature_filter, baseline, and since parameters.
+- [x] AC010 T018: Implement render_drift_json and render_drift_text for output formatting.
 
 ## Dependencies
 

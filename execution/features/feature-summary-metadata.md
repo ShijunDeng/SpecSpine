@@ -14,17 +14,17 @@ Why: Feature summary triage needs explicit local priority and owner fields befor
 
 ## Tasks
 
-- [x] Parse `Priority:` and `Owner:` from `specs/features/<slug>.md`.
-- [x] Normalize priorities to `high`, `medium`, `low`, or `unknown`.
-- [x] Normalize missing or blank owners to `unassigned`.
-- [x] Add priority and owner fields to feature summary JSON.
-- [x] Show priority and owner in text feature summaries.
-- [x] Add repeated `--feature-priority` and `--feature-owner` filters behind `--feature-summaries`.
-- [x] Add priority sorting and descending priority sort behavior.
-- [x] Update generated feature spec templates.
-- [x] Update README, architecture docs, product spec, execution plan, and review notes.
-- [x] Add focused unit tests for metadata output, filtering, sorting, invalid options, and template content.
-- [x] Run the required unit, validation, readiness, diff, and token-prefix checks.
+- [x] AC001 Parse `Priority:` and `Owner:` from `specs/features/<slug>.md`.
+- [x] AC002 Normalize priorities to `high`, `medium`, `low`, or `unknown`.
+- [x] AC003 Normalize missing or blank owners to `unassigned`.
+- [x] AC004 Add priority and owner fields to feature summary JSON.
+- [x] AC005 Show priority and owner in text feature summaries.
+- [x] AC006 Add repeated `--feature-priority` and `--feature-owner` filters behind `--feature-summaries`.
+- [x] AC007 Add priority sorting and descending priority sort behavior.
+- [x] AC008 Update generated feature spec templates.
+- [x] AC009 Update README, architecture docs, product spec, execution plan, and review notes.
+- [x] AC010 Add focused unit tests for metadata output, filtering, sorting, invalid options, and template content.
+- [x] AC010 Run the required unit, validation, readiness, diff, and token-prefix checks.
 
 ## Dependencies
 

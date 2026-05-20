@@ -19,28 +19,28 @@ Why: Unified observability dashboard composing all 54 existing evidence sources 
 
 ## Tasks
 
-- [x] T001: Implement WorkspaceHealth with complete, present, and missing fields.
-- [x] T002: Implement FeaturePipeline with features_total and by_status dict.
-- [x] T003: Implement ValidationHealth with ok, pass/fail/warn/skip/total counts and top_failing_rules.
-- [x] T004: Implement CoverageDebt with features_with_debt, missing/covered/total ACs, and top_features.
-- [x] T005: Implement ConsistencyDrift with features_scanned, checks pass/fail/warn/total, and top_failing_features.
-- [x] T006: Implement ReadinessGates with features_total, ready, not_ready, blocking_checks_total, gaps_total, and top_blockers.
-- [x] T007: Implement QualityGates with required_total/done/open and definition_total.
-- [x] T008: Implement DependencyHealth with features_total, cycles, critical_path, and critical_path_effort.
-- [x] T009: Implement SecuritySummary with cues_total and high/medium/low counts.
-- [x] T010: Implement RetrospectiveTheme with top_blocker_theme, blocking_checks, gaps, coverage_states, and open_tasks.
-- [x] T011: Implement HealthReport composing all 10 dimensions plus health_score, recommended_actions, recommended_commands, safety_notes.
-- [x] T012: Implement _build_workspace_health using check_workspace with BASE_WORKSPACE_FILES.
-- [x] T013: Implement _build_feature_pipeline using list_feature_bundles with status aggregation.
-- [x] T014: Implement _build_validation_health with OSError fallback returning zeroed ValidationHealth.
-- [x] T015: Implement _build_coverage_debt_data with OSError fallback and top 5 features sorting.
-- [x] T016: Implement _build_consistency_drift with OSError fallback and top 5 failing features.
-- [x] T017: Implement _build_readiness_gates with OSError fallback and top 5 blockers.
-- [x] T018: Implement _build_quality_gates, _build_dependency_health, _build_security_summary, _build_retrospective_theme with OSError fallbacks.
-- [x] T019: Implement compute_health_score with 7 weighted dimensions and 0 shortcut for missing workspace.
-- [x] T020: Implement generate_recommended_actions and _generate_recommended_commands.
-- [x] T021: Implement build_health_report as main entry point composing all dimensions.
-- [x] T022: Implement render_health_json and render_health_text for output formatting.
+- [x] AC001 T001: Implement WorkspaceHealth with complete, present, and missing fields.
+- [x] AC002 T002: Implement FeaturePipeline with features_total and by_status dict.
+- [x] AC003 T003: Implement ValidationHealth with ok, pass/fail/warn/skip/total counts and top_failing_rules.
+- [x] AC004 T004: Implement CoverageDebt with features_with_debt, missing/covered/total ACs, and top_features.
+- [x] AC005 T005: Implement ConsistencyDrift with features_scanned, checks pass/fail/warn/total, and top_failing_features.
+- [x] AC006 T006: Implement ReadinessGates with features_total, ready, not_ready, blocking_checks_total, gaps_total, and top_blockers.
+- [x] AC007 T007: Implement QualityGates with required_total/done/open and definition_total.
+- [x] AC008 T008: Implement DependencyHealth with features_total, cycles, critical_path, and critical_path_effort.
+- [x] AC009 T009: Implement SecuritySummary with cues_total and high/medium/low counts.
+- [x] AC010 T010: Implement RetrospectiveTheme with top_blocker_theme, blocking_checks, gaps, coverage_states, and open_tasks.
+- [x] AC010 T011: Implement HealthReport composing all 10 dimensions plus health_score, recommended_actions, recommended_commands, safety_notes.
+- [x] AC010 T012: Implement _build_workspace_health using check_workspace with BASE_WORKSPACE_FILES.
+- [x] AC010 T013: Implement _build_feature_pipeline using list_feature_bundles with status aggregation.
+- [x] AC010 T014: Implement _build_validation_health with OSError fallback returning zeroed ValidationHealth.
+- [x] AC010 T015: Implement _build_coverage_debt_data with OSError fallback and top 5 features sorting.
+- [x] AC010 T016: Implement _build_consistency_drift with OSError fallback and top 5 failing features.
+- [x] AC010 T017: Implement _build_readiness_gates with OSError fallback and top 5 blockers.
+- [x] AC010 T018: Implement _build_quality_gates, _build_dependency_health, _build_security_summary, _build_retrospective_theme with OSError fallbacks.
+- [x] AC010 T019: Implement compute_health_score with 7 weighted dimensions and 0 shortcut for missing workspace.
+- [x] AC010 T020: Implement generate_recommended_actions and _generate_recommended_commands.
+- [x] AC010 T021: Implement build_health_report as main entry point composing all dimensions.
+- [x] AC010 T022: Implement render_health_json and render_health_text for output formatting.
 
 ## Dependencies
 

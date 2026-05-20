@@ -13,12 +13,16 @@ Status: validated
 
 ## Tasks
 
-- [x] Add policy loading, defaults, warnings, JSON/text rendering, and coverage selector evaluation.
-- [x] Add CLI arguments for `policy`, `feature ready --policy`, and `status --feature-policy`.
-- [x] Preserve existing default readiness and status output when policy flags are absent.
-- [x] Add tests for missing policy, parser selectors, warnings, readiness policy application, explicit overrides, status option validation, policy filters, compatibility, and dogfood artifacts.
-- [x] Add `.specspine/policy.yaml` targeting only `workspace-readiness-policy`.
-- [x] Update README, product, architecture, execution, quality, and agent guidance.
+- [x] AC001 Add policy loading, defaults, warnings, JSON/text rendering, and coverage selector evaluation.
+- [x] AC002 Add CLI arguments for `policy`, `feature ready --policy`, and `status --feature-policy`.
+- [x] AC003 Preserve existing default readiness and status output when policy flags are absent.
+- [x] AC004 Add tests for missing policy, parser selectors, warnings, readiness policy application, explicit overrides, status option validation, policy filters, compatibility, and dogfood artifacts.
+- [x] AC005 Add `.specspine/policy.yaml` targeting only `workspace-readiness-policy`.
+- [x] AC006 Update README, product, architecture, execution, quality, and agent guidance.
+- [x] AC007 Add policy summary mode with stable policy fields and `--feature-ready yes/no` filtering for policy readiness.
+- [x] AC008 Preserve default `status` and `feature ready` behavior and JSON field compatibility when policy flags are absent.
+- [x] AC009 Add `.specspine/policy.yaml` targeting only `workspace-readiness-policy` in this repository.
+- [x] AC010 Validate this dogfood bundle passes default, `--require-coverage`, and `--policy` readiness gates.
 
 ## Dependencies
 

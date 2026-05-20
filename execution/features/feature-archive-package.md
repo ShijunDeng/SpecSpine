@@ -12,12 +12,12 @@ Status: validated
 
 ## Tasks
 
-- [x] T001: Add a reusable archive report module that composes existing status, ready, trace, tasks, tests, metadata, sources, and missing-file evidence.
-- [x] T002: Wire `specspine feature archive <slug> [path] [--json] [--output-dir DIR] [--archive-id ID] [--force]`.
-- [x] T003: Implement archive package writing with `README.md`, `archive.json`, and source snapshots under an explicit output directory.
-- [x] T004: Add conflict protection and `--force` overwrite behavior for command-owned package files.
-- [x] T005: Add tests for JSON, text, explicit archive ids, output packages, conflicts, invalid and missing features, and read-only local behavior.
-- [x] T006: Update README, agent guidance, architecture/product docs, execution plan, quality review, and dogfood feature artifacts.
+- [x] AC001 T001: Add a reusable archive report module that composes existing status, ready, trace, tasks, tests, metadata, sources, and missing-file evidence.
+- [x] AC002 T002: Wire `specspine feature archive <slug> [path] [--json] [--output-dir DIR] [--archive-id ID] [--force]`.
+- [x] AC003 T003: Implement archive package writing with `README.md`, `archive.json`, and source snapshots under an explicit output directory.
+- [x] AC004 T004: Add conflict protection and `--force` overwrite behavior for command-owned package files.
+- [x] AC005 T005: Add tests for JSON, text, explicit archive ids, output packages, conflicts, invalid and missing features, and read-only local behavior.
+- [x] AC006 T006: Update README, agent guidance, architecture/product docs, execution plan, quality review, and dogfood feature artifacts.
 
 ## Dependencies
 

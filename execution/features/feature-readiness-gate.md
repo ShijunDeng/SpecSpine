@@ -13,12 +13,13 @@ Why: Native feature bundles need a deterministic local pass/fail gate before rev
 
 ## Tasks
 
-- [x] Add readiness report data structures, release readiness checklist parsing, check evaluation, and renderers in `src/specspine/features.py`.
-- [x] Add the `feature ready` subcommand in `src/specspine/cli.py` with deterministic exit-code behavior.
-- [x] Cover ready and not-ready paths in `tests/test_features.py`, including JSON/text output, invalid slugs, missing bundles, status inconsistency, trace gaps, and release readiness failures.
-- [x] Add dogfood artifact tests for `feature-readiness-gate` in `tests/test_features.py` and `tests/test_dogfood_artifacts.py`.
-- [x] Update README, architecture, product, execution, and quality documentation with the readiness gate workflow.
-- [x] Run unit tests, fused feature validation, dogfood readiness JSON, and token-prefix scan.
+- [x] AC001 Add readiness report data structures, release readiness checklist parsing, check evaluation, and renderers in `src/specspine/features.py`.
+- [x] AC002 Add the `feature ready` subcommand in `src/specspine/cli.py` with deterministic exit-code behavior.
+- [x] AC003 Cover ready and not-ready paths in `tests/test_features.py`, including JSON/text output, invalid slugs, missing bundles, status inconsistency, trace gaps, and release readiness failures.
+- [x] AC004 Add dogfood artifact tests for `feature-readiness-gate` in `tests/test_features.py` and `tests/test_dogfood_artifacts.py`.
+- [x] AC005 Update README, architecture, product, execution, and quality documentation with the readiness gate workflow.
+- [x] AC006 Run unit tests, fused feature validation, dogfood readiness JSON, and token-prefix scan.
+- [x] AC007 Update documentation, execution artifacts, quality notes, dogfood artifacts, and tests for the readiness gate workflow.
 
 ## Dependencies
 
