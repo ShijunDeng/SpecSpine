@@ -293,6 +293,2358 @@ def _print_adapter_statuses(statuses: list[AdapterStatus] | None = None) -> None
             print(f"      install: {status.install_hint}")
 
 
+def _cmd_init(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    written = init_workspace(root, force=args.force)
+    if written:
+        print(f"Initialized SpecSpine workspace at {root}")
+        _print_created(written, root)
+    else:
+        print(f"SpecSpine workspace already exists at {root}")
+    return 0
+
+
+def _cmd_agents_init(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        written = init_agents_file(root, force=args.force)
+    except AgentsFileExistsError as error:
+        print(str(error), file=sys.stderr)
+        return 1
+    print(f"Initialized SpecSpine agent instructions at {root}")
+    print(f"  created {written.relative_to(root)}")
+    return 0
+
+
+def _cmd_agents(args) -> int:
+    if args.agents_command == "init":
+        return _cmd_agents_init(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_fuse(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    include_openspec = not args.skip_openspec
+    include_speckit = not args.skip_speckit
+    include_superpowers = not args.skip_superpowers
+
+    written = init_fusion_workspace(
+        root,
+        agent=args.agent,
+        force=args.force,
+        include_openspec=include_openspec,
+        include_speckit=include_speckit,
+        include_superpowers=include_superpowers,
+    )
+
+    if written:
+        print(f"Initialized SpecSpine fusion layer at {root}")
+        _print_created(written, root)
+    else:
+        print(f"SpecSpine fusion layer already exists at {root}")
+
+    commands = build_upstream_init_commands(
+        agent=args.agent,
+        include_openspec=include_openspec,
+        include_speckit=include_speckit,
+        include_superpowers=include_superpowers,
+        force=args.force,
+    )
+
+    if not args.run_upstream:
+        print("Upstream tools were not run. Use --run-upstream to invoke:")
+        for command in commands:
+            print(f"  {command.key}: {command.display() or command.description}")
+        return 0
+
+    results = run_upstream_initializers(root, commands)
+    failed = False
+    print("Upstream initializer results:")
+    for result in results:
+        marker = "ok" if result.returncode == 0 else "failed"
+        print(f"  [{marker}] {result.key}: {result.command}")
+        if result.stdout.strip():
+            print(f"      {result.stdout.strip()}")
+        if result.stderr.strip():
+            print(f"      {result.stderr.strip()}")
+        failed = failed or result.returncode != 0
+    return 1 if failed else 0
+
+
+def _cmd_feature_new(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        written = create_feature_bundle(
+            root,
+            args.slug,
+            title=args.title,
+            why=args.why,
+            force=args.force,
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleExistsError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.existing_paths:
+            print(f"  existing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+
+    print(f"Created SpecSpine feature bundle '{args.slug}' at {root}")
+    _print_created(written, root)
+    return 0
+
+
+def _cmd_feature_issue(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        draft = build_issue_draft(root, args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not read feature bundle: {error}", file=sys.stderr)
+        return 1
+
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        if output_path.exists() and not args.force:
+            print(
+                f"Output file already exists: {output_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(draft.body, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write issue draft: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(render_issue_json(draft), end="")
+    elif args.output:
+        print(f"Wrote GitHub issue draft body to {output_path}")
+    else:
+        print(render_issue_text(draft), end="")
+    return 0
+
+
+def _cmd_feature_pr(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        draft = build_pull_request_draft(root, args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not read feature PR draft: {error}", file=sys.stderr)
+        return 1
+
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        if output_path.exists() and not args.force:
+            print(
+                f"Output file already exists: {output_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(draft.body, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write PR draft: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(render_pull_request_json(draft), end="")
+    elif args.output:
+        print(f"Wrote GitHub Pull Request draft body to {output_path}")
+    else:
+        print(render_pull_request_text(draft), end="")
+    return 0
+
+
+def _cmd_feature_tasks(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_feature_tasks_report(root, args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not read feature tasks: {error}", file=sys.stderr)
+        return 1
+
+    text_body = render_feature_tasks_text(report)
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        if output_path.exists() and not args.force:
+            print(
+                f"Output file already exists: {output_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(text_body, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write feature tasks: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(render_feature_tasks_json(report), end="")
+    elif args.output:
+        print(f"Wrote feature task list to {output_path}")
+    else:
+        print(text_body, end="")
+    return 0
+
+
+def _cmd_feature_task_issues(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_feature_task_issues_report(root, args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not read feature task issue drafts: {error}", file=sys.stderr)
+        return 1
+
+    text_body = render_feature_task_issues_text(report)
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        if output_path.exists() and not args.force:
+            print(
+                f"Output file already exists: {output_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(text_body, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write feature task issue drafts: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(render_feature_task_issues_json(report), end="")
+    elif args.output:
+        print(f"Wrote feature task issue draft package to {output_path}")
+    else:
+        print(text_body, end="")
+    return 0
+
+
+def _cmd_feature_sync_plan(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        plan = build_feature_sync_plan(root, args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not read feature sync plan: {error}", file=sys.stderr)
+        return 1
+
+    text_body = render_feature_sync_plan_text(plan)
+    output_path = None
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        if output_path.exists() and not args.force:
+            print(
+                f"Output file already exists: {output_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+
+    artifact_output = None
+    if args.output_dir:
+        output_dir = Path(args.output_dir).expanduser().resolve()
+        try:
+            artifact_output = write_feature_sync_plan_artifacts(
+                plan,
+                output_dir,
+                force=args.force,
+            )
+        except FeatureSyncPlanArtifactExistsError as error:
+            print(str(error), file=sys.stderr)
+            for path in error.existing_paths:
+                print(f"  existing {path}", file=sys.stderr)
+            return 1
+        except OSError as error:
+            print(f"Could not write feature sync plan artifacts: {error}", file=sys.stderr)
+            return 1
+
+    if output_path is not None:
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(text_body, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write feature sync plan: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(render_feature_sync_plan_json(plan), end="")
+    elif args.output:
+        print(f"Wrote feature sync plan to {output_path}")
+    elif artifact_output is not None:
+        print(f"Wrote feature sync plan artifacts to {artifact_output.output_dir}")
+    else:
+        print(text_body, end="")
+    return 0
+
+
+def _cmd_feature_archive(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_feature_archive_report(
+            root,
+            args.slug,
+            archive_id=args.archive_id,
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except InvalidArchiveId as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not read feature archive evidence: {error}", file=sys.stderr)
+        return 1
+
+    if args.output_dir:
+        output_dir = Path(args.output_dir).expanduser().resolve()
+        try:
+            package = write_feature_archive_package(
+                report,
+                output_dir,
+                force=args.force,
+            )
+            report = feature_archive_report_with_package(report, package)
+        except FeatureArchiveArtifactExistsError as error:
+            print(str(error), file=sys.stderr)
+            for path in error.existing_paths:
+                print(f"  existing {path}", file=sys.stderr)
+            return 1
+        except OSError as error:
+            print(f"Could not write feature archive package: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(render_feature_archive_json(report), end="")
+    else:
+        print(render_feature_archive_text(report), end="")
+    return 0
+
+
+def _cmd_feature_trace(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_feature_trace_report(root, args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not read feature trace: {error}", file=sys.stderr)
+        return 1
+
+    text_body = render_feature_trace_text(report)
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        if output_path.exists() and not args.force:
+            print(
+                f"Output file already exists: {output_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(text_body, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write feature trace: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(render_feature_trace_json(report), end="")
+    elif args.output:
+        print(f"Wrote feature trace handoff to {output_path}")
+    else:
+        print(text_body, end="")
+    return 0
+
+
+def _cmd_feature_handoff(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_feature_handoff_report(root, args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not read feature handoff: {error}", file=sys.stderr)
+        return 1
+
+    text_body = render_feature_handoff_text(report)
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        if output_path.exists() and not args.force:
+            print(
+                f"Output file already exists: {output_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(text_body, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write feature handoff: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(render_feature_handoff_json(report), end="")
+    elif args.output:
+        print(f"Wrote feature handoff packet to {output_path}")
+    else:
+        print(text_body, end="")
+    return 0 if report.has_native_files else 1
+
+
+def _cmd_feature_tests(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_feature_tests_report(root, args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not read feature test packet: {error}", file=sys.stderr)
+        return 1
+
+    text_body = render_feature_tests_text(report)
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        if output_path.exists() and not args.force:
+            print(
+                f"Output file already exists: {output_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(text_body, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write feature test packet: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(render_feature_tests_json(report), end="")
+    elif args.output:
+        print(f"Wrote feature test packet to {output_path}")
+    else:
+        print(text_body, end="")
+    return 0 if report.has_native_files else 1
+
+
+def _cmd_feature_ready(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        policy_required = False
+        policy_source = None
+        if args.policy:
+            policy = load_workspace_policy(root)
+            metadata = read_feature_metadata(root, args.slug)
+            status = get_feature_status(root, args.slug).status or "unknown"
+            policy_required = policy.require_coverage.requires_coverage(
+                feature_id=args.slug,
+                metadata=metadata,
+                status=status,
+            )
+            policy_source = str(policy.source_file)
+        report = build_feature_ready_report(
+            root,
+            args.slug,
+            require_coverage=args.require_coverage or policy_required,
+            policy_applied=args.policy,
+            coverage_required_by_policy=policy_required,
+            policy_source=policy_source,
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not read feature readiness: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_feature_ready_json(report), end="")
+    else:
+        print(render_feature_ready_text(report), end="")
+    return 0 if report.ready else 1
+
+
+def _cmd_feature_status(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        if args.set_status:
+            report = set_feature_status(
+                root,
+                args.slug,
+                args.set_status,
+                enforce_transition=args.enforce_transition,
+            )
+            include_updated = True
+        else:
+            report = get_feature_status(root, args.slug)
+            include_updated = False
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except InvalidFeatureStatus as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureStatusTransitionError as error:
+        if args.json:
+            print(render_status_json(error.as_dict()), end="")
+        else:
+            print(str(error), file=sys.stderr)
+            for check in error.blocking_checks:
+                print(
+                    f"  blocking {check['id']}: {check['message']}",
+                    file=sys.stderr,
+                )
+            for gap in error.gaps:
+                print(
+                    f"  gap {gap['id']}: {gap['message']}",
+                    file=sys.stderr,
+                )
+            for path in error.missing_files:
+                print(f"  missing {path}", file=sys.stderr)
+        return 1
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not update feature status: {error}", file=sys.stderr)
+        return 1
+
+    payload = report.as_dict(include_updated=include_updated)
+    has_files = any(bool(file["exists"]) for file in report.files.values())
+    if args.json:
+        print(render_status_json(payload), end="")
+    else:
+        if include_updated:
+            transition = report.transition or {}
+            from_status = transition.get("from") or "unknown"
+            marker = " with enforced transition" if transition.get("enforced") else ""
+            print(
+                f"Feature {report.feature_id} status updated: "
+                f"{from_status} -> {report.status}{marker}"
+            )
+        elif report.consistent:
+            print(f"Feature {report.feature_id} status: {report.status}")
+        else:
+            print(
+                f"Feature {report.feature_id} status: "
+                f"{report.status or 'unknown'} (mixed/inconsistent)"
+            )
+        for kind, file in report.files.items():
+            marker = "ok" if file["exists"] else "missing"
+            status = file["status"] or "unknown"
+            print(f"  [{marker}] {kind}: {file['path']} ({status})")
+    return 0 if has_files else 1
+
+
+def _cmd_feature_dependency(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    feature_slugs: list[str] | None = None
+    if args.features:
+        feature_slugs = [s.strip() for s in args.features.split(",") if s.strip()]
+    elif args.feature:
+        feature_slugs = [args.feature]
+    try:
+        result = build_dependency_graph(root, feature_slugs=feature_slugs)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build dependency graph: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_dependency_json(result), end="")
+    else:
+        print(render_dependency_text(result), end="")
+    return 0
+
+
+def _cmd_feature(args) -> int:
+    if args.feature_command == "new":
+        return _cmd_feature_new(args)
+    if args.feature_command == "issue":
+        return _cmd_feature_issue(args)
+    if args.feature_command == "pr":
+        return _cmd_feature_pr(args)
+    if args.feature_command == "tasks":
+        return _cmd_feature_tasks(args)
+    if args.feature_command == "task-issues":
+        return _cmd_feature_task_issues(args)
+    if args.feature_command == "sync-plan":
+        return _cmd_feature_sync_plan(args)
+    if args.feature_command == "archive":
+        return _cmd_feature_archive(args)
+    if args.feature_command == "trace":
+        return _cmd_feature_trace(args)
+    if args.feature_command == "handoff":
+        return _cmd_feature_handoff(args)
+    if args.feature_command == "tests":
+        return _cmd_feature_tests(args)
+    if args.feature_command == "ready":
+        return _cmd_feature_ready(args)
+    if args.feature_command == "status":
+        return _cmd_feature_status(args)
+    if args.feature_command == "dependency":
+        return _cmd_feature_dependency(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_doctor(args) -> int:
+    required_files = dict(BASE_WORKSPACE_FILES)
+    if args.fusion:
+        required_files.update(FUSION_REQUIRED_FILES)
+
+    _present, missing = check_workspace(Path(args.path), required_files=required_files)
+    if missing:
+        print("SpecSpine workspace is incomplete.")
+        root = Path(args.path).expanduser().resolve()
+        for path in missing:
+            print(f"  missing {path.relative_to(root)}")
+        if args.adapters:
+            _print_adapter_statuses()
+        return 1
+
+    print(f"SpecSpine workspace is ready at {Path(args.path).expanduser().resolve()}")
+    if args.adapters:
+        statuses = probe_adapters()
+        _print_adapter_statuses(statuses)
+        return 0 if all(status.available for status in statuses) else 1
+    return 0
+
+
+def _cmd_gates(args) -> int:
+    report = build_quality_gate_report(Path(args.path))
+    if args.json:
+        print(render_quality_gate_json(report), end="")
+    else:
+        print(render_quality_gate_text(report), end="")
+    return 1 if report.source_missing else 0
+
+
+def _cmd_policy(args) -> int:
+    try:
+        policy = load_workspace_policy(Path(args.path))
+    except OSError as error:
+        print(f"Could not read workspace policy: {error}", file=sys.stderr)
+        return 1
+    if args.json:
+        print(render_policy_json(policy), end="")
+    else:
+        print(render_policy_text(policy), end="")
+    return 0
+
+
+def _cmd_coverage_debt(args) -> int:
+    try:
+        report = build_coverage_debt_report(
+            Path(args.path),
+            use_policy=args.policy,
+        )
+    except OSError as error:
+        print(f"Could not read coverage debt: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_coverage_debt_json(report), end="")
+    else:
+        print(render_coverage_debt_text(report), end="")
+    return 0
+
+
+def _cmd_coverage_plan(args) -> int:
+    if args.limit is not None and args.limit < 0:
+        print("--limit must be non-negative", file=sys.stderr)
+        return 2
+    try:
+        report = build_coverage_plan_report(
+            Path(args.path),
+            use_policy=args.policy,
+            feature_filter=args.feature,
+            limit=getattr(args, "limit", None),
+        )
+    except InvalidFeatureSlug as error:
+        print(f"Invalid feature slug: {error}", file=sys.stderr)
+        return 2
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not read coverage plan: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_coverage_plan_json(report), end="")
+    else:
+        print(render_coverage_plan_text(report), end="")
+    if report["summary"].get("feature_missing"):
+        return 1
+    return 0
+
+
+def _cmd_coverage(args) -> int:
+    if args.coverage_command == "debt":
+        return _cmd_coverage_debt(args)
+    if args.coverage_command == "plan":
+        return _cmd_coverage_plan(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_tests_impact(args) -> int:
+    try:
+        report = build_test_impact_report(
+            Path(args.path),
+            changed_files=tuple(args.changed),
+            feature=args.feature,
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not inspect test impact: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_test_impact_json(report), end="")
+    else:
+        print(render_test_impact_text(report), end="")
+    if report.feature is not None and not report.feature["has_native_files"]:
+        return 1
+    return 0
+
+
+def _cmd_tests(args) -> int:
+    if args.tests_command == "impact":
+        return _cmd_tests_impact(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_verify_matrix(args) -> int:
+    try:
+        matrix = build_verification_matrix(Path(args.path), args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build verification matrix: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_verification_matrix_json(matrix), end="")
+    else:
+        print(render_verification_matrix_text(matrix), end="")
+    if not matrix.evidence["has_native_files"]:
+        return 1
+    return 0
+
+
+def _cmd_verify(args) -> int:
+    if args.verify_command == "matrix":
+        return _cmd_verify_matrix(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_change_risk(args) -> int:
+    try:
+        report = build_change_risk_report(
+            Path(args.path),
+            changed_files=tuple(args.changed),
+            feature=args.feature,
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build change risk report: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_change_risk_json(report), end="")
+    else:
+        print(render_change_risk_text(report), end="")
+    if any(
+        not evidence["has_native_files"]
+        for evidence in report.feature_evidence
+    ):
+        return 1
+    return 0
+
+
+def _cmd_change(args) -> int:
+    if args.change_command == "risk":
+        return _cmd_change_risk(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_consistency_scan(args) -> int:
+    try:
+        report = build_consistency_report(
+            Path(args.path),
+            feature_filter=args.feature,
+            changed_files=tuple(args.changed),
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build consistency report: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_consistency_json(report), end="")
+    else:
+        print(render_consistency_text(report), end="")
+    if args.feature and any(not feature.source_files for feature in report.features):
+        return 1
+    return 0
+
+
+def _cmd_consistency(args) -> int:
+    if args.consistency_command == "scan":
+        return _cmd_consistency_scan(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_hygiene_scan(args) -> int:
+    try:
+        report = build_hygiene_scan_report(
+            Path(args.path),
+            changed_files=tuple(args.changed),
+        )
+    except OSError as error:
+        print(f"Could not build hygiene scan report: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_hygiene_scan_json(report), end="")
+    else:
+        print(render_hygiene_scan_text(report), end="")
+    if args.strict and hygiene_report_has_strict_findings(report):
+        return 1
+    return 0
+
+
+def _cmd_hygiene(args) -> int:
+    if args.hygiene_command == "scan":
+        return _cmd_hygiene_scan(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_security_cues(args) -> int:
+    try:
+        report = build_security_cue_report(
+            Path(args.path),
+            changed_files=tuple(args.changed),
+            feature=args.feature,
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build security cues report: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_security_cue_json(report), end="")
+    else:
+        print(render_security_cue_text(report), end="")
+    if any(
+        not evidence["has_native_files"]
+        for evidence in report.feature_evidence
+    ):
+        return 1
+    return 0
+
+
+def _cmd_security(args) -> int:
+    if args.security_command == "cues":
+        return _cmd_security_cues(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_provenance_manifest(args) -> int:
+    try:
+        manifest = build_provenance_manifest(
+            Path(args.path),
+            feature=args.feature,
+            includes=tuple(args.include),
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build provenance manifest: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_provenance_manifest_json(manifest), end="")
+    else:
+        print(render_provenance_manifest_text(manifest), end="")
+    if any(
+        not evidence["has_native_files"]
+        for evidence in manifest.feature_evidence
+    ):
+        return 1
+    return 0
+
+
+def _cmd_provenance(args) -> int:
+    if args.provenance_command == "manifest":
+        return _cmd_provenance_manifest(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_review_packet(args) -> int:
+    try:
+        packet = build_review_packet(
+            Path(args.path),
+            feature=args.feature,
+            changed_files=tuple(args.changed),
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build review packet: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_review_packet_json(packet), end="")
+    else:
+        print(render_review_packet_text(packet), end="")
+    if packet.feature is not None and not packet.feature["has_native_files"]:
+        return 1
+    return 0
+
+
+def _cmd_review(args) -> int:
+    if args.review_command == "packet":
+        return _cmd_review_packet(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_analyze(args) -> int:
+    try:
+        report = build_analysis_report(
+            Path(args.path),
+            feature_filter=args.feature,
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not analyze feature bundles: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_analysis_json(report), end="")
+    else:
+        print(render_analysis_text(report), end="")
+    if args.fail_on_issues and report.issues:
+        return 1
+    return 0
+
+
+def _cmd_loop_packet(args) -> int:
+    try:
+        packet = build_loop_packet(
+            Path(args.path),
+            deadline=args.deadline,
+        )
+    except OSError as error:
+        print(f"Could not build loop packet: {error}", file=sys.stderr)
+        return 1
+
+    text_body = render_loop_packet_text(packet)
+    output_path = None
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        if output_path.exists() and not args.force:
+            print(
+                f"Output file already exists: {output_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(text_body, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write loop packet: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(render_loop_packet_json(packet), end="")
+    elif output_path is not None:
+        print(f"Wrote loop packet to {output_path}")
+    else:
+        print(text_body, end="")
+    return 0
+
+
+def _cmd_loop(args) -> int:
+    if args.loop_command == "packet":
+        return _cmd_loop_packet(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_orchestrate_plan(args) -> int:
+    try:
+        report = build_orchestration_plan(
+            Path(args.path),
+            feature_filter=args.feature,
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build orchestration plan: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_orchestration_json(report), end="")
+    else:
+        print(render_orchestration_text(report), end="")
+    return 0
+
+
+def _cmd_orchestrate(args) -> int:
+    if args.orchestrate_command == "plan":
+        return _cmd_orchestrate_plan(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_status(args) -> int:
+    if getattr(args, "health", False) or args.path == "health":
+        health_path = "." if args.path == "health" else args.path
+        try:
+            report = build_health_report(Path(health_path))
+        except OSError as error:
+            print(f"Could not build health report: {error}", file=sys.stderr)
+            return 1
+
+        if args.json:
+            print(render_health_json(report), end="")
+        else:
+            print(render_health_text(report), end="")
+        return 0
+
+    if args.validation_warnings and not args.validate:
+        print("--validation-warnings requires --validate.", file=sys.stderr)
+        return 2
+    if args.readiness_policy and not args.readiness_summary:
+        print("--readiness-policy requires --readiness-summary.", file=sys.stderr)
+        return 2
+    if args.readiness_require_coverage and not args.readiness_summary:
+        print("--readiness-require-coverage requires --readiness-summary.", file=sys.stderr)
+        return 2
+
+    feature_summary_options_requested = bool(
+        args.feature_status
+        or args.feature_ready is not None
+        or args.feature_priority
+        or args.feature_owner
+        or args.feature_milestone
+        or args.feature_target_release
+        or args.feature_project
+        or args.feature_effort
+        or args.feature_sort is not None
+        or args.feature_sort_desc
+        or args.feature_require_coverage
+        or args.feature_policy
+    )
+    if feature_summary_options_requested and not args.feature_summaries:
+        print(
+            "--feature-status, --feature-ready, --feature-priority, "
+            "--feature-owner, --feature-milestone, "
+            "--feature-target-release, --feature-project, "
+            "--feature-effort, --feature-sort, --feature-sort-desc, "
+            "--feature-require-coverage, and --feature-policy "
+            "require --feature-summaries.",
+            file=sys.stderr,
+        )
+        return 2
+
+    feature_summary_statuses: tuple[str, ...] = ()
+    feature_summary_ready: bool | None = None
+    feature_summary_priorities: tuple[str, ...] = ()
+    feature_summary_owners: tuple[str, ...] = ()
+    feature_summary_milestones: tuple[str, ...] = ()
+    feature_summary_target_releases: tuple[str, ...] = ()
+    feature_summary_projects: tuple[str, ...] = ()
+    feature_summary_efforts: tuple[str, ...] = ()
+    feature_summary_sort: str | None = None
+    if args.feature_summaries:
+        try:
+            feature_summary_statuses = parse_feature_summary_status_filters(
+                args.feature_status
+            )
+            feature_summary_ready = parse_feature_summary_ready_filter(
+                args.feature_ready
+            )
+            feature_summary_priorities = parse_feature_summary_priority_filters(
+                args.feature_priority
+            )
+            feature_summary_owners = parse_feature_summary_owner_filters(
+                args.feature_owner
+            )
+            feature_summary_milestones = parse_feature_summary_metadata_filters(
+                args.feature_milestone,
+                default="unassigned",
+            )
+            feature_summary_target_releases = parse_feature_summary_metadata_filters(
+                args.feature_target_release,
+                default="unassigned",
+            )
+            feature_summary_projects = parse_feature_summary_metadata_filters(
+                args.feature_project,
+                default="unassigned",
+            )
+            feature_summary_efforts = parse_feature_summary_metadata_filters(
+                args.feature_effort,
+                default="unknown",
+            )
+            feature_summary_sort = parse_feature_summary_sort_key(args.feature_sort)
+        except InvalidFeatureSummaryOption as error:
+            print(str(error), file=sys.stderr)
+            return 2
+
+    status_kwargs = {
+        "include_adapters": args.adapters,
+        "include_feature_summaries": args.feature_summaries,
+        "include_readiness_summary": args.readiness_summary,
+        "feature_summary_statuses": feature_summary_statuses,
+        "feature_summary_ready": feature_summary_ready,
+        "feature_summary_priorities": feature_summary_priorities,
+        "feature_summary_owners": feature_summary_owners,
+        "feature_summary_milestones": feature_summary_milestones,
+        "feature_summary_target_releases": feature_summary_target_releases,
+        "feature_summary_projects": feature_summary_projects,
+        "feature_summary_efforts": feature_summary_efforts,
+        "feature_summary_sort": feature_summary_sort,
+        "feature_summary_sort_desc": args.feature_sort_desc,
+        "feature_summary_require_coverage": args.feature_require_coverage,
+        "readiness_require_coverage": args.readiness_require_coverage,
+        "readiness_use_policy": args.readiness_policy,
+    }
+    if args.feature_policy:
+        status_kwargs["feature_summary_use_policy"] = True
+    status = build_status(Path(args.path), **status_kwargs)
+    if args.validate:
+        report = build_validation_report(
+            Path(args.path),
+            include_fusion=True,
+            include_features=True,
+            include_adapters=args.adapters,
+            adapter_probe=probe_adapters,
+        )
+        status["validation"] = build_validation_summary(
+            report,
+            included={
+                "workspace": True,
+                "fusion": True,
+                "features": True,
+                "adapters": bool(args.adapters),
+            },
+            include_warning_checks=args.validation_warnings,
+        )
+    if args.json:
+        print(render_status_json(status), end="")
+    else:
+        print(render_status_text(status), end="")
+    return 0
+
+
+def _cmd_validate(args) -> int:
+    report = build_validation_report(
+        Path(args.path),
+        include_fusion=args.fusion,
+        include_features=args.features,
+        include_adapters=args.adapters,
+    )
+    if args.json:
+        print(render_validation_json(report), end="")
+    else:
+        print(render_validation_text(report), end="")
+    return validation_exit_code(report)
+
+
+def _cmd_adapters_doctor(args) -> int:
+    statuses = probe_adapters()
+    _print_adapter_statuses(statuses)
+    return 0 if all(status.available for status in statuses) else 1
+
+
+def _cmd_adapters_install_hints(args) -> int:
+    for spec in ADAPTER_SPECS.values():
+        print(f"{spec.display_name}:")
+        print(f"  upstream: {spec.upstream_url}")
+        print(f"  install: {spec.install_hint}")
+    return 0
+
+
+def _cmd_adapters_lifecycle(args) -> int:
+    report = build_adapter_lifecycle_report(Path(args.path))
+    if args.json:
+        print(render_adapter_lifecycle_json(report), end="")
+    else:
+        print(render_adapter_lifecycle_text(report), end="")
+    return 0
+
+
+def _cmd_adapters_handoff(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_adapter_feature_handoff_report(root, args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not read adapter feature handoff: {error}", file=sys.stderr)
+        return 1
+
+    text_body = render_adapter_feature_handoff_text(report)
+    output_path = None
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        if output_path.exists() and not args.force:
+            print(
+                f"Output file already exists: {output_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+
+    artifact_output = None
+    if args.output_dir:
+        output_dir = Path(args.output_dir).expanduser().resolve()
+        try:
+            artifact_output = write_adapter_feature_handoff_artifacts(
+                report,
+                output_dir,
+                force=args.force,
+            )
+        except AdapterHandoffArtifactExistsError as error:
+            print(str(error), file=sys.stderr)
+            for path in error.existing_paths:
+                print(f"  existing {path}", file=sys.stderr)
+            return 1
+        except OSError as error:
+            print(f"Could not write adapter handoff artifacts: {error}", file=sys.stderr)
+            return 1
+
+    if output_path is not None:
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(text_body, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write adapter feature handoff: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        if artifact_output is None:
+            print(render_adapter_feature_handoff_json(report), end="")
+        else:
+            payload = report.as_dict()
+            payload["artifacts"] = artifact_output.manifest["artifacts"]
+            payload["artifact_dir"] = str(artifact_output.output_dir)
+            payload["checksum_algorithm"] = artifact_output.manifest[
+                "checksum_algorithm"
+            ]
+            payload["artifact_checksums"] = artifact_output.manifest[
+                "artifact_checksums"
+            ]
+            print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
+    elif output_path is not None:
+        print(f"Wrote adapter feature handoff packet to {output_path}")
+    elif artifact_output is not None:
+        print(f"Wrote adapter handoff artifacts to {artifact_output.output_dir}")
+    else:
+        print(text_body, end="")
+    return 0
+
+
+def _cmd_adapters(args) -> int:
+    if args.adapters_command == "doctor":
+        return _cmd_adapters_doctor(args)
+    if args.adapters_command == "install-hints":
+        return _cmd_adapters_install_hints(args)
+    if args.adapters_command == "lifecycle":
+        return _cmd_adapters_lifecycle(args)
+    if args.adapters_command == "handoff":
+        return _cmd_adapters_handoff(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_retrospective_analytics(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        result = build_retrospective_analytics_report(
+            root,
+            include_improvements=args.improvements,
+            feature_slug=args.feature,
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build retrospective analytics: {error}", file=sys.stderr)
+        return 1
+    print(render_retrospective_analytics_json(result), end="")
+    return 0
+
+
+def _cmd_retrospective(args) -> int:
+    if args.retrospective_command == "analytics":
+        return _cmd_retrospective_analytics(args)
+    try:
+        result = build_retrospective_report(
+            Path(args.path),
+            feature_slug=args.feature,
+            limit=getattr(args, "limit", None),
+        )
+    except (InvalidFeatureSlug, ValueError) as error:
+        print(f"Invalid retrospective option: {error}", file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build retrospective: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_retrospective_json(result), end="")
+    else:
+        print(render_retrospective_text(result), end="")
+    return retrospective_report_exit_code(result)
+
+
+def _cmd_spec_diff(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        diff_result = get_git_diff(
+            args.slug,
+            root,
+            base=args.base,
+            unstaged=args.unstaged,
+        )
+        classification = classify_changes(diff_result, args.slug, root)
+        impacts = resolve_impact(classification.changes, args.slug, root)
+        remediation = generate_remediation_plan(
+            classification.changes, impacts.impacts
+        )
+        payload = {
+            "slug": args.slug,
+            "diff": diff_result.as_dict(),
+            "classification": classification.as_dict(),
+            "impact": impacts.as_dict(),
+            "remediation": [a.as_dict() for a in remediation],
+        }
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except InvalidGitBaseError as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except GitDiffError as error:
+        print(str(error), file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not compute spec diff: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        output = render_diff_json(diff_result)
+    else:
+        output = render_diff_text(diff_result)
+
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        if output_path.exists() and not args.force:
+            print(
+                f"Output file already exists: {output_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(output, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write output: {error}", file=sys.stderr)
+            return 1
+    else:
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=False) + "\n", end="")
+        else:
+            print(output, end="")
+    return 0
+
+
+def _cmd_spec_evolution(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        diff_result = get_git_diff(args.slug, root)
+        classification = classify_changes(diff_result, args.slug, root)
+        impacts = resolve_impact(classification.changes, args.slug, root)
+        remediation = generate_remediation_plan(
+            classification.changes, impacts.impacts
+        )
+        timeline = build_evolution_timeline(args.slug, root, limit=args.limit)
+        payload = {
+            "slug": args.slug,
+            "diff_summary": diff_result.summary,
+            "classification": classification.as_dict(),
+            "impact": impacts.as_dict(),
+            "remediation": [a.as_dict() for a in remediation],
+            "timeline": [e.as_dict() for e in timeline],
+        }
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build evolution timeline: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_evolution_json(payload), end="")
+    else:
+        print(render_evolution_text(payload), end="")
+    return 0
+
+
+def _cmd_spec(args) -> int:
+    if args.spec_command == "diff":
+        return _cmd_spec_diff(args)
+    if args.spec_command == "evolution":
+        return _cmd_spec_evolution(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_drift_monitor(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_drift_monitor_report(
+            root,
+            feature_filter=args.feature,
+            baseline=args.baseline,
+            since=args.since,
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build drift monitor report: {error}", file=sys.stderr)
+        return 1
+
+    if args.severity:
+        valid_severities = ("critical", "high", "medium", "low", "none")
+        if args.severity not in valid_severities:
+            print(
+                f"Invalid --severity value '{args.severity}'. Use one of: {', '.join(valid_severities)}.",
+                file=sys.stderr,
+            )
+            return 2
+
+        severity_order = ["critical", "high", "medium", "low", "none"]
+        min_idx = severity_order.index(args.severity)
+        filtered_features = tuple(
+            f for f in report.features
+            if severity_order.index(f.severity) <= min_idx
+        )
+        from dataclasses import replace
+        report = replace(report, features=filtered_features)
+
+    if args.json:
+        print(render_drift_json(report), end="")
+    else:
+        print(render_drift_text(report), end="")
+    if args.feature and any(not f.spec_drift and not f.code_drift and not f.test_drift and not f.quality_drift for f in report.features):
+        return 0
+    return 0
+
+
+def _cmd_drift(args) -> int:
+    if args.drift_command == "monitor":
+        return _cmd_drift_monitor(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_audit_report(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_compliance_report(
+            root,
+            feature_filter=args.feature,
+            since=args.since,
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build compliance report: {error}", file=sys.stderr)
+        return 1
+
+    output = render_compliance_json(report) if args.json else render_compliance_text(report)
+
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(output, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write audit report: {error}", file=sys.stderr)
+            return 1
+
+    print(output, end="")
+    return 0
+
+
+def _cmd_audit(args) -> int:
+    if args.audit_command == "report":
+        return _cmd_audit_report(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_release_notes(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    group_by = args.group_by
+    valid_group_by = ("priority", "project", "status", "effort")
+    if group_by not in valid_group_by:
+        print(
+            f"Invalid --group-by value '{group_by}'. Use one of: {', '.join(valid_group_by)}.",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        report = build_release_notes_report(
+            root,
+            since=args.since,
+            until=args.until,
+            group_by=group_by,
+        )
+    except OSError as error:
+        print(f"Could not build release notes: {error}", file=sys.stderr)
+        return 1
+
+    valid_formats = ("markdown", "json", "json-lines")
+    output_format = args.format
+    if args.json:
+        output_format = "json"
+    if output_format not in valid_formats:
+        print(
+            f"Invalid --format value '{output_format}'. Use one of: {', '.join(valid_formats)}.",
+            file=sys.stderr,
+        )
+        return 2
+
+    if output_format == "json":
+        output = render_release_notes_json(report)
+    elif output_format == "json-lines":
+        output = render_release_notes_json_lines(report)
+    else:
+        output = render_release_notes_text(report)
+
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(output, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write release notes: {error}", file=sys.stderr)
+            return 1
+
+    print(output, end="")
+    return 0
+
+
+def _cmd_release(args) -> int:
+    if args.release_command == "notes":
+        return _cmd_release_notes(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_execute_plan(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        result = build_execution_plan(args.slug, root)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not build execution plan: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_plan_json(result), end="")
+    else:
+        print(render_plan_text(result), end="")
+    return 0
+
+
+def _cmd_execute_grade(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        result = build_grading_rubric(args.slug, root)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not build grading rubric: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_grade_json(result), end="")
+    else:
+        print(render_grade_text(result), end="")
+    return 0
+
+
+def _cmd_execute_loop(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    if args.max_iterations is not None and args.max_iterations < 1:
+        print("--max-iterations must be at least 1", file=sys.stderr)
+        return 2
+    try:
+        result = run_execution_loop(args.slug, root, max_iterations=args.max_iterations)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not run execution loop: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_loop_json(result), end="")
+    else:
+        print(render_loop_text(result), end="")
+    return 0 if result["final_status"] == "complete" else 1
+
+
+def _cmd_execute(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    if args.execute_command == "plan":
+        return _cmd_execute_plan(args)
+    if args.execute_command == "grade":
+        return _cmd_execute_grade(args)
+    if args.execute_command == "loop":
+        return _cmd_execute_loop(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_harness_feedback(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_harness_feedback(args.slug, root)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not build harness feedback: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_harness_feedback_json(report), end="")
+    else:
+        print(render_harness_feedback_text(report), end="")
+    return 0 if report.status == "healthy" else 1
+
+
+def _cmd_harness_repair(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_harness_feedback(args.slug, root)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not build harness feedback: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        payload = {
+            "feature_id": report.feature_id,
+            "repair_strategies": [s.as_dict() for s in report.repair_strategies],
+            "status": report.status,
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
+    else:
+        lines = [
+            f"Repair strategies: {report.feature_id}",
+            f"Status: {report.status}",
+            "",
+        ]
+        if report.repair_strategies:
+            for strategy in report.repair_strategies:
+                lines.append(f"- {strategy.ac_id}:")
+                lines.append(f"    target: {strategy.target_file}")
+                lines.append(f"    edit: {strategy.edit_description}")
+                lines.append(f"    verify: {strategy.verification_command}")
+                lines.append(f"    success: {strategy.success_criteria}")
+        else:
+            lines.append("No repair strategies needed.")
+        print("\n".join(lines) + "\n", end="")
+    return 0
+
+
+def _cmd_harness_quality(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_harness_quality(root)
+    except OSError as error:
+        print(f"Could not build harness quality: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_harness_quality_json(report), end="")
+    else:
+        print(render_harness_quality_text(report), end="")
+    return 0
+
+
+def _cmd_harness_coverage(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    feature_slug = getattr(args, "feature", None)
+
+    if feature_slug:
+        try:
+            from .features import validate_feature_slug as _vfs
+            _vfs(feature_slug)
+        except InvalidFeatureSlug as error:
+            print(str(error), file=sys.stderr)
+            return 2
+
+    try:
+        report = build_harness_coverage_report(root, feature_filter=feature_slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not build harness coverage: {error}", file=sys.stderr)
+        return 1
+
+    if getattr(args, "save_baseline", False):
+        try:
+            from .harness_coverage import _save_baseline as _sb
+            _sb(root, report)
+        except OSError as error:
+            print(f"Could not save baseline: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(render_harness_coverage_json(report), end="")
+    else:
+        print(render_harness_coverage_text(report), end="")
+
+    if getattr(args, "policy", False) and report.maturity_score < 3:
+        return 1
+    return 0
+
+
+def _cmd_harness(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    if args.harness_command == "feedback":
+        return _cmd_harness_feedback(args)
+    if args.harness_command == "repair":
+        return _cmd_harness_repair(args)
+    if args.harness_command == "quality":
+        return _cmd_harness_quality(args)
+    if args.harness_command == "coverage":
+        return _cmd_harness_coverage(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_blueprint_generate(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_spec_code_blueprint(root, args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not build blueprint: {error}", file=sys.stderr)
+        return 1
+
+    if args.output_dir:
+        output_dir = Path(args.output_dir).expanduser().resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        json_path = output_dir / "blueprint.json"
+        text_path = output_dir / "blueprint.md"
+        if json_path.exists() and not args.force:
+            print(
+                f"Blueprint file already exists: {json_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+        json_path.write_text(render_blueprint_json(report), encoding="utf-8")
+        text_path.write_text(render_blueprint_text(report), encoding="utf-8")
+
+    if args.json:
+        print(render_blueprint_json(report), end="")
+    else:
+        print(render_blueprint_text(report), end="")
+
+    if args.fail_on_gaps:
+        if not report.modules or not report.functions:
+            return 3
+    return 0
+
+
+def _cmd_blueprint(args) -> int:
+    if args.blueprint_command == "generate":
+        return _cmd_blueprint_generate(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_cicd_generate(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        result = generate_pipeline(
+            root,
+            format=args.format,
+            feature_slug=args.feature,
+        )
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        return 1
+    except FileNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not generate pipeline: {error}", file=sys.stderr)
+        return 1
+
+    if args.output_dir:
+        output_dir = Path(args.output_dir).expanduser().resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        if args.format == "github-actions":
+            workflow_dir = output_dir / ".github" / "workflows"
+            workflow_dir.mkdir(parents=True, exist_ok=True)
+            pipeline_path = workflow_dir / "specspine.yml"
+        elif args.format == "gitlab-ci":
+            pipeline_path = output_dir / ".gitlab-ci.yml"
+        else:
+            pipeline_path = output_dir / "specspine-pipeline.sh"
+
+        if pipeline_path.exists() and not args.force:
+            print(
+                f"Pipeline file already exists: {pipeline_path}. "
+                "Use --force to overwrite it.",
+                file=sys.stderr,
+            )
+            return 1
+
+        raw_content = result["raw_content"] if "raw_content" in result else ""
+        if raw_content:
+            pipeline_path.write_text(raw_content, encoding="utf-8")
+
+    if args.json:
+        print(render_pipeline_json(result), end="")
+    else:
+        print(render_pipeline_text(result), end="")
+    return 0
+
+
+def _cmd_cicd_validate(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        pipeline_result = generate_pipeline(root)
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        return 1
+    except FileNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Could not validate pipeline: {error}", file=sys.stderr)
+        return 1
+
+    payload = {
+        "ok": True,
+        "pipeline_type": pipeline_result["pipeline_type"],
+        "jobs_total": len(pipeline_result["jobs"]),
+        "merge_conditions_total": len(pipeline_result["merge_conditions"]),
+        "safety_notes": list(pipeline_result["safety_notes"]),
+    }
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
+    else:
+        print(f"Pipeline validation: {pipeline_result['pipeline_type']}")
+        print(f"Jobs: {payload['jobs_total']}")
+        print(f"Merge conditions: {payload['merge_conditions_total']}")
+        print(f"Status: ok")
+    return 0
+
+
+def _cmd_cicd(args) -> int:
+    if args.cicd_command == "generate":
+        return _cmd_cicd_generate(args)
+    if args.cicd_command == "validate":
+        return _cmd_cicd_validate(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_scaffold_tests(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        report = build_ac_test_scaffold(root, args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not build test scaffold: {error}", file=sys.stderr)
+        return 1
+
+    if args.output_dir:
+        output_dir = Path(args.output_dir).expanduser().resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / report.scaffold_file.split("/")[-1]
+    else:
+        output_path = root / report.scaffold_file
+
+    if output_path.exists() and not args.force:
+        print(
+            f"Scaffold file already exists: {output_path}. "
+            "Use --force to overwrite it.",
+            file=sys.stderr,
+        )
+        return 1
+
+    if not args.json or args.output_dir or args.force:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        source_lines: list[str] = []
+        for method in report.test_methods:
+            method_info = {
+                "method_name": method.method_name,
+                "docstring": method.docstring,
+                "body": method.body,
+            }
+            source_lines.append(method_info)
+        from .scaffold import _generate_test_class
+        camel_class = report.test_methods[0].method_name.split("_")[2].title() if report.test_methods else ""
+        source = _generate_test_class(args.slug, source_lines)
+        output_path.write_text(source, encoding="utf-8")
+
+    if args.update_quality and report.coverage_links:
+        from .scaffold import _update_quality_file
+        links_payload = [
+            {"ac_id": link.ac_id, "target_path": link.target_path}
+            for link in report.coverage_links
+        ]
+        _update_quality_file(root, args.slug, links_payload)
+
+    if args.json:
+        print(render_scaffold_json(report), end="")
+    else:
+        print(render_scaffold_text(report), end="")
+    return 0
+
+
+def _cmd_scaffold(args) -> int:
+    if args.scaffold_command == "tests":
+        return _cmd_scaffold_tests(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
+def _cmd_propose(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    intent = args.intent
+
+    try:
+        from .proposer import normalize_intent
+
+        intent, warnings = normalize_intent(intent)
+        if args.slug:
+            slug = args.slug
+        else:
+            slug = _generate_slug_from_intent(intent)
+
+        from .features import validate_feature_slug as _validate_slug
+        slug = _validate_slug(slug)
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+
+    if args.dry_run:
+        try:
+            files = build_proposal_files(
+                slug,
+                intent,
+                priority=args.priority,
+                owner=args.owner,
+                milestone=args.milestone,
+                target_release=args.target_release,
+                project=args.project,
+                effort=args.effort,
+            )
+        except (InvalidFeatureSlug, ValueError) as error:
+            print(str(error), file=sys.stderr)
+            return 2
+
+        targets = {
+            relative_path: root / relative_path
+            for relative_path in files
+        }
+        existing_paths = [
+            str(path.relative_to(root))
+            for path in targets.values()
+            if path.exists()
+        ]
+        if existing_paths and not args.force:
+            print(
+                f"Feature bundle '{slug}' already has existing files. "
+                "Use --force to overwrite them.",
+                file=sys.stderr,
+            )
+            for path in existing_paths:
+                print(f"  existing {path}", file=sys.stderr)
+            return 1
+
+        metadata = {
+            "effort": args.effort,
+            "milestone": args.milestone,
+            "owner": args.owner,
+            "priority": args.priority,
+            "project": args.project,
+            "target_release": args.target_release,
+        }
+        if args.json:
+            payload = {
+                "dry_run": bool(args.dry_run),
+                "existing_paths": existing_paths,
+                "intent": intent,
+                "metadata": metadata,
+                "files": dict(files),
+                "slug": slug,
+                "warnings": warnings,
+                "written_paths": [],
+            }
+            print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
+        else:
+            for warning in warnings:
+                print(f"Warning: {warning}")
+            print(f"# Proposed feature: {slug}")
+            print(f"# Intent: {intent}")
+            if existing_paths:
+                print("# Existing files: " + ", ".join(existing_paths))
+            print()
+            for relative_path, content in files.items():
+                print(f"## {relative_path}")
+                print()
+                print(content)
+                print()
+        return 0
+
+    pre_existing_paths: list[str] = []
+    try:
+        planned_files = build_proposal_files(
+            slug,
+            intent,
+            priority=args.priority,
+            owner=args.owner,
+            milestone=args.milestone,
+            target_release=args.target_release,
+            project=args.project,
+            effort=args.effort,
+        )
+        pre_existing_paths = [
+            relative_path
+            for relative_path in planned_files
+            if (root / relative_path).exists()
+        ]
+        written = create_proposal_bundle(
+            root,
+            slug,
+            intent,
+            priority=args.priority,
+            owner=args.owner,
+            milestone=args.milestone,
+            target_release=args.target_release,
+            project=args.project,
+            effort=args.effort,
+            force=args.force,
+        )
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleExistsError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.existing_paths:
+            print(f"  existing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        files = build_proposal_files(
+            slug,
+            intent,
+            priority=args.priority,
+            owner=args.owner,
+            milestone=args.milestone,
+            target_release=args.target_release,
+            project=args.project,
+            effort=args.effort,
+        )
+        payload = {
+            "dry_run": False,
+            "existing_paths": pre_existing_paths,
+            "intent": intent,
+            "metadata": {
+                "effort": args.effort,
+                "milestone": args.milestone,
+                "owner": args.owner,
+                "priority": args.priority,
+                "project": args.project,
+                "target_release": args.target_release,
+            },
+            "files": dict(files),
+            "slug": slug,
+            "warnings": warnings,
+            "written_paths": [str(path.relative_to(root)) for path in written],
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
+        return 0
+
+    for warning in warnings:
+        print(f"Warning: {warning}")
+    print(f"Created SpecSpine proposal bundle '{slug}' at {root}")
+    _print_created(written, root)
+    return 0
+
+
+def _cmd_benchmark(args) -> int:
+    if args.feature:
+        try:
+            from .features import validate_feature_slug as _vfs
+            _vfs(args.feature)
+        except InvalidFeatureSlug as error:
+            print(str(error), file=sys.stderr)
+            return 2
+    try:
+        report = build_benchmark_report(
+            Path(args.path),
+            feature_filter=args.feature,
+            group_by=args.group_by,
+        )
+    except OSError as error:
+        print(f"Could not build benchmark report: {error}", file=sys.stderr)
+        return 1
+
+    text_body = render_benchmark_text(report)
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(text_body, encoding="utf-8")
+        except OSError as error:
+            print(f"Could not write benchmark report: {error}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(render_benchmark_json(report), end="")
+    elif args.output:
+        print(f"Wrote benchmark report to {output_path}")
+    else:
+        print(text_body, end="")
+    return 0
+
+
+def _cmd_impact_analyze(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    try:
+        analysis = analyze_feature_impact(root, args.slug)
+    except InvalidFeatureSlug as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except FeatureBundleNotFoundError as error:
+        print(str(error), file=sys.stderr)
+        for path in error.missing_paths:
+            print(f"  missing {path.relative_to(root)}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not analyze feature impact: {error}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(render_impact_json(analysis), end="")
+    else:
+        print(render_impact_text(analysis), end="")
+    return 0
+
+
+def _cmd_impact(args) -> int:
+    if args.impact_command == "analyze":
+        return _cmd_impact_analyze(args)
+    parser = build_parser()
+    parser.print_help()
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="specspine",
@@ -1676,2074 +4028,75 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "init":
-        root = Path(args.path).expanduser().resolve()
-        written = init_workspace(root, force=args.force)
-        if written:
-            print(f"Initialized SpecSpine workspace at {root}")
-            _print_created(written, root)
-        else:
-            print(f"SpecSpine workspace already exists at {root}")
-        return 0
-
+        return _cmd_init(args)
     if args.command == "agents":
-        if args.agents_command == "init":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                written = init_agents_file(root, force=args.force)
-            except AgentsFileExistsError as error:
-                print(str(error), file=sys.stderr)
-                return 1
-
-            print(f"Initialized SpecSpine agent instructions at {root}")
-            print(f"  created {written.relative_to(root)}")
-            return 0
-
+        return _cmd_agents(args)
     if args.command == "fuse":
-        root = Path(args.path).expanduser().resolve()
-        include_openspec = not args.skip_openspec
-        include_speckit = not args.skip_speckit
-        include_superpowers = not args.skip_superpowers
-
-        written = init_fusion_workspace(
-            root,
-            agent=args.agent,
-            force=args.force,
-            include_openspec=include_openspec,
-            include_speckit=include_speckit,
-            include_superpowers=include_superpowers,
-        )
-
-        if written:
-            print(f"Initialized SpecSpine fusion layer at {root}")
-            _print_created(written, root)
-        else:
-            print(f"SpecSpine fusion layer already exists at {root}")
-
-        commands = build_upstream_init_commands(
-            agent=args.agent,
-            include_openspec=include_openspec,
-            include_speckit=include_speckit,
-            include_superpowers=include_superpowers,
-            force=args.force,
-        )
-
-        if not args.run_upstream:
-            print("Upstream tools were not run. Use --run-upstream to invoke:")
-            for command in commands:
-                print(f"  {command.key}: {command.display() or command.description}")
-            return 0
-
-        results = run_upstream_initializers(root, commands)
-        failed = False
-        print("Upstream initializer results:")
-        for result in results:
-            marker = "ok" if result.returncode == 0 else "failed"
-            print(f"  [{marker}] {result.key}: {result.command}")
-            if result.stdout.strip():
-                print(f"      {result.stdout.strip()}")
-            if result.stderr.strip():
-                print(f"      {result.stderr.strip()}")
-            failed = failed or result.returncode != 0
-        return 1 if failed else 0
-
+        return _cmd_fuse(args)
     if args.command == "feature":
-        if args.feature_command == "new":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                written = create_feature_bundle(
-                    root,
-                    args.slug,
-                    title=args.title,
-                    why=args.why,
-                    force=args.force,
-                )
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleExistsError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.existing_paths:
-                    print(f"  existing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-
-            print(f"Created SpecSpine feature bundle '{args.slug}' at {root}")
-            _print_created(written, root)
-            return 0
-
-        if args.feature_command == "issue":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                draft = build_issue_draft(root, args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not read feature bundle: {error}", file=sys.stderr)
-                return 1
-
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                if output_path.exists() and not args.force:
-                    print(
-                        f"Output file already exists: {output_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(draft.body, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write issue draft: {error}", file=sys.stderr)
-                    return 1
-
-            if args.json:
-                print(render_issue_json(draft), end="")
-            elif args.output:
-                print(f"Wrote GitHub issue draft body to {output_path}")
-            else:
-                print(render_issue_text(draft), end="")
-            return 0
-
-        if args.feature_command == "pr":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                draft = build_pull_request_draft(root, args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not read feature PR draft: {error}", file=sys.stderr)
-                return 1
-
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                if output_path.exists() and not args.force:
-                    print(
-                        f"Output file already exists: {output_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(draft.body, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write PR draft: {error}", file=sys.stderr)
-                    return 1
-
-            if args.json:
-                print(render_pull_request_json(draft), end="")
-            elif args.output:
-                print(f"Wrote GitHub Pull Request draft body to {output_path}")
-            else:
-                print(render_pull_request_text(draft), end="")
-            return 0
-
-        if args.feature_command == "tasks":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                report = build_feature_tasks_report(root, args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not read feature tasks: {error}", file=sys.stderr)
-                return 1
-
-            text_body = render_feature_tasks_text(report)
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                if output_path.exists() and not args.force:
-                    print(
-                        f"Output file already exists: {output_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(text_body, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write feature tasks: {error}", file=sys.stderr)
-                    return 1
-
-            if args.json:
-                print(render_feature_tasks_json(report), end="")
-            elif args.output:
-                print(f"Wrote feature task list to {output_path}")
-            else:
-                print(text_body, end="")
-            return 0
-
-        if args.feature_command == "task-issues":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                report = build_feature_task_issues_report(root, args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not read feature task issue drafts: {error}", file=sys.stderr)
-                return 1
-
-            text_body = render_feature_task_issues_text(report)
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                if output_path.exists() and not args.force:
-                    print(
-                        f"Output file already exists: {output_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(text_body, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write feature task issue drafts: {error}", file=sys.stderr)
-                    return 1
-
-            if args.json:
-                print(render_feature_task_issues_json(report), end="")
-            elif args.output:
-                print(f"Wrote feature task issue draft package to {output_path}")
-            else:
-                print(text_body, end="")
-            return 0
-
-        if args.feature_command == "sync-plan":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                plan = build_feature_sync_plan(root, args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not read feature sync plan: {error}", file=sys.stderr)
-                return 1
-
-            text_body = render_feature_sync_plan_text(plan)
-            output_path = None
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                if output_path.exists() and not args.force:
-                    print(
-                        f"Output file already exists: {output_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-
-            artifact_output = None
-            if args.output_dir:
-                output_dir = Path(args.output_dir).expanduser().resolve()
-                try:
-                    artifact_output = write_feature_sync_plan_artifacts(
-                        plan,
-                        output_dir,
-                        force=args.force,
-                    )
-                except FeatureSyncPlanArtifactExistsError as error:
-                    print(str(error), file=sys.stderr)
-                    for path in error.existing_paths:
-                        print(f"  existing {path}", file=sys.stderr)
-                    return 1
-                except OSError as error:
-                    print(f"Could not write feature sync plan artifacts: {error}", file=sys.stderr)
-                    return 1
-
-            if output_path is not None:
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(text_body, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write feature sync plan: {error}", file=sys.stderr)
-                    return 1
-
-            if args.json:
-                print(render_feature_sync_plan_json(plan), end="")
-            elif args.output:
-                print(f"Wrote feature sync plan to {output_path}")
-            elif artifact_output is not None:
-                print(f"Wrote feature sync plan artifacts to {artifact_output.output_dir}")
-            else:
-                print(text_body, end="")
-            return 0
-
-        if args.feature_command == "archive":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                report = build_feature_archive_report(
-                    root,
-                    args.slug,
-                    archive_id=args.archive_id,
-                )
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except InvalidArchiveId as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not read feature archive evidence: {error}", file=sys.stderr)
-                return 1
-
-            if args.output_dir:
-                output_dir = Path(args.output_dir).expanduser().resolve()
-                try:
-                    package = write_feature_archive_package(
-                        report,
-                        output_dir,
-                        force=args.force,
-                    )
-                    report = feature_archive_report_with_package(report, package)
-                except FeatureArchiveArtifactExistsError as error:
-                    print(str(error), file=sys.stderr)
-                    for path in error.existing_paths:
-                        print(f"  existing {path}", file=sys.stderr)
-                    return 1
-                except OSError as error:
-                    print(f"Could not write feature archive package: {error}", file=sys.stderr)
-                    return 1
-
-            if args.json:
-                print(render_feature_archive_json(report), end="")
-            else:
-                print(render_feature_archive_text(report), end="")
-            return 0
-
-        if args.feature_command == "trace":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                report = build_feature_trace_report(root, args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not read feature trace: {error}", file=sys.stderr)
-                return 1
-
-            text_body = render_feature_trace_text(report)
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                if output_path.exists() and not args.force:
-                    print(
-                        f"Output file already exists: {output_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(text_body, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write feature trace: {error}", file=sys.stderr)
-                    return 1
-
-            if args.json:
-                print(render_feature_trace_json(report), end="")
-            elif args.output:
-                print(f"Wrote feature trace handoff to {output_path}")
-            else:
-                print(text_body, end="")
-            return 0
-
-        if args.feature_command == "handoff":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                report = build_feature_handoff_report(root, args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not read feature handoff: {error}", file=sys.stderr)
-                return 1
-
-            text_body = render_feature_handoff_text(report)
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                if output_path.exists() and not args.force:
-                    print(
-                        f"Output file already exists: {output_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(text_body, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write feature handoff: {error}", file=sys.stderr)
-                    return 1
-
-            if args.json:
-                print(render_feature_handoff_json(report), end="")
-            elif args.output:
-                print(f"Wrote feature handoff packet to {output_path}")
-            else:
-                print(text_body, end="")
-            return 0 if report.has_native_files else 1
-
-        if args.feature_command == "tests":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                report = build_feature_tests_report(root, args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not read feature test packet: {error}", file=sys.stderr)
-                return 1
-
-            text_body = render_feature_tests_text(report)
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                if output_path.exists() and not args.force:
-                    print(
-                        f"Output file already exists: {output_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(text_body, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write feature test packet: {error}", file=sys.stderr)
-                    return 1
-
-            if args.json:
-                print(render_feature_tests_json(report), end="")
-            elif args.output:
-                print(f"Wrote feature test packet to {output_path}")
-            else:
-                print(text_body, end="")
-            return 0 if report.has_native_files else 1
-
-        if args.feature_command == "ready":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                policy_required = False
-                policy_source = None
-                if args.policy:
-                    policy = load_workspace_policy(root)
-                    metadata = read_feature_metadata(root, args.slug)
-                    status = get_feature_status(root, args.slug).status or "unknown"
-                    policy_required = policy.require_coverage.requires_coverage(
-                        feature_id=args.slug,
-                        metadata=metadata,
-                        status=status,
-                    )
-                    policy_source = str(policy.source_file)
-                report = build_feature_ready_report(
-                    root,
-                    args.slug,
-                    require_coverage=args.require_coverage or policy_required,
-                    policy_applied=args.policy,
-                    coverage_required_by_policy=policy_required,
-                    policy_source=policy_source,
-                )
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not read feature readiness: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_feature_ready_json(report), end="")
-            else:
-                print(render_feature_ready_text(report), end="")
-            return 0 if report.ready else 1
-
-        if args.feature_command == "status":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                if args.set_status:
-                    report = set_feature_status(
-                        root,
-                        args.slug,
-                        args.set_status,
-                        enforce_transition=args.enforce_transition,
-                    )
-                    include_updated = True
-                else:
-                    report = get_feature_status(root, args.slug)
-                    include_updated = False
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except InvalidFeatureStatus as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureStatusTransitionError as error:
-                if args.json:
-                    print(render_status_json(error.as_dict()), end="")
-                else:
-                    print(str(error), file=sys.stderr)
-                    for check in error.blocking_checks:
-                        print(
-                            f"  blocking {check['id']}: {check['message']}",
-                            file=sys.stderr,
-                        )
-                    for gap in error.gaps:
-                        print(
-                            f"  gap {gap['id']}: {gap['message']}",
-                            file=sys.stderr,
-                        )
-                    for path in error.missing_files:
-                        print(f"  missing {path}", file=sys.stderr)
-                return 1
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not update feature status: {error}", file=sys.stderr)
-                return 1
-
-            payload = report.as_dict(include_updated=include_updated)
-            has_files = any(bool(file["exists"]) for file in report.files.values())
-            if args.json:
-                print(render_status_json(payload), end="")
-            else:
-                if include_updated:
-                    transition = report.transition or {}
-                    from_status = transition.get("from") or "unknown"
-                    marker = " with enforced transition" if transition.get("enforced") else ""
-                    print(
-                        f"Feature {report.feature_id} status updated: "
-                        f"{from_status} -> {report.status}{marker}"
-                    )
-                elif report.consistent:
-                    print(f"Feature {report.feature_id} status: {report.status}")
-                else:
-                    print(
-                        f"Feature {report.feature_id} status: "
-                        f"{report.status or 'unknown'} (mixed/inconsistent)"
-                    )
-                for kind, file in report.files.items():
-                    marker = "ok" if file["exists"] else "missing"
-                    status = file["status"] or "unknown"
-                    print(f"  [{marker}] {kind}: {file['path']} ({status})")
-            return 0 if has_files else 1
-
-        if args.feature_command == "dependency":
-            root = Path(args.path).expanduser().resolve()
-            feature_slugs: list[str] | None = None
-            if args.features:
-                feature_slugs = [s.strip() for s in args.features.split(",") if s.strip()]
-            elif args.feature:
-                feature_slugs = [args.feature]
-            try:
-                result = build_dependency_graph(root, feature_slugs=feature_slugs)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not build dependency graph: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_dependency_json(result), end="")
-            else:
-                print(render_dependency_text(result), end="")
-            return 0
-
+        return _cmd_feature(args)
     if args.command == "doctor":
-        required_files = dict(BASE_WORKSPACE_FILES)
-        if args.fusion:
-            required_files.update(FUSION_REQUIRED_FILES)
-
-        _present, missing = check_workspace(Path(args.path), required_files=required_files)
-        if missing:
-            print("SpecSpine workspace is incomplete.")
-            root = Path(args.path).expanduser().resolve()
-            for path in missing:
-                print(f"  missing {path.relative_to(root)}")
-            if args.adapters:
-                _print_adapter_statuses()
-            return 1
-
-        print(f"SpecSpine workspace is ready at {Path(args.path).expanduser().resolve()}")
-        if args.adapters:
-            statuses = probe_adapters()
-            _print_adapter_statuses(statuses)
-            return 0 if all(status.available for status in statuses) else 1
-        return 0
-
+        return _cmd_doctor(args)
     if args.command == "gates":
-        report = build_quality_gate_report(Path(args.path))
-        if args.json:
-            print(render_quality_gate_json(report), end="")
-        else:
-            print(render_quality_gate_text(report), end="")
-        return 1 if report.source_missing else 0
-
+        return _cmd_gates(args)
     if args.command == "policy":
-        try:
-            policy = load_workspace_policy(Path(args.path))
-        except OSError as error:
-            print(f"Could not read workspace policy: {error}", file=sys.stderr)
-            return 1
-        if args.json:
-            print(render_policy_json(policy), end="")
-        else:
-            print(render_policy_text(policy), end="")
-        return 0
-
+        return _cmd_policy(args)
     if args.command == "coverage":
-        if args.coverage_command == "debt":
-            try:
-                report = build_coverage_debt_report(
-                    Path(args.path),
-                    use_policy=args.policy,
-                )
-            except OSError as error:
-                print(f"Could not read coverage debt: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_coverage_debt_json(report), end="")
-            else:
-                print(render_coverage_debt_text(report), end="")
-            return 0
-        if args.coverage_command == "plan":
-            if args.limit is not None and args.limit < 0:
-                print("--limit must be non-negative", file=sys.stderr)
-                return 2
-            try:
-                report = build_coverage_plan_report(
-                    Path(args.path),
-                    use_policy=args.policy,
-                    feature_filter=args.feature,
-                    limit=getattr(args, "limit", None),
-                )
-            except InvalidFeatureSlug as error:
-                print(f"Invalid feature slug: {error}", file=sys.stderr)
-                return 2
-            except ValueError as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not read coverage plan: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_coverage_plan_json(report), end="")
-            else:
-                print(render_coverage_plan_text(report), end="")
-            if report["summary"].get("feature_missing"):
-                return 1
-            return 0
-
+        return _cmd_coverage(args)
     if args.command == "tests":
-        if args.tests_command == "impact":
-            try:
-                report = build_test_impact_report(
-                    Path(args.path),
-                    changed_files=tuple(args.changed),
-                    feature=args.feature,
-                )
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not inspect test impact: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_test_impact_json(report), end="")
-            else:
-                print(render_test_impact_text(report), end="")
-            if report.feature is not None and not report.feature["has_native_files"]:
-                return 1
-            return 0
-
+        return _cmd_tests(args)
     if args.command == "verify":
-        if args.verify_command == "matrix":
-            try:
-                matrix = build_verification_matrix(Path(args.path), args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not build verification matrix: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_verification_matrix_json(matrix), end="")
-            else:
-                print(render_verification_matrix_text(matrix), end="")
-            if not matrix.evidence["has_native_files"]:
-                return 1
-            return 0
-
+        return _cmd_verify(args)
     if args.command == "change":
-        if args.change_command == "risk":
-            try:
-                report = build_change_risk_report(
-                    Path(args.path),
-                    changed_files=tuple(args.changed),
-                    feature=args.feature,
-                )
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not build change risk report: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_change_risk_json(report), end="")
-            else:
-                print(render_change_risk_text(report), end="")
-            if any(
-                not evidence["has_native_files"]
-                for evidence in report.feature_evidence
-            ):
-                return 1
-            return 0
-
+        return _cmd_change(args)
     if args.command == "consistency":
-        if args.consistency_command == "scan":
-            try:
-                report = build_consistency_report(
-                    Path(args.path),
-                    feature_filter=args.feature,
-                    changed_files=tuple(args.changed),
-                )
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not build consistency report: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_consistency_json(report), end="")
-            else:
-                print(render_consistency_text(report), end="")
-            if args.feature and any(not feature.source_files for feature in report.features):
-                return 1
-            return 0
-
+        return _cmd_consistency(args)
     if args.command == "hygiene":
-        if args.hygiene_command == "scan":
-            try:
-                report = build_hygiene_scan_report(
-                    Path(args.path),
-                    changed_files=tuple(args.changed),
-                )
-            except OSError as error:
-                print(f"Could not build hygiene scan report: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_hygiene_scan_json(report), end="")
-            else:
-                print(render_hygiene_scan_text(report), end="")
-            if args.strict and hygiene_report_has_strict_findings(report):
-                return 1
-            return 0
-
+        return _cmd_hygiene(args)
     if args.command == "security":
-        if args.security_command == "cues":
-            try:
-                report = build_security_cue_report(
-                    Path(args.path),
-                    changed_files=tuple(args.changed),
-                    feature=args.feature,
-                )
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not build security cues report: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_security_cue_json(report), end="")
-            else:
-                print(render_security_cue_text(report), end="")
-            if any(
-                not evidence["has_native_files"]
-                for evidence in report.feature_evidence
-            ):
-                return 1
-            return 0
-
+        return _cmd_security(args)
     if args.command == "provenance":
-        if args.provenance_command == "manifest":
-            try:
-                manifest = build_provenance_manifest(
-                    Path(args.path),
-                    feature=args.feature,
-                    includes=tuple(args.include),
-                )
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not build provenance manifest: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_provenance_manifest_json(manifest), end="")
-            else:
-                print(render_provenance_manifest_text(manifest), end="")
-            if any(
-                not evidence["has_native_files"]
-                for evidence in manifest.feature_evidence
-            ):
-                return 1
-            return 0
-
+        return _cmd_provenance(args)
     if args.command == "review":
-        if args.review_command == "packet":
-            try:
-                packet = build_review_packet(
-                    Path(args.path),
-                    feature=args.feature,
-                    changed_files=tuple(args.changed),
-                )
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not build review packet: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_review_packet_json(packet), end="")
-            else:
-                print(render_review_packet_text(packet), end="")
-            if packet.feature is not None and not packet.feature["has_native_files"]:
-                return 1
-            return 0
-
+        return _cmd_review(args)
     if args.command == "analyze":
-        try:
-            report = build_analysis_report(
-                Path(args.path),
-                feature_filter=args.feature,
-            )
-        except InvalidFeatureSlug as error:
-            print(str(error), file=sys.stderr)
-            return 2
-        except OSError as error:
-            print(f"Could not analyze feature bundles: {error}", file=sys.stderr)
-            return 1
-
-        if args.json:
-            print(render_analysis_json(report), end="")
-        else:
-            print(render_analysis_text(report), end="")
-        if args.fail_on_issues and report.issues:
-            return 1
-        return 0
-
+        return _cmd_analyze(args)
     if args.command == "loop":
-        if args.loop_command == "packet":
-            try:
-                packet = build_loop_packet(
-                    Path(args.path),
-                    deadline=args.deadline,
-                )
-            except OSError as error:
-                print(f"Could not build loop packet: {error}", file=sys.stderr)
-                return 1
-
-            text_body = render_loop_packet_text(packet)
-            output_path = None
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                if output_path.exists() and not args.force:
-                    print(
-                        f"Output file already exists: {output_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(text_body, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write loop packet: {error}", file=sys.stderr)
-                    return 1
-
-            if args.json:
-                print(render_loop_packet_json(packet), end="")
-            elif output_path is not None:
-                print(f"Wrote loop packet to {output_path}")
-            else:
-                print(text_body, end="")
-            return 0
-
+        return _cmd_loop(args)
     if args.command == "orchestrate":
-        if args.orchestrate_command == "plan":
-            try:
-                report = build_orchestration_plan(
-                    Path(args.path),
-                    feature_filter=args.feature,
-                )
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not build orchestration plan: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_orchestration_json(report), end="")
-            else:
-                print(render_orchestration_text(report), end="")
-            return 0
-
+        return _cmd_orchestrate(args)
     if args.command == "status":
-        if getattr(args, "health", False) or args.path == "health":
-            health_path = "." if args.path == "health" else args.path
-            try:
-                report = build_health_report(Path(health_path))
-            except OSError as error:
-                print(f"Could not build health report: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_health_json(report), end="")
-            else:
-                print(render_health_text(report), end="")
-            return 0
-
-        if args.validation_warnings and not args.validate:
-            print("--validation-warnings requires --validate.", file=sys.stderr)
-            return 2
-        if args.readiness_policy and not args.readiness_summary:
-            print("--readiness-policy requires --readiness-summary.", file=sys.stderr)
-            return 2
-        if args.readiness_require_coverage and not args.readiness_summary:
-            print("--readiness-require-coverage requires --readiness-summary.", file=sys.stderr)
-            return 2
-
-        feature_summary_options_requested = bool(
-            args.feature_status
-            or args.feature_ready is not None
-            or args.feature_priority
-            or args.feature_owner
-            or args.feature_milestone
-            or args.feature_target_release
-            or args.feature_project
-            or args.feature_effort
-            or args.feature_sort is not None
-            or args.feature_sort_desc
-            or args.feature_require_coverage
-            or args.feature_policy
-        )
-        if feature_summary_options_requested and not args.feature_summaries:
-            print(
-                "--feature-status, --feature-ready, --feature-priority, "
-                "--feature-owner, --feature-milestone, "
-                "--feature-target-release, --feature-project, "
-                "--feature-effort, --feature-sort, --feature-sort-desc, "
-                "--feature-require-coverage, and --feature-policy "
-                "require --feature-summaries.",
-                file=sys.stderr,
-            )
-            return 2
-
-        feature_summary_statuses: tuple[str, ...] = ()
-        feature_summary_ready: bool | None = None
-        feature_summary_priorities: tuple[str, ...] = ()
-        feature_summary_owners: tuple[str, ...] = ()
-        feature_summary_milestones: tuple[str, ...] = ()
-        feature_summary_target_releases: tuple[str, ...] = ()
-        feature_summary_projects: tuple[str, ...] = ()
-        feature_summary_efforts: tuple[str, ...] = ()
-        feature_summary_sort: str | None = None
-        if args.feature_summaries:
-            try:
-                feature_summary_statuses = parse_feature_summary_status_filters(
-                    args.feature_status
-                )
-                feature_summary_ready = parse_feature_summary_ready_filter(
-                    args.feature_ready
-                )
-                feature_summary_priorities = parse_feature_summary_priority_filters(
-                    args.feature_priority
-                )
-                feature_summary_owners = parse_feature_summary_owner_filters(
-                    args.feature_owner
-                )
-                feature_summary_milestones = parse_feature_summary_metadata_filters(
-                    args.feature_milestone,
-                    default="unassigned",
-                )
-                feature_summary_target_releases = parse_feature_summary_metadata_filters(
-                    args.feature_target_release,
-                    default="unassigned",
-                )
-                feature_summary_projects = parse_feature_summary_metadata_filters(
-                    args.feature_project,
-                    default="unassigned",
-                )
-                feature_summary_efforts = parse_feature_summary_metadata_filters(
-                    args.feature_effort,
-                    default="unknown",
-                )
-                feature_summary_sort = parse_feature_summary_sort_key(args.feature_sort)
-            except InvalidFeatureSummaryOption as error:
-                print(str(error), file=sys.stderr)
-                return 2
-
-        status_kwargs = {
-            "include_adapters": args.adapters,
-            "include_feature_summaries": args.feature_summaries,
-            "include_readiness_summary": args.readiness_summary,
-            "feature_summary_statuses": feature_summary_statuses,
-            "feature_summary_ready": feature_summary_ready,
-            "feature_summary_priorities": feature_summary_priorities,
-            "feature_summary_owners": feature_summary_owners,
-            "feature_summary_milestones": feature_summary_milestones,
-            "feature_summary_target_releases": feature_summary_target_releases,
-            "feature_summary_projects": feature_summary_projects,
-            "feature_summary_efforts": feature_summary_efforts,
-            "feature_summary_sort": feature_summary_sort,
-            "feature_summary_sort_desc": args.feature_sort_desc,
-            "feature_summary_require_coverage": args.feature_require_coverage,
-            "readiness_require_coverage": args.readiness_require_coverage,
-            "readiness_use_policy": args.readiness_policy,
-        }
-        if args.feature_policy:
-            status_kwargs["feature_summary_use_policy"] = True
-        status = build_status(Path(args.path), **status_kwargs)
-        if args.validate:
-            report = build_validation_report(
-                Path(args.path),
-                include_fusion=True,
-                include_features=True,
-                include_adapters=args.adapters,
-                adapter_probe=probe_adapters,
-            )
-            status["validation"] = build_validation_summary(
-                report,
-                included={
-                    "workspace": True,
-                    "fusion": True,
-                    "features": True,
-                    "adapters": bool(args.adapters),
-                },
-                include_warning_checks=args.validation_warnings,
-            )
-        if args.json:
-            print(render_status_json(status), end="")
-        else:
-            print(render_status_text(status), end="")
-        return 0
-
+        return _cmd_status(args)
     if args.command == "validate":
-        report = build_validation_report(
-            Path(args.path),
-            include_fusion=args.fusion,
-            include_features=args.features,
-            include_adapters=args.adapters,
-        )
-        if args.json:
-            print(render_validation_json(report), end="")
-        else:
-            print(render_validation_text(report), end="")
-        return validation_exit_code(report)
-
+        return _cmd_validate(args)
     if args.command == "adapters":
-        if args.adapters_command == "doctor":
-            statuses = probe_adapters()
-            _print_adapter_statuses(statuses)
-            return 0 if all(status.available for status in statuses) else 1
-
-        if args.adapters_command == "install-hints":
-            for spec in ADAPTER_SPECS.values():
-                print(f"{spec.display_name}:")
-                print(f"  upstream: {spec.upstream_url}")
-                print(f"  install: {spec.install_hint}")
-            return 0
-
-        if args.adapters_command == "lifecycle":
-            report = build_adapter_lifecycle_report(Path(args.path))
-            if args.json:
-                print(render_adapter_lifecycle_json(report), end="")
-            else:
-                print(render_adapter_lifecycle_text(report), end="")
-            return 0
-
-        if args.adapters_command == "handoff":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                report = build_adapter_feature_handoff_report(root, args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not read adapter feature handoff: {error}", file=sys.stderr)
-                return 1
-
-            text_body = render_adapter_feature_handoff_text(report)
-            output_path = None
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                if output_path.exists() and not args.force:
-                    print(
-                        f"Output file already exists: {output_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-
-            artifact_output = None
-            if args.output_dir:
-                output_dir = Path(args.output_dir).expanduser().resolve()
-                try:
-                    artifact_output = write_adapter_feature_handoff_artifacts(
-                        report,
-                        output_dir,
-                        force=args.force,
-                    )
-                except AdapterHandoffArtifactExistsError as error:
-                    print(str(error), file=sys.stderr)
-                    for path in error.existing_paths:
-                        print(f"  existing {path}", file=sys.stderr)
-                    return 1
-                except OSError as error:
-                    print(f"Could not write adapter handoff artifacts: {error}", file=sys.stderr)
-                    return 1
-
-            if output_path is not None:
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(text_body, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write adapter feature handoff: {error}", file=sys.stderr)
-                    return 1
-
-            if args.json:
-                if artifact_output is None:
-                    print(render_adapter_feature_handoff_json(report), end="")
-                else:
-                    payload = report.as_dict()
-                    payload["artifacts"] = artifact_output.manifest["artifacts"]
-                    payload["artifact_dir"] = str(artifact_output.output_dir)
-                    payload["checksum_algorithm"] = artifact_output.manifest[
-                        "checksum_algorithm"
-                    ]
-                    payload["artifact_checksums"] = artifact_output.manifest[
-                        "artifact_checksums"
-                    ]
-                    print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
-            elif output_path is not None:
-                print(f"Wrote adapter feature handoff packet to {output_path}")
-            elif artifact_output is not None:
-                print(f"Wrote adapter handoff artifacts to {artifact_output.output_dir}")
-            else:
-                print(text_body, end="")
-            return 0
-
-    if args.command == "retrospective" and args.retrospective_command == "analytics":
-        root = Path(args.path).expanduser().resolve()
-        try:
-            result = build_retrospective_analytics_report(
-                root,
-                include_improvements=args.improvements,
-                feature_slug=args.feature,
-            )
-        except InvalidFeatureSlug as error:
-            print(str(error), file=sys.stderr)
-            return 2
-        except ValueError as error:
-            print(str(error), file=sys.stderr)
-            return 2
-        except OSError as error:
-            print(f"Could not build retrospective analytics: {error}", file=sys.stderr)
-            return 1
-        print(render_retrospective_analytics_json(result), end="")
-        return 0
-
+        return _cmd_adapters(args)
     if args.command == "retrospective":
-        try:
-            result = build_retrospective_report(
-                Path(args.path),
-                feature_slug=args.feature,
-                limit=getattr(args, "limit", None),
-            )
-        except (InvalidFeatureSlug, ValueError) as error:
-            print(f"Invalid retrospective option: {error}", file=sys.stderr)
-            return 2
-        except OSError as error:
-            print(f"Could not build retrospective: {error}", file=sys.stderr)
-            return 1
-
-        if args.json:
-            print(render_retrospective_json(result), end="")
-        else:
-            print(render_retrospective_text(result), end="")
-        return retrospective_report_exit_code(result)
-
+        return _cmd_retrospective(args)
     if args.command == "spec":
-        if args.spec_command == "diff":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                diff_result = get_git_diff(
-                    args.slug,
-                    root,
-                    base=args.base,
-                    unstaged=args.unstaged,
-                )
-                classification = classify_changes(diff_result, args.slug, root)
-                impacts = resolve_impact(classification.changes, args.slug, root)
-                remediation = generate_remediation_plan(
-                    classification.changes, impacts.impacts
-                )
-                payload = {
-                    "slug": args.slug,
-                    "diff": diff_result.as_dict(),
-                    "classification": classification.as_dict(),
-                    "impact": impacts.as_dict(),
-                    "remediation": [a.as_dict() for a in remediation],
-                }
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except InvalidGitBaseError as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except GitDiffError as error:
-                print(str(error), file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not compute spec diff: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                output = render_diff_json(diff_result)
-            else:
-                output = render_diff_text(diff_result)
-
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                if output_path.exists() and not args.force:
-                    print(
-                        f"Output file already exists: {output_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(output, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write output: {error}", file=sys.stderr)
-                    return 1
-            else:
-                if args.json:
-                    print(json.dumps(payload, indent=2, sort_keys=False) + "\n", end="")
-                else:
-                    print(output, end="")
-            return 0
-
-        if args.spec_command == "evolution":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                diff_result = get_git_diff(args.slug, root)
-                classification = classify_changes(diff_result, args.slug, root)
-                impacts = resolve_impact(classification.changes, args.slug, root)
-                remediation = generate_remediation_plan(
-                    classification.changes, impacts.impacts
-                )
-                timeline = build_evolution_timeline(args.slug, root, limit=args.limit)
-                payload = {
-                    "slug": args.slug,
-                    "diff_summary": diff_result.summary,
-                    "classification": classification.as_dict(),
-                    "impact": impacts.as_dict(),
-                    "remediation": [a.as_dict() for a in remediation],
-                    "timeline": [e.as_dict() for e in timeline],
-                }
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not build evolution timeline: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_evolution_json(payload), end="")
-            else:
-                print(render_evolution_text(payload), end="")
-            return 0
-
+        return _cmd_spec(args)
     if args.command == "drift":
-        if args.drift_command == "monitor":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                report = build_drift_monitor_report(
-                    root,
-                    feature_filter=args.feature,
-                    baseline=args.baseline,
-                    since=args.since,
-                )
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not build drift monitor report: {error}", file=sys.stderr)
-                return 1
-
-            if args.severity:
-                valid_severities = ("critical", "high", "medium", "low", "none")
-                if args.severity not in valid_severities:
-                    print(
-                        f"Invalid --severity value '{args.severity}'. Use one of: {', '.join(valid_severities)}.",
-                        file=sys.stderr,
-                    )
-                    return 2
-
-                severity_order = ["critical", "high", "medium", "low", "none"]
-                min_idx = severity_order.index(args.severity)
-                filtered_features = tuple(
-                    f for f in report.features
-                    if severity_order.index(f.severity) <= min_idx
-                )
-                from dataclasses import replace
-                report = replace(report, features=filtered_features)
-
-            if args.json:
-                print(render_drift_json(report), end="")
-            else:
-                print(render_drift_text(report), end="")
-            if args.feature and any(not f.spec_drift and not f.code_drift and not f.test_drift and not f.quality_drift for f in report.features):
-                return 0
-            return 0
-
+        return _cmd_drift(args)
     if args.command == "audit":
-        if args.audit_command == "report":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                report = build_compliance_report(
-                    root,
-                    feature_filter=args.feature,
-                    since=args.since,
-                )
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not build compliance report: {error}", file=sys.stderr)
-                return 1
-
-            output = render_compliance_json(report) if args.json else render_compliance_text(report)
-
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(output, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write audit report: {error}", file=sys.stderr)
-                    return 1
-
-            print(output, end="")
-            return 0
-
+        return _cmd_audit(args)
     if args.command == "release":
-        if args.release_command == "notes":
-            root = Path(args.path).expanduser().resolve()
-            group_by = args.group_by
-            valid_group_by = ("priority", "project", "status", "effort")
-            if group_by not in valid_group_by:
-                print(
-                    f"Invalid --group-by value '{group_by}'. Use one of: {', '.join(valid_group_by)}.",
-                    file=sys.stderr,
-                )
-                return 2
-            try:
-                report = build_release_notes_report(
-                    root,
-                    since=args.since,
-                    until=args.until,
-                    group_by=group_by,
-                )
-            except OSError as error:
-                print(f"Could not build release notes: {error}", file=sys.stderr)
-                return 1
-
-            valid_formats = ("markdown", "json", "json-lines")
-            output_format = args.format
-            if args.json:
-                output_format = "json"
-            if output_format not in valid_formats:
-                print(
-                    f"Invalid --format value '{output_format}'. Use one of: {', '.join(valid_formats)}.",
-                    file=sys.stderr,
-                )
-                return 2
-
-            if output_format == "json":
-                output = render_release_notes_json(report)
-            elif output_format == "json-lines":
-                output = render_release_notes_json_lines(report)
-            else:
-                output = render_release_notes_text(report)
-
-            if args.output:
-                output_path = Path(args.output).expanduser().resolve()
-                try:
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text(output, encoding="utf-8")
-                except OSError as error:
-                    print(f"Could not write release notes: {error}", file=sys.stderr)
-                    return 1
-
-            print(output, end="")
-            return 0
-
+        return _cmd_release(args)
     if args.command == "execute":
-        root = Path(args.path).expanduser().resolve()
-        if args.execute_command == "plan":
-            try:
-                result = build_execution_plan(args.slug, root)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not build execution plan: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_plan_json(result), end="")
-            else:
-                print(render_plan_text(result), end="")
-            return 0
-
-        if args.execute_command == "grade":
-            try:
-                result = build_grading_rubric(args.slug, root)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not build grading rubric: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_grade_json(result), end="")
-            else:
-                print(render_grade_text(result), end="")
-            return 0
-
-        if args.execute_command == "loop":
-            if args.max_iterations is not None and args.max_iterations < 1:
-                print("--max-iterations must be at least 1", file=sys.stderr)
-                return 2
-            try:
-                result = run_execution_loop(args.slug, root, max_iterations=args.max_iterations)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not run execution loop: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_loop_json(result), end="")
-            else:
-                print(render_loop_text(result), end="")
-            return 0 if result["final_status"] == "complete" else 1
-
+        return _cmd_execute(args)
     if args.command == "harness":
-        root = Path(args.path).expanduser().resolve()
-        if args.harness_command == "feedback":
-            try:
-                report = build_harness_feedback(args.slug, root)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not build harness feedback: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_harness_feedback_json(report), end="")
-            else:
-                print(render_harness_feedback_text(report), end="")
-            return 0 if report.status == "healthy" else 1
-
-        if args.harness_command == "repair":
-            try:
-                report = build_harness_feedback(args.slug, root)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not build harness feedback: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                payload = {
-                    "feature_id": report.feature_id,
-                    "repair_strategies": [s.as_dict() for s in report.repair_strategies],
-                    "status": report.status,
-                }
-                print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
-            else:
-                lines = [
-                    f"Repair strategies: {report.feature_id}",
-                    f"Status: {report.status}",
-                    "",
-                ]
-                if report.repair_strategies:
-                    for strategy in report.repair_strategies:
-                        lines.append(f"- {strategy.ac_id}:")
-                        lines.append(f"    target: {strategy.target_file}")
-                        lines.append(f"    edit: {strategy.edit_description}")
-                        lines.append(f"    verify: {strategy.verification_command}")
-                        lines.append(f"    success: {strategy.success_criteria}")
-                else:
-                    lines.append("No repair strategies needed.")
-                print("\n".join(lines) + "\n", end="")
-            return 0
-
-        if args.harness_command == "quality":
-            try:
-                report = build_harness_quality(root)
-            except OSError as error:
-                print(f"Could not build harness quality: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_harness_quality_json(report), end="")
-            else:
-                print(render_harness_quality_text(report), end="")
-            return 0
-
-        if args.harness_command == "coverage":
-            feature_slug = getattr(args, "feature", None)
-
-            if feature_slug:
-                try:
-                    from .features import validate_feature_slug as _vfs
-                    _vfs(feature_slug)
-                except InvalidFeatureSlug as error:
-                    print(str(error), file=sys.stderr)
-                    return 2
-
-            try:
-                report = build_harness_coverage_report(root, feature_filter=feature_slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not build harness coverage: {error}", file=sys.stderr)
-                return 1
-
-            if getattr(args, "save_baseline", False):
-                try:
-                    from .harness_coverage import _save_baseline as _sb
-                    _sb(root, report)
-                except OSError as error:
-                    print(f"Could not save baseline: {error}", file=sys.stderr)
-                    return 1
-
-            if args.json:
-                print(render_harness_coverage_json(report), end="")
-            else:
-                print(render_harness_coverage_text(report), end="")
-
-            if getattr(args, "policy", False) and report.maturity_score < 3:
-                return 1
-            return 0
-
+        return _cmd_harness(args)
     if args.command == "blueprint":
-        if args.blueprint_command == "generate":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                report = build_spec_code_blueprint(root, args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not build blueprint: {error}", file=sys.stderr)
-                return 1
-
-            if args.output_dir:
-                output_dir = Path(args.output_dir).expanduser().resolve()
-                output_dir.mkdir(parents=True, exist_ok=True)
-                json_path = output_dir / "blueprint.json"
-                text_path = output_dir / "blueprint.md"
-                if json_path.exists() and not args.force:
-                    print(
-                        f"Blueprint file already exists: {json_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-                json_path.write_text(render_blueprint_json(report), encoding="utf-8")
-                text_path.write_text(render_blueprint_text(report), encoding="utf-8")
-
-            if args.json:
-                print(render_blueprint_json(report), end="")
-            else:
-                print(render_blueprint_text(report), end="")
-
-            if args.fail_on_gaps:
-                if not report.modules or not report.functions:
-                    return 3
-            return 0
-
+        return _cmd_blueprint(args)
     if args.command == "cicd":
-        if args.cicd_command == "generate":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                result = generate_pipeline(
-                    root,
-                    format=args.format,
-                    feature_slug=args.feature,
-                )
-            except ValueError as error:
-                print(str(error), file=sys.stderr)
-                return 1
-            except FileNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not generate pipeline: {error}", file=sys.stderr)
-                return 1
-
-            if args.output_dir:
-                output_dir = Path(args.output_dir).expanduser().resolve()
-                output_dir.mkdir(parents=True, exist_ok=True)
-                if args.format == "github-actions":
-                    workflow_dir = output_dir / ".github" / "workflows"
-                    workflow_dir.mkdir(parents=True, exist_ok=True)
-                    pipeline_path = workflow_dir / "specspine.yml"
-                elif args.format == "gitlab-ci":
-                    pipeline_path = output_dir / ".gitlab-ci.yml"
-                else:
-                    pipeline_path = output_dir / "specspine-pipeline.sh"
-
-                if pipeline_path.exists() and not args.force:
-                    print(
-                        f"Pipeline file already exists: {pipeline_path}. "
-                        "Use --force to overwrite it.",
-                        file=sys.stderr,
-                    )
-                    return 1
-
-                raw_content = result["raw_content"] if "raw_content" in result else ""
-                if raw_content:
-                    pipeline_path.write_text(raw_content, encoding="utf-8")
-
-            if args.json:
-                print(render_pipeline_json(result), end="")
-            else:
-                print(render_pipeline_text(result), end="")
-            return 0
-
-        if args.cicd_command == "validate":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                pipeline_result = generate_pipeline(root)
-            except ValueError as error:
-                print(str(error), file=sys.stderr)
-                return 1
-            except FileNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except OSError as error:
-                print(f"Could not validate pipeline: {error}", file=sys.stderr)
-                return 1
-
-            payload = {
-                "ok": True,
-                "pipeline_type": pipeline_result["pipeline_type"],
-                "jobs_total": len(pipeline_result["jobs"]),
-                "merge_conditions_total": len(pipeline_result["merge_conditions"]),
-                "safety_notes": list(pipeline_result["safety_notes"]),
-            }
-            if args.json:
-                print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
-            else:
-                print(f"Pipeline validation: {pipeline_result['pipeline_type']}")
-                print(f"Jobs: {payload['jobs_total']}")
-                print(f"Merge conditions: {payload['merge_conditions_total']}")
-                print(f"Status: ok")
-            return 0
-
+        return _cmd_cicd(args)
     if args.command == "scaffold":
-        if args.scaffold_command == "tests":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                report = build_ac_test_scaffold(root, args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not build test scaffold: {error}", file=sys.stderr)
-                return 1
-
-            if args.output_dir:
-                output_dir = Path(args.output_dir).expanduser().resolve()
-                output_dir.mkdir(parents=True, exist_ok=True)
-                output_path = output_dir / report.scaffold_file.split("/")[-1]
-            else:
-                output_path = root / report.scaffold_file
-
-            if output_path.exists() and not args.force:
-                print(
-                    f"Scaffold file already exists: {output_path}. "
-                    "Use --force to overwrite it.",
-                    file=sys.stderr,
-                )
-                return 1
-
-            if not args.json or args.output_dir or args.force:
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                source_lines: list[str] = []
-                for method in report.test_methods:
-                    method_info = {
-                        "method_name": method.method_name,
-                        "docstring": method.docstring,
-                        "body": method.body,
-                    }
-                    source_lines.append(method_info)
-                from .scaffold import _generate_test_class
-                camel_class = report.test_methods[0].method_name.split("_")[2].title() if report.test_methods else ""
-                source = _generate_test_class(args.slug, source_lines)
-                output_path.write_text(source, encoding="utf-8")
-
-            if args.update_quality and report.coverage_links:
-                from .scaffold import _update_quality_file
-                links_payload = [
-                    {"ac_id": link.ac_id, "target_path": link.target_path}
-                    for link in report.coverage_links
-                ]
-                _update_quality_file(root, args.slug, links_payload)
-
-            if args.json:
-                print(render_scaffold_json(report), end="")
-            else:
-                print(render_scaffold_text(report), end="")
-            return 0
-
+        return _cmd_scaffold(args)
     if args.command == "propose":
-        root = Path(args.path).expanduser().resolve()
-        intent = args.intent
-
-        try:
-            from .proposer import normalize_intent
-
-            intent, warnings = normalize_intent(intent)
-            if args.slug:
-                slug = args.slug
-            else:
-                slug = _generate_slug_from_intent(intent)
-
-            from .features import validate_feature_slug as _validate_slug
-            slug = _validate_slug(slug)
-        except ValueError as error:
-            print(str(error), file=sys.stderr)
-            return 2
-        except InvalidFeatureSlug as error:
-            print(str(error), file=sys.stderr)
-            return 2
-
-        if args.dry_run:
-            try:
-                files = build_proposal_files(
-                    slug,
-                    intent,
-                    priority=args.priority,
-                    owner=args.owner,
-                    milestone=args.milestone,
-                    target_release=args.target_release,
-                    project=args.project,
-                    effort=args.effort,
-                )
-            except (InvalidFeatureSlug, ValueError) as error:
-                print(str(error), file=sys.stderr)
-                return 2
-
-            targets = {
-                relative_path: root / relative_path
-                for relative_path in files
-            }
-            existing_paths = [
-                str(path.relative_to(root))
-                for path in targets.values()
-                if path.exists()
-            ]
-            if existing_paths and not args.force:
-                print(
-                    f"Feature bundle '{slug}' already has existing files. "
-                    "Use --force to overwrite them.",
-                    file=sys.stderr,
-                )
-                for path in existing_paths:
-                    print(f"  existing {path}", file=sys.stderr)
-                return 1
-
-            metadata = {
-                "effort": args.effort,
-                "milestone": args.milestone,
-                "owner": args.owner,
-                "priority": args.priority,
-                "project": args.project,
-                "target_release": args.target_release,
-            }
-            if args.json:
-                payload = {
-                    "dry_run": bool(args.dry_run),
-                    "existing_paths": existing_paths,
-                    "intent": intent,
-                    "metadata": metadata,
-                    "files": dict(files),
-                    "slug": slug,
-                    "warnings": warnings,
-                    "written_paths": [],
-                }
-                print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
-            else:
-                for warning in warnings:
-                    print(f"Warning: {warning}")
-                print(f"# Proposed feature: {slug}")
-                print(f"# Intent: {intent}")
-                if existing_paths:
-                    print("# Existing files: " + ", ".join(existing_paths))
-                print()
-                for relative_path, content in files.items():
-                    print(f"## {relative_path}")
-                    print()
-                    print(content)
-                    print()
-            return 0
-
-        pre_existing_paths: list[str] = []
-        try:
-            planned_files = build_proposal_files(
-                slug,
-                intent,
-                priority=args.priority,
-                owner=args.owner,
-                milestone=args.milestone,
-                target_release=args.target_release,
-                project=args.project,
-                effort=args.effort,
-            )
-            pre_existing_paths = [
-                relative_path
-                for relative_path in planned_files
-                if (root / relative_path).exists()
-            ]
-            written = create_proposal_bundle(
-                root,
-                slug,
-                intent,
-                priority=args.priority,
-                owner=args.owner,
-                milestone=args.milestone,
-                target_release=args.target_release,
-                project=args.project,
-                effort=args.effort,
-                force=args.force,
-            )
-        except InvalidFeatureSlug as error:
-            print(str(error), file=sys.stderr)
-            return 2
-        except ValueError as error:
-            print(str(error), file=sys.stderr)
-            return 2
-        except FeatureBundleExistsError as error:
-            print(str(error), file=sys.stderr)
-            for path in error.existing_paths:
-                print(f"  existing {path.relative_to(root)}", file=sys.stderr)
-            return 1
-
-        if args.json:
-            files = build_proposal_files(
-                slug,
-                intent,
-                priority=args.priority,
-                owner=args.owner,
-                milestone=args.milestone,
-                target_release=args.target_release,
-                project=args.project,
-                effort=args.effort,
-            )
-            payload = {
-                "dry_run": False,
-                "existing_paths": pre_existing_paths,
-                "intent": intent,
-                "metadata": {
-                    "effort": args.effort,
-                    "milestone": args.milestone,
-                    "owner": args.owner,
-                    "priority": args.priority,
-                    "project": args.project,
-                    "target_release": args.target_release,
-                },
-                "files": dict(files),
-                "slug": slug,
-                "warnings": warnings,
-                "written_paths": [str(path.relative_to(root)) for path in written],
-            }
-            print(json.dumps(payload, indent=2, sort_keys=True) + "\n", end="")
-            return 0
-
-        for warning in warnings:
-            print(f"Warning: {warning}")
-        print(f"Created SpecSpine proposal bundle '{slug}' at {root}")
-        _print_created(written, root)
-        return 0
-
+        return _cmd_propose(args)
     if args.command == "benchmark":
-        if args.feature:
-            try:
-                from .features import validate_feature_slug as _vfs
-                _vfs(args.feature)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-        try:
-            report = build_benchmark_report(
-                Path(args.path),
-                feature_filter=args.feature,
-                group_by=args.group_by,
-            )
-        except OSError as error:
-            print(f"Could not build benchmark report: {error}", file=sys.stderr)
-            return 1
-
-        text_body = render_benchmark_text(report)
-        if args.output:
-            output_path = Path(args.output).expanduser().resolve()
-            try:
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.write_text(text_body, encoding="utf-8")
-            except OSError as error:
-                print(f"Could not write benchmark report: {error}", file=sys.stderr)
-                return 1
-
-        if args.json:
-            print(render_benchmark_json(report), end="")
-        elif args.output:
-            print(f"Wrote benchmark report to {output_path}")
-        else:
-            print(text_body, end="")
-        return 0
-
+        return _cmd_benchmark(args)
     if args.command == "impact":
-        if args.impact_command == "analyze":
-            root = Path(args.path).expanduser().resolve()
-            try:
-                analysis = analyze_feature_impact(root, args.slug)
-            except InvalidFeatureSlug as error:
-                print(str(error), file=sys.stderr)
-                return 2
-            except FeatureBundleNotFoundError as error:
-                print(str(error), file=sys.stderr)
-                for path in error.missing_paths:
-                    print(f"  missing {path.relative_to(root)}", file=sys.stderr)
-                return 1
-            except OSError as error:
-                print(f"Could not analyze feature impact: {error}", file=sys.stderr)
-                return 1
-
-            if args.json:
-                print(render_impact_json(analysis), end="")
-            else:
-                print(render_impact_text(analysis), end="")
-            return 0
+        return _cmd_impact(args)
 
     parser.print_help()
     return 1
