@@ -2685,277 +2685,153 @@ def _build_fuse_parser(subparsers) -> None:
     fuse_parser.add_argument("--skip-superpowers", action="store_true", help="do not enable the Superpowers adapter")
 
 
+def _build_feature_new_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("new", help="create a traceable feature bundle")
+    parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--title", help="human-readable feature title")
+    parser.add_argument("--why", help="short reason this feature matters")
+    parser.add_argument("--force", action="store_true", help="overwrite existing feature files")
+    return parser
+
+
+def _build_feature_issue_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("issue", help="draft a local GitHub issue from a native feature bundle")
+    parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    parser.add_argument("--output", help="write the issue body to a file instead of printing the text draft")
+    parser.add_argument("--force", action="store_true", help="overwrite an existing output file")
+    return parser
+
+
+def _build_feature_pr_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("pr", help="draft a local GitHub Pull Request from a native feature bundle")
+    parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    parser.add_argument("--output", help="write the PR body to a file instead of printing the text draft")
+    parser.add_argument("--force", action="store_true", help="overwrite an existing output file")
+    return parser
+
+
+def _build_feature_tasks_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("tasks", help="export executable checklist tasks from a native feature bundle")
+    parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    parser.add_argument("--output", help="write the text task list to a file instead of printing it")
+    parser.add_argument("--force", action="store_true", help="overwrite an existing output file")
+    return parser
+
+
+def _build_feature_task_issues_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("task-issues", help="draft local GitHub issues from native feature execution tasks")
+    parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    parser.add_argument("--output", help="write the text issue draft package to a file instead of printing it")
+    parser.add_argument("--force", action="store_true", help="overwrite an existing output file")
+    return parser
+
+
+def _build_feature_sync_plan_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("sync-plan", help="plan local GitHub CLI sync commands without executing them")
+    parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    parser.add_argument("--output", help="write the text sync plan to a file instead of printing it")
+    parser.add_argument("--output-dir", help="write reviewable sync plan artifacts to a directory")
+    parser.add_argument("--force", action="store_true", help="overwrite existing output files written by this command")
+    return parser
+
+
+def _build_feature_archive_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("archive", help="package local archive evidence for a native feature bundle")
+    parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    parser.add_argument("--output-dir", help="write a compact archive package to a directory")
+    parser.add_argument("--archive-id", help="stable archive id to include in the report and package")
+    parser.add_argument("--force", action="store_true", help="overwrite existing archive package files written by this command")
+    return parser
+
+
+def _build_feature_trace_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("trace", help="export a traceability handoff from a native feature bundle")
+    parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    parser.add_argument("--output", help="write the text trace handoff to a file instead of printing it")
+    parser.add_argument("--force", action="store_true", help="overwrite an existing output file")
+    return parser
+
+
+def _build_feature_handoff_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("handoff", help="export a compact agent handoff packet from a native feature bundle")
+    parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    parser.add_argument("--output", help="write the text handoff packet to a file instead of printing it")
+    parser.add_argument("--force", action="store_true", help="overwrite an existing output file")
+    return parser
+
+
+def _build_feature_tests_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("tests", help="export an acceptance-test packet from a native feature bundle")
+    parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    parser.add_argument("--output", help="write the text acceptance-test packet to a file instead of printing it")
+    parser.add_argument("--force", action="store_true", help="overwrite an existing output file")
+    return parser
+
+
+def _build_feature_ready_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("ready", help="check whether a native feature bundle passes the local readiness gate")
+    parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    parser.add_argument("--require-coverage", action="store_true", help="require completed local Test Coverage links for every acceptance criterion")
+    parser.add_argument("--policy", action="store_true", help="apply workspace readiness policy when deciding whether coverage is required")
+    return parser
+
+
+def _build_feature_status_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("status", help="read or advance a native feature lifecycle status")
+    parser.add_argument("slug", help="feature id, such as add-dark-mode")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--set", dest="set_status", help="set the feature lifecycle status")
+    parser.add_argument("--enforce-transition", action="store_true", help="enforce ordered lifecycle transitions and archive readiness")
+    parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    return parser
+
+
+def _build_feature_dependency_parser(subparsers) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser("dependency", help="analyze feature dependencies and compute critical path")
+    parser.add_argument("path", nargs="?", default=".", help="workspace path")
+    parser.add_argument("--json", action="store_true", help="print stable JSON for agents and scripts")
+    parser.add_argument("--feature", metavar="SLUG", help="focus on one native feature slug")
+    parser.add_argument("--features", metavar="SLUG1,SLUG2", help="comma-separated list of feature slugs to include")
+    return parser
+
+
 def _build_feature_parser(subparsers) -> None:
     feature_parser = subparsers.add_parser("feature", help="manage native SpecSpine features")
     feature_subcommands = feature_parser.add_subparsers(dest="feature_command", required=True)
-
-    feature_new_parser = feature_subcommands.add_parser(
-        "new",
-        help="create a traceable feature bundle",
-    )
-    feature_new_parser.add_argument("slug", help="feature id, such as add-dark-mode")
-    feature_new_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_new_parser.add_argument("--title", help="human-readable feature title")
-    feature_new_parser.add_argument("--why", help="short reason this feature matters")
-    feature_new_parser.add_argument("--force", action="store_true", help="overwrite existing feature files")
-
-    feature_issue_parser = feature_subcommands.add_parser(
-        "issue",
-        help="draft a local GitHub issue from a native feature bundle",
-    )
-    feature_issue_parser.add_argument("slug", help="feature id, such as add-dark-mode")
-    feature_issue_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_issue_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print stable JSON for agents and scripts",
-    )
-    feature_issue_parser.add_argument(
-        "--output",
-        help="write the issue body to a file instead of printing the text draft",
-    )
-    feature_issue_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="overwrite an existing output file",
-    )
-
-    feature_pr_parser = feature_subcommands.add_parser(
-        "pr",
-        help="draft a local GitHub Pull Request from a native feature bundle",
-    )
-    feature_pr_parser.add_argument("slug", help="feature id, such as add-dark-mode")
-    feature_pr_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_pr_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print stable JSON for agents and scripts",
-    )
-    feature_pr_parser.add_argument(
-        "--output",
-        help="write the PR body to a file instead of printing the text draft",
-    )
-    feature_pr_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="overwrite an existing output file",
-    )
-
-    feature_tasks_parser = feature_subcommands.add_parser(
-        "tasks",
-        help="export executable checklist tasks from a native feature bundle",
-    )
-    feature_tasks_parser.add_argument("slug", help="feature id, such as add-dark-mode")
-    feature_tasks_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_tasks_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print stable JSON for agents and scripts",
-    )
-    feature_tasks_parser.add_argument(
-        "--output",
-        help="write the text task list to a file instead of printing it",
-    )
-    feature_tasks_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="overwrite an existing output file",
-    )
-
-    feature_task_issues_parser = feature_subcommands.add_parser(
-        "task-issues",
-        help="draft local GitHub issues from native feature execution tasks",
-    )
-    feature_task_issues_parser.add_argument("slug", help="feature id, such as add-dark-mode")
-    feature_task_issues_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_task_issues_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print stable JSON for agents and scripts",
-    )
-    feature_task_issues_parser.add_argument(
-        "--output",
-        help="write the text issue draft package to a file instead of printing it",
-    )
-    feature_task_issues_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="overwrite an existing output file",
-    )
-
-    feature_sync_plan_parser = feature_subcommands.add_parser(
-        "sync-plan",
-        help="plan local GitHub CLI sync commands without executing them",
-    )
-    feature_sync_plan_parser.add_argument("slug", help="feature id, such as add-dark-mode")
-    feature_sync_plan_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_sync_plan_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print stable JSON for agents and scripts",
-    )
-    feature_sync_plan_parser.add_argument(
-        "--output",
-        help="write the text sync plan to a file instead of printing it",
-    )
-    feature_sync_plan_parser.add_argument(
-        "--output-dir",
-        help="write reviewable sync plan artifacts to a directory",
-    )
-    feature_sync_plan_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="overwrite existing output files written by this command",
-    )
-
-    feature_archive_parser = feature_subcommands.add_parser(
-        "archive",
-        help="package local archive evidence for a native feature bundle",
-    )
-    feature_archive_parser.add_argument("slug", help="feature id, such as add-dark-mode")
-    feature_archive_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_archive_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print stable JSON for agents and scripts",
-    )
-    feature_archive_parser.add_argument(
-        "--output-dir",
-        help="write a compact archive package to a directory",
-    )
-    feature_archive_parser.add_argument(
-        "--archive-id",
-        help="stable archive id to include in the report and package",
-    )
-    feature_archive_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="overwrite existing archive package files written by this command",
-    )
-
-    feature_trace_parser = feature_subcommands.add_parser(
-        "trace",
-        help="export a traceability handoff from a native feature bundle",
-    )
-    feature_trace_parser.add_argument("slug", help="feature id, such as add-dark-mode")
-    feature_trace_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_trace_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print stable JSON for agents and scripts",
-    )
-    feature_trace_parser.add_argument(
-        "--output",
-        help="write the text trace handoff to a file instead of printing it",
-    )
-    feature_trace_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="overwrite an existing output file",
-    )
-
-    feature_handoff_parser = feature_subcommands.add_parser(
-        "handoff",
-        help="export a compact agent handoff packet from a native feature bundle",
-    )
-    feature_handoff_parser.add_argument("slug", help="feature id, such as add-dark-mode")
-    feature_handoff_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_handoff_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print stable JSON for agents and scripts",
-    )
-    feature_handoff_parser.add_argument(
-        "--output",
-        help="write the text handoff packet to a file instead of printing it",
-    )
-    feature_handoff_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="overwrite an existing output file",
-    )
-
-    feature_tests_parser = feature_subcommands.add_parser(
-        "tests",
-        help="export an acceptance-test packet from a native feature bundle",
-    )
-    feature_tests_parser.add_argument("slug", help="feature id, such as add-dark-mode")
-    feature_tests_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_tests_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print stable JSON for agents and scripts",
-    )
-    feature_tests_parser.add_argument(
-        "--output",
-        help="write the text acceptance-test packet to a file instead of printing it",
-    )
-    feature_tests_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="overwrite an existing output file",
-    )
-
-    feature_ready_parser = feature_subcommands.add_parser(
-        "ready",
-        help="check whether a native feature bundle passes the local readiness gate",
-    )
-    feature_ready_parser.add_argument("slug", help="feature id, such as add-dark-mode")
-    feature_ready_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_ready_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print stable JSON for agents and scripts",
-    )
-    feature_ready_parser.add_argument(
-        "--require-coverage",
-        action="store_true",
-        help="require completed local Test Coverage links for every acceptance criterion",
-    )
-    feature_ready_parser.add_argument(
-        "--policy",
-        action="store_true",
-        help="apply workspace readiness policy when deciding whether coverage is required",
-    )
-
-    feature_status_parser = feature_subcommands.add_parser(
-        "status",
-        help="read or advance a native feature lifecycle status",
-    )
-    feature_status_parser.add_argument("slug", help="feature id, such as add-dark-mode")
-    feature_status_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_status_parser.add_argument("--set", dest="set_status", help="set the feature lifecycle status")
-    feature_status_parser.add_argument(
-        "--enforce-transition",
-        action="store_true",
-        help="enforce ordered lifecycle transitions and archive readiness",
-    )
-    feature_status_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print stable JSON for agents and scripts",
-    )
-
-    feature_dependency_parser = feature_subcommands.add_parser(
-        "dependency",
-        help="analyze feature dependencies and compute critical path",
-    )
-    feature_dependency_parser.add_argument("path", nargs="?", default=".", help="workspace path")
-    feature_dependency_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print stable JSON for agents and scripts",
-    )
-    feature_dependency_parser.add_argument(
-        "--feature",
-        metavar="SLUG",
-        help="focus on one native feature slug",
-    )
-    feature_dependency_parser.add_argument(
-        "--features",
-        metavar="SLUG1,SLUG2",
-        help="comma-separated list of feature slugs to include",
-    )
+    _build_feature_new_parser(feature_subcommands)
+    _build_feature_issue_parser(feature_subcommands)
+    _build_feature_pr_parser(feature_subcommands)
+    _build_feature_tasks_parser(feature_subcommands)
+    _build_feature_task_issues_parser(feature_subcommands)
+    _build_feature_sync_plan_parser(feature_subcommands)
+    _build_feature_archive_parser(feature_subcommands)
+    _build_feature_trace_parser(feature_subcommands)
+    _build_feature_handoff_parser(feature_subcommands)
+    _build_feature_tests_parser(feature_subcommands)
+    _build_feature_ready_parser(feature_subcommands)
+    _build_feature_status_parser(feature_subcommands)
+    _build_feature_dependency_parser(feature_subcommands)
 
 
 def _build_doctor_parser(subparsers) -> None:
