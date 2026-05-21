@@ -276,7 +276,7 @@ Priority: medium
 
             diff_result = DiffResult(slug="test-feature", files=[])
             root_mock = mock.patch(
-                "specspine.evolution._build_versioned_content",
+                "specspine.evolution_classification._build_versioned_content",
                 return_value={
                     "spec": spec_before,
                     "execution": "# Test Feature\nFeature ID: test-feature\n",
@@ -314,7 +314,7 @@ Status: proposed
             write_feature_with_content(root, "test-feature", spec_content=spec_after)
 
             with mock.patch(
-                "specspine.evolution._build_versioned_content",
+                "specspine.evolution_classification._build_versioned_content",
                 return_value={
                     "spec": spec_before,
                     "execution": None,
@@ -354,7 +354,7 @@ Feature ID: test-feature
             )
 
             with mock.patch(
-                "specspine.evolution._build_versioned_content",
+                "specspine.evolution_classification._build_versioned_content",
                 return_value={
                     "spec": "# Test\nFeature ID: test-feature\n",
                     "execution": exec_before,
@@ -393,7 +393,7 @@ Feature ID: test-feature
             )
 
             with mock.patch(
-                "specspine.evolution._build_versioned_content",
+                "specspine.evolution_classification._build_versioned_content",
                 return_value={
                     "spec": "# Test\nFeature ID: test-feature\n",
                     "execution": exec_before,
@@ -423,7 +423,7 @@ Priority: high
             write_feature_with_content(root, "test-feature", spec_content=spec_after)
 
             with mock.patch(
-                "specspine.evolution._build_versioned_content",
+                "specspine.evolution_classification._build_versioned_content",
                 return_value={
                     "spec": spec_before,
                     "execution": None,
@@ -450,7 +450,7 @@ Feature ID: test-feature
             write_feature_with_content(root, "test-feature", spec_content=spec_content)
 
             with mock.patch(
-                "specspine.evolution._build_versioned_content",
+                "specspine.evolution_classification._build_versioned_content",
                 return_value={"spec": None, "execution": None, "quality": None},
             ):
                 result = classify_changes(DiffResult(slug="test-feature", files=[]), "test-feature", root)
@@ -463,7 +463,7 @@ Feature ID: test-feature
             init_workspace(root)
 
             with mock.patch(
-                "specspine.evolution._build_versioned_content",
+                "specspine.evolution_classification._build_versioned_content",
                 return_value={
                     "spec": "# Test\nFeature ID: test-feature\n## Acceptance Criteria\n\n- [ ] AC001: old\n",
                     "execution": "# Exec\nFeature ID: test-feature\n## Tasks\n\n- [ ] T001: old\n",
@@ -502,7 +502,7 @@ Status: updated
             )
 
             with mock.patch(
-                "specspine.evolution._build_versioned_content",
+                "specspine.evolution_classification._build_versioned_content",
                 return_value={
                     "spec": spec_before,
                     "execution": None,
