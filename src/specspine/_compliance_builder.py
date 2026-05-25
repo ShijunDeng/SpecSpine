@@ -2,34 +2,24 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .audit_events import (
-    _build_lifecycle_transitions,
-    _collect_audit_events,
-    _hash_content,
-)
-from .audit_models import AuditTrail, ComplianceReport
-from .audit_report_summary import _generate_compliance_summary
-from .audit_validation import (
-    _build_drift_history,
-    _gather_validation_evidence,
-)
 from .features import (
     list_feature_bundles,
     validate_feature_slug,
 )
-from ._compliance_recommendations import _generate_recommendations
+from ._compliance_audit_trail import _collect_feature_trails
+from ._compliance_finalizer import _now_iso, _finalize_compliance_report
 
-
-def _now_iso() -> str:
-    from datetime import datetime, timezone
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+__all__ = [
+    "_now_iso",
+    "build_compliance_report",
+]
 
 
 def build_compliance_report(
     root: Path,
     feature_filter: str | None = None,
     since: str | None = None,
-) -> ComplianceReport:
+) -> object:
     resolved_root = root.expanduser().resolve()
 
     if feature_filter is not None:
@@ -43,65 +33,11 @@ def build_compliance_report(
     else:
         slugs = tuple(sorted(discovered_slugs))
 
-    trails: list[AuditTrail] = []
-    evidence_hashes: list[str] = []
+    trails, evidence_hashes = _collect_feature_trails(slugs, resolved_root, since)
 
-    for slug in slugs:
-        validate_feature_slug(slug)
-
-        events = _collect_audit_events(slug, resolved_root, since)
-        transitions = _build_lifecycle_transitions(slug, resolved_root)
-        validation = _gather_validation_evidence(slug, resolved_root)
-        drift = _build_drift_history(slug, resolved_root, since)
-
-        event_tuple = tuple(events)
-        transition_tuple = tuple(
-            {
-                "from_status": t["from_status"],
-                "to_status": t["to_status"],
-                "date": t["date"],
-                "author": t["author"],
-                "commit": t["commit"],
-            }
-            for t in transitions
-        )
-        drift_tuple = tuple(drift)
-
-        trail = AuditTrail(
-            feature_id=slug,
-            events=event_tuple,
-            lifecycle_transitions=transition_tuple,
-            validation_evidence=validation,
-            drift_history=drift_tuple,
-        )
-        trails.append(trail)
-
-        hash_input = slug + "".join(e.evidence_hash for e in events)
-        evidence_hashes.append(_hash_content(hash_input))
-
-    summary = _generate_compliance_summary(trails)
-
-    recommendations = _generate_recommendations(summary.get("gaps", []))
-
-    feature_tuple = tuple(sorted(trails, key=lambda t: t.feature_id))
-
-    return ComplianceReport(
-        root=resolved_root,
-        audit_date=_now_iso(),
-        scope="feature" if feature_filter else "workspace",
-        features=feature_tuple,
-        compliance_summary=summary,
-        evidence_hashes=tuple(evidence_hashes),
-        recommendations=tuple(recommendations),
-        safety_notes=(
-            "This audit report reads local workspace files and git history only.",
-            "SpecSpine did not run tests, invoke subprocesses (except git log/show), call network services, call GitHub APIs, invoke upstream CLIs, or read tokens.",
-            "All evidence hashes are SHA-256 digests of file contents at read time.",
-        ),
+    return _finalize_compliance_report(
+        resolved_root,
+        feature_filter,
+        trails,
+        evidence_hashes,
     )
-
-
-__all__ = [
-    "_now_iso",
-    "build_compliance_report",
-]
