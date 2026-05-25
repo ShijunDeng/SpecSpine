@@ -2,39 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .metadata import FeatureMetadata
-from .ready import FeatureReadyCheck
-from .trace import FeatureTask, FeatureTraceChecklistItem, FeatureTraceTestPlanItem
+from ..metadata import FeatureMetadata
+from ..ready import FeatureReadyCheck
+from ..trace import FeatureTask, FeatureTraceChecklistItem, FeatureTraceTestPlanItem
+from .drafts import FeatureTaskIssueDraft
 
 __all__ = [
-    "FeatureTaskIssueDraft",
     "FeatureTaskIssuesReport",
     "FeatureHandoffReport",
 ]
-
-
-@dataclass(frozen=True)
-class FeatureTaskIssueDraft:
-    title: str
-    body: str
-    feature_id: str
-    task_id: str
-    task_text: str
-    task_done: bool
-    source_file: str
-    line: int
-
-    def as_dict(self) -> dict[str, object]:
-        return {
-            "body": self.body,
-            "feature_id": self.feature_id,
-            "line": self.line,
-            "source_file": self.source_file,
-            "task_done": self.task_done,
-            "task_id": self.task_id,
-            "task_text": self.task_text,
-            "title": self.title,
-        }
 
 
 @dataclass(frozen=True)

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from .features import (
+from ..features import (
     FeatureReadyReport,
     FeatureStatusReport,
     FeatureTasksReport,
@@ -12,27 +11,10 @@ from .features import (
     FeatureTraceReport,
 )
 
-ARCHIVE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
-TEST_COVERAGE_HEADING_RE = re.compile(
-    r"^#{2,6}\s+Test Coverage\s*$",
-    flags=re.IGNORECASE | re.MULTILINE,
-)
-
-
-class InvalidArchiveId(ValueError):
-    """Raised when an archive id cannot be used safely in a local package."""
-
-
-@dataclass(frozen=True)
-class FeatureArchiveArtifactExistsError(FileExistsError):
-    output_dir: Path
-    existing_paths: tuple[Path, ...]
-
-    def __str__(self) -> str:
-        return (
-            f"Feature archive package files already exist in {self.output_dir}. "
-            "Use --force to overwrite files written by this command."
-        )
+__all__ = [
+    "FeatureArchivePackage",
+    "FeatureArchiveReport",
+]
 
 
 @dataclass(frozen=True)
@@ -117,13 +99,3 @@ class FeatureArchiveReport:
         if self.package is not None:
             payload["package"] = self.package.as_dict()
         return payload
-
-
-__all__ = [
-    "ARCHIVE_ID_RE",
-    "TEST_COVERAGE_HEADING_RE",
-    "InvalidArchiveId",
-    "FeatureArchiveArtifactExistsError",
-    "FeatureArchivePackage",
-    "FeatureArchiveReport",
-]
