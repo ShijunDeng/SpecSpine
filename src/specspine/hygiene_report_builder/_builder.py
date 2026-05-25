@@ -2,25 +2,26 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .hygiene_models import (
+from ..hygiene_models import (
+    HygieneFinding,
     HygieneReport,
     _ScanState,
 )
-from .hygiene_report_summary import (
+from ..hygiene_report_summary import (
     _recommended_commands,
     _summary,
 )
-from .hygiene_scanner import (
+from ..hygiene_scanner import (
     _blocked_content_patterns,
     _blocked_path_remnants,
     _normalise_changed_file,
     _scan_directory,
 )
-from .hygiene_scanner import _dedupe
+from ..hygiene_scanner import _dedupe
+from ._safety import HYGIENE_SAFETY_NOTES
 
 __all__ = [
     "build_hygiene_scan_report",
-    "hygiene_report_has_strict_findings",
 ]
 
 
@@ -59,11 +60,6 @@ def build_hygiene_scan_report(
             ),
         )
     )
-    safety_notes = (
-        "This scan reads local workspace files only.",
-        "It does not delete files, run tests, invoke subprocesses, call network services, call GitHub, invoke upstream CLIs, read environment variables, or read tokens.",
-        "Binary, symlinked, generated, and unreadable files are skipped rather than treated as clean.",
-    )
     return HygieneReport(
         root=resolved_root,
         changed_files=normalised_changed_files,
@@ -74,10 +70,5 @@ def build_hygiene_scan_report(
             state=state,
         ),
         recommended_commands=_recommended_commands(normalised_changed_files),
-        safety_notes=safety_notes,
+        safety_notes=HYGIENE_SAFETY_NOTES,
     )
-
-
-def hygiene_report_has_strict_findings(report: HygieneReport) -> bool:
-    counts = report.summary["by_severity"]
-    return bool(counts.get("critical", 0) or counts.get("high", 0))

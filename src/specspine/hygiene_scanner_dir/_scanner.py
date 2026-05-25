@@ -2,18 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .hygiene_models import (
-    GENERATED_DIRECTORY_NAMES,
-    VCS_DIRECTORY_NAMES,
+from ..hygiene_models import (
     HygieneFinding,
     _ScanState,
 )
-from .hygiene_scanner_utils import (
-    _relative_path,
-    _display_directory,
+from ..hygiene_scanner_utils import (
     _add_finding,
+    _display_directory,
+    _relative_path,
 )
-from .hygiene_scanner_file import _scan_file
+from ..hygiene_scanner_file import _scan_file
+from ._filters import _is_generated_directory, _is_vcs_directory
 
 __all__ = [
     "_scan_directory",
@@ -42,7 +41,7 @@ def _scan_directory(
                 state.skip_file("symlink")
                 continue
             if entry.is_dir():
-                if entry.name in GENERATED_DIRECTORY_NAMES:
+                if _is_generated_directory(entry.name):
                     _add_finding(
                         findings,
                         finding_id="generated-cache-directory",
@@ -54,7 +53,7 @@ def _scan_directory(
                     )
                     state.skip_directory("generated_artifact")
                     continue
-                if entry.name in VCS_DIRECTORY_NAMES:
+                if _is_vcs_directory(entry.name):
                     state.skip_directory("vcs_directory")
                     continue
                 state.directories_scanned += 1
