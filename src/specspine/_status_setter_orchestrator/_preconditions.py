@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .feature_bundle import (
+from ..feature_bundle import (
     FEATURE_FILE_PATHS,
     FeatureBundleNotFoundError,
     FeatureStatusReport,
@@ -14,28 +14,34 @@ from .feature_bundle import (
     validate_feature_slug,
     validate_feature_status,
 )
-from ._status_setter_transition import _build_transition
-from ._status_setter_file_writer import _write_status_to_files
 
 __all__ = [
-    "set_feature_status",
+    "_validate_and_resolve",
+    "_check_bundle_exists",
 ]
 
 
-def set_feature_status(
+def _validate_and_resolve(
     root: Path,
     slug: str,
     status: str,
-    *,
-    enforce_transition: bool = False,
-) -> FeatureStatusReport:
+) -> tuple[str, str, Path, dict[str, Path], dict[str, Path]]:
     slug = validate_feature_slug(slug)
     status = validate_feature_status(status)
     resolved_root = root.expanduser().resolve()
     paths = feature_bundle_paths(resolved_root, slug)
     relative_paths = _relative_feature_paths(slug)
+    return slug, status, resolved_root, paths, relative_paths
 
-    before = get_feature_status(resolved_root, slug)
+
+def _check_bundle_exists(
+    slug: str,
+    status: str,
+    resolved_root: Path,
+    paths: dict[str, Path],
+    before: FeatureStatusReport,
+    enforce_transition: bool,
+) -> None:
     existing_paths = [path for path in paths.values() if path.exists()]
     if not existing_paths:
         if enforce_transition:
@@ -61,20 +67,3 @@ def set_feature_status(
             root=resolved_root,
             missing_paths=tuple(paths.values()),
         )
-
-    transition = _build_transition(
-        resolved_root, slug, status, before, enforce_transition,
-    )
-
-    updated_files = _write_status_to_files(paths, slug, status)
-
-    report = get_feature_status(resolved_root, slug)
-    return FeatureStatusReport(
-        feature_id=report.feature_id,
-        status=report.status,
-        consistent=report.consistent,
-        files=report.files,
-        missing_files=report.missing_files,
-        updated_files=tuple(updated_files),
-        transition=transition,
-    )
