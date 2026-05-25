@@ -2,32 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from .features import (
-    FeatureTestsReport,
-    validate_feature_slug,
-    build_feature_tests_report,
-)
-from .impact_models import DISCOVERY_COMMAND
-from .impact_inventory import _unittest_command
+from ..impact_models import DISCOVERY_COMMAND
+from ..impact_inventory import _unittest_command
+from ._recommend_path_utils import _source_by_path, _test_by_path
 
-
-def _source_by_path(modules: dict[str, dict[str, Any]]) -> dict[str, str]:
-    return {str(info["path"]): module for module, info in modules.items()}
-
-
-def _test_by_path(test_files: tuple[dict[str, Any], ...]) -> dict[str, dict[str, Any]]:
-    return {str(test["path"]): test for test in test_files}
-
-
-def _dedupe_commands(recommendations: list[dict[str, Any]]) -> tuple[str, ...]:
-    commands: list[str] = []
-    seen: set[str] = set()
-    for recommendation in recommendations:
-        command = str(recommendation["command"])
-        if command not in seen:
-            commands.append(command)
-            seen.add(command)
-    return tuple(commands)
+__all__ = [
+    "_command_for_coverage_target",
+    "_recommend_for_changed_files",
+]
 
 
 def _recommend_for_changed_files(
@@ -100,6 +82,8 @@ def _recommend_for_changed_files(
             }
         )
 
+    from ._recommend_path_utils import _dedupe_commands
+
     deduped: list[dict[str, Any]] = []
     seen_keys: set[tuple[str, tuple[str, ...]]] = set()
     for recommendation in recommendations:
@@ -119,44 +103,3 @@ def _command_for_coverage_target(target_path: str) -> str | None:
     if not target.startswith("tests/") or not target.endswith(".py"):
         return None
     return _unittest_command(target)
-
-
-def _feature_block(report: FeatureTestsReport) -> dict[str, Any]:
-    coverage_targets = tuple(
-        sorted(
-            {
-                link.target_path or link.target
-                for link in report.test_coverage
-                if link.target_path or link.target
-            }
-        )
-    )
-    coverage_commands = tuple(
-        command
-        for command in (
-            _command_for_coverage_target(target)
-            for target in coverage_targets
-        )
-        if command is not None
-    )
-    recommended_commands = tuple(dict.fromkeys(coverage_commands)) or report.recommended_commands
-    return {
-        "coverage_targets": list(coverage_targets),
-        "feature_id": report.feature_id,
-        "has_native_files": report.has_native_files,
-        "missing_files": list(report.missing_files),
-        "ready": report.ready,
-        "recommended_commands": list(recommended_commands),
-        "status": report.status,
-        "test_coverage": [link.as_dict() for link in report.test_coverage],
-    }
-
-
-__all__ = [
-    "_source_by_path",
-    "_test_by_path",
-    "_dedupe_commands",
-    "_recommend_for_changed_files",
-    "_command_for_coverage_target",
-    "_feature_block",
-]

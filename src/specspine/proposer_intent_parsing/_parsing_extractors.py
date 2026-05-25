@@ -1,37 +1,14 @@
 from __future__ import annotations
 
-from .proposer_intent_constants import (
-    ACTION_VERBS,
-    MODIFIER_PREPOSITIONS,
-    TARGET_NOUNS,
-)
-from .proposer_intent_validation import validate_intent
+from ..proposer_intent_constants import ACTION_VERBS, MODIFIER_PREPOSITIONS, TARGET_NOUNS
+from ._parsing_normalization import _normalize_to_base_form
 
-
-def parse_intent(intent: str) -> dict:
-    text = validate_intent(intent).lower()
-
-    from .proposer_intent_constants import COMPONENT_SPLITTERS
-    raw_components = COMPONENT_SPLITTERS.split(text)
-    components = [c.strip() for c in raw_components if c.strip()]
-    is_complex = len(components) > 1
-
-    if is_complex:
-        primary = components[0]
-    else:
-        primary = text
-
-    action = _extract_action(primary)
-    target = _extract_target(primary)
-    modifiers = _extract_modifiers(primary)
-
-    return {
-        "action": action,
-        "target": target,
-        "modifiers": modifiers,
-        "components": components,
-        "is_complex": is_complex,
-    }
+__all__ = [
+    "_build_modifier_phrase",
+    "_extract_action",
+    "_extract_modifiers",
+    "_extract_target",
+]
 
 
 def _extract_action(text: str) -> str:
@@ -41,32 +18,6 @@ def _extract_action(text: str) -> str:
         if cleaned in ACTION_VERBS:
             return cleaned
     return "implement"
-
-
-def _singularize(word: str) -> str:
-    """Convert plural word to singular form using simple rules."""
-    if word.endswith("ies"):
-        return word[:-3] + "y"
-    if word.endswith("ses") or word.endswith("xes") or word.endswith("zes") or word.endswith("ches") or word.endswith("shes"):
-        return word[:-2]
-    if word.endswith("s") and not word.endswith("ss"):
-        return word[:-1]
-    return word
-
-
-def _normalize_to_base_form(word: str) -> str:
-    """Normalize word to base form for matching against TARGET_NOUNS."""
-    stripped = word.strip(".,;:!?()[]{}'\"")
-    if not stripped:
-        return stripped
-    singular = _singularize(stripped)
-    if stripped.endswith("ing") and len(stripped) > 4:
-        base = stripped[:-3]
-        if base + "e" in TARGET_NOUNS:
-            return base + "e"
-        if base in TARGET_NOUNS:
-            return base
-    return singular
 
 
 def _extract_target(text: str) -> str:
@@ -136,29 +87,3 @@ def _build_modifier_phrase(words: list, action_words: set) -> str:
     if phrase_words:
         return prep + " " + " ".join(phrase_words)
     return prep
-
-
-def _normalize_modifier(modifier: str) -> str:
-    from .proposer_criteria import _make_meaningful_condition
-    result = modifier
-    for prep in MODIFIER_PREPOSITIONS:
-        if result.startswith(prep + " "):
-            rest = result[len(prep):].strip()
-            if rest:
-                result = _make_meaningful_condition(rest, prep)
-                break
-    if not result or len(result) < 3:
-        return "the necessary conditions are met"
-    return result
-
-
-__all__ = [
-    "parse_intent",
-    "_extract_action",
-    "_extract_target",
-    "_extract_modifiers",
-    "_build_modifier_phrase",
-    "_normalize_modifier",
-    "_normalize_to_base_form",
-    "_singularize",
-]
