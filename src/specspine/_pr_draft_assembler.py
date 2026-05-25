@@ -2,22 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .feature_bundle import (
-    PullRequestDraft,
-    _first_line_h1,
-    _why_or_placeholder,
-    feature_title,
-    read_feature_metadata,
-)
-from .feature_drafts_render import (
-    _pull_request_title,
-    _recommended_pr_commands,
-    _render_pull_request_body,
-)
-from .feature_handoff import build_feature_handoff_report
-from .feature_ready import build_feature_ready_report
-
+from .feature_bundle import PullRequestDraft
 from ._pr_draft_collector import PrDraftFileCollection
+from ._pr_draft_context import load_draft_context, compute_draft_title, compute_draft_why
+from ._pr_draft_renderer import render_draft_title, render_draft_body, render_draft_commands
 
 __all__ = [
     "build_pull_request_draft",
@@ -29,20 +17,17 @@ def build_pull_request_draft(
     slug: str,
     collection: PrDraftFileCollection,
 ) -> PullRequestDraft:
-    base_title = _first_line_h1(collection.spec_content) or feature_title(slug)
-    title = _pull_request_title(base_title)
-    why = _why_or_placeholder(collection.contents, relative_path=collection.relative_paths["spec"])
-    handoff = build_feature_handoff_report(resolved_root, slug)
-    ready_report = build_feature_ready_report(resolved_root, slug)
-    metadata = read_feature_metadata(resolved_root, slug)
-    recommended_commands = _recommended_pr_commands(slug)
-    summary = {
-        **handoff.summary,
-        "source_files": {"total": len(collection.source_files)},
-        "missing_files": {"total": len(collection.missing_files)},
-    }
+    base_title = compute_draft_title(collection.spec_content, slug)
+    title = render_draft_title(base_title)
+    why = compute_draft_why(collection.contents, collection.relative_paths)
+    context = load_draft_context(resolved_root, slug, collection)
+    handoff = context["handoff"]
+    ready_report = context["ready_report"]
+    metadata = context["metadata"]
+    summary = context["summary"]
+    recommended_commands = render_draft_commands(slug)
 
-    body = _render_pull_request_body(
+    body = render_draft_body(
         feature_id=slug,
         status=handoff.status,
         ready=handoff.ready,
