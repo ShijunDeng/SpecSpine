@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from ..metadata import FeatureMetadata
 from ..ready import FeatureReadyCheck
 from ..trace import FeatureTask, FeatureTraceChecklistItem, FeatureTraceTestPlanItem
+from ._handoff_serializers import serialize_gaps, serialize_items
 
 __all__ = [
     "FeatureHandoffReport",
@@ -45,26 +46,20 @@ class FeatureHandoffReport:
 
     def as_dict(self) -> dict[str, object]:
         return {
-            "acceptance_criteria": [
-                item.as_dict() for item in self.acceptance_criteria
-            ],
-            "blocking_checks": [
-                check.as_dict() for check in self.blocking_checks
-            ],
+            "acceptance_criteria": serialize_items(self.acceptance_criteria),
+            "blocking_checks": serialize_items(self.blocking_checks),
             "feature_id": self.feature_id,
-            "gaps": [dict(gap) for gap in self.gaps],
+            "gaps": serialize_gaps(self.gaps),
             "missing_files": list(self.missing_files),
             "metadata": self.metadata.as_dict(),
             "next_actions": list(self.next_actions),
-            "quality_checks": [item.as_dict() for item in self.quality_checks],
+            "quality_checks": serialize_items(self.quality_checks),
             "ready": self.ready,
             "recommended_commands": list(self.recommended_commands),
-            "release_readiness": [
-                item.as_dict() for item in self.release_readiness
-            ],
+            "release_readiness": serialize_items(self.release_readiness),
             "sources": self.sources,
             "status": self.status,
             "summary": self.summary,
-            "tasks": [task.as_dict() for task in self.tasks],
-            "test_plan": [item.as_dict() for item in self.test_plan],
+            "tasks": serialize_items(self.tasks),
+            "test_plan": serialize_items(self.test_plan),
         }
