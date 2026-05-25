@@ -1,71 +1,24 @@
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .features import (
+from ..features import (
     build_feature_handoff_report,
     build_feature_ready_report,
     build_feature_tests_report,
     build_feature_trace_report,
     validate_feature_slug,
 )
-from .gates import build_quality_gate_report
-from .impact import build_test_impact_report
-from .validation import build_validation_report, build_validation_summary
+from ..gates import build_quality_gate_report
+from ..impact import build_test_impact_report
+from ..validation import build_validation_report, build_validation_summary
+from .models import ReviewPacket
+from .helpers import _dedupe_commands, _review_check
 
-
-@dataclass(frozen=True)
-class ReviewPacket:
-    root: Path
-    feature_id: str | None
-    changed_files: tuple[str, ...]
-    validation: dict[str, Any]
-    quality_gates: dict[str, Any]
-    test_impact: dict[str, Any]
-    review_checks: tuple[dict[str, Any], ...]
-    summary: dict[str, Any]
-    recommended_commands: tuple[str, ...]
-    safety_notes: tuple[str, ...]
-    feature: dict[str, Any] | None = None
-
-    def as_dict(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "changed_files": list(self.changed_files),
-            "feature_id": self.feature_id,
-            "quality_gates": dict(self.quality_gates),
-            "recommended_commands": list(self.recommended_commands),
-            "review_checks": [dict(check) for check in self.review_checks],
-            "root": str(self.root),
-            "safety_notes": list(self.safety_notes),
-            "summary": dict(self.summary),
-            "test_impact": dict(self.test_impact),
-            "validation": dict(self.validation),
-        }
-        if self.feature is not None:
-            payload["feature"] = dict(self.feature)
-        return payload
-
-
-def _dedupe_commands(*command_groups: list[str] | tuple[str, ...]) -> tuple[str, ...]:
-    commands: list[str] = []
-    seen: set[str] = set()
-    for group in command_groups:
-        for command in group:
-            if command not in seen:
-                commands.append(command)
-                seen.add(command)
-    return tuple(commands)
-
-
-def _review_check(check_id: str, passed: bool, message: str) -> dict[str, Any]:
-    return {
-        "id": check_id,
-        "message": message,
-        "status": "pass" if passed else "fail",
-    }
+__all__ = [
+    "build_review_packet",
+]
 
 
 def _feature_payload(root: Path, slug: str) -> dict[str, Any]:
@@ -211,41 +164,3 @@ def build_review_packet(
         recommended_commands=recommended_commands,
         safety_notes=safety_notes,
     )
-
-
-def render_review_packet_json(packet: ReviewPacket) -> str:
-    return json.dumps(packet.as_dict(), indent=2, sort_keys=True) + "\n"
-
-
-def render_review_packet_text(packet: ReviewPacket) -> str:
-    summary = packet.summary
-    lines = [
-        f"Review packet: {packet.root}",
-        f"Feature: {packet.feature_id or 'workspace'}",
-        (
-            "Summary: "
-            f"checks={summary['review_checks']} "
-            f"passed={summary['passed_review_checks']} "
-            f"failed={summary['failed_review_checks']} "
-            f"changed_files={summary['changed_files']} "
-            f"impact_recommendations={summary['test_impact_recommendations']}"
-        ),
-        "",
-        "Review checks:",
-    ]
-    lines.extend(
-        f"- [{check['status']}] {check['id']}: {check['message']}"
-        for check in packet.review_checks
-    )
-    lines.extend(["", "Changed files:"])
-    if packet.changed_files:
-        lines.extend(f"- {path}" for path in packet.changed_files)
-    else:
-        lines.append("- None provided.")
-
-    lines.extend(["", "Recommended commands:"])
-    lines.extend(f"- {command}" for command in packet.recommended_commands)
-
-    lines.extend(["", "Safety notes:"])
-    lines.extend(f"- {note}" for note in packet.safety_notes)
-    return "\n".join(lines) + "\n"

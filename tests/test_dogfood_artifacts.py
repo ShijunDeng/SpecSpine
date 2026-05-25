@@ -1418,7 +1418,7 @@ class DogfoodArtifactsTests(TestCase):
         packet = build_security_cue_report(
             REPO_ROOT,
             feature="security-cues-packet",
-            changed_files=("src/specspine/security.py",),
+            changed_files=("src/specspine/security/patterns.py",),
         )
 
         self.assertTrue(default_report.ready)
