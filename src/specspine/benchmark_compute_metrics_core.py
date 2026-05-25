@@ -4,19 +4,21 @@ from pathlib import Path
 
 from .benchmark_models import FeatureMetrics
 from .features import (
-    FEATURE_FILE_PATHS,
     InvalidFeatureSlug,
     get_feature_status,
     read_feature_metadata,
     validate_feature_slug,
 )
-from .benchmark_compute_metrics_patterns import (
+from ._benchmark_file_metrics import (
     AC_ID_RE,
     TASK_ID_RE,
     COV_LINK_DONE_RE,
     COV_LINK_TOTAL_RE,
+    _read_text,
+    _count_pattern,
+    _count_feature_artifacts,
 )
-from .benchmark_metrics_utils import _read_text, _count_pattern
+from ._benchmark_quality_gatherer import _gather_quality_metrics
 
 __all__ = [
     "AC_ID_RE",
@@ -41,72 +43,8 @@ def _compute_feature_metrics(slug: str, root: Path) -> FeatureMetrics:
     effort = metadata.effort
     project = metadata.project
 
-    ac_count = 0
-    task_count = 0
-    test_count = 0
-    coverage_pct = 0.0
-
-    spec_path = resolved_root / FEATURE_FILE_PATHS["spec"].format(slug=slug)
-    exec_path = resolved_root / FEATURE_FILE_PATHS["execution"].format(slug=slug)
-    quality_path = resolved_root / FEATURE_FILE_PATHS["quality"].format(slug=slug)
-
-    if spec_path.exists():
-        content = _read_text(spec_path)
-        ac_count = _count_pattern(content, AC_ID_RE)
-
-    if exec_path.exists():
-        content = _read_text(exec_path)
-        task_count = _count_pattern(content, TASK_ID_RE)
-
-    if quality_path.exists():
-        content = _read_text(quality_path)
-        test_count = _count_pattern(content, COV_LINK_TOTAL_RE)
-        done_count = _count_pattern(content, COV_LINK_DONE_RE)
-        if test_count > 0:
-            coverage_pct = round(done_count / test_count * 100, 1)
-
-    validation_pass = 0
-    validation_fail = 0
-    try:
-        from .validation import build_validation_report
-        val_report = build_validation_report(
-            resolved_root,
-            include_fusion=True,
-            include_features=False,
-            include_adapters=False,
-        )
-        summary = val_report.get("summary", {})
-        validation_pass = summary.get("pass", 0)
-        validation_fail = summary.get("fail", 0)
-    except OSError:
-        pass
-
-    consistency_fail = 0
-    drift_events = 0
-    try:
-        from .consistency import build_consistency_report
-        cons_report = build_consistency_report(
-            resolved_root,
-            feature_filter=slug,
-        )
-        for fc in cons_report.features:
-            if fc.feature_id == slug:
-                consistency_fail = sum(
-                    1 for c in fc.consistency_checks if c.status == "fail"
-                )
-                break
-    except (OSError, InvalidFeatureSlug):
-        pass
-
-    try:
-        from .coverage import build_coverage_debt_report
-        debt_report = build_coverage_debt_report(resolved_root)
-        for feat in debt_report.get("features", []):
-            if feat.get("feature_id") == slug:
-                drift_events = feat.get("missing_acceptance_criteria", 0)
-                break
-    except OSError:
-        pass
+    artifact_counts = _count_feature_artifacts(slug, root)
+    quality_metrics = _gather_quality_metrics(slug, resolved_root)
 
     lifecycle_duration_days = 0.0
 
@@ -116,13 +54,13 @@ def _compute_feature_metrics(slug: str, root: Path) -> FeatureMetrics:
         priority=priority,
         effort=effort,
         project=project,
-        ac_count=ac_count,
-        task_count=task_count,
-        test_count=test_count,
-        coverage_pct=coverage_pct,
-        validation_pass=validation_pass,
-        validation_fail=validation_fail,
-        consistency_fail=consistency_fail,
-        drift_events=drift_events,
+        ac_count=artifact_counts["ac_count"],
+        task_count=artifact_counts["task_count"],
+        test_count=artifact_counts["test_count"],
+        coverage_pct=artifact_counts["coverage_pct"],
+        validation_pass=quality_metrics["validation_pass"],
+        validation_fail=quality_metrics["validation_fail"],
+        consistency_fail=quality_metrics["consistency_fail"],
+        drift_events=quality_metrics["drift_events"],
         lifecycle_duration_days=lifecycle_duration_days,
     )
