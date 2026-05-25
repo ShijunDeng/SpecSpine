@@ -6,6 +6,9 @@ from typing import Any
 from .validation_fusion_upstream_config import _enabled_upstream_configs
 from .validation_fusion_utils import _check
 from .validation_models import ValidationCheck
+from ._upstream_enabled_checks import _handle_disabled_upstream
+from ._upstream_file_checks import _check_adapter_config_exists
+from ._upstream_boundary_checks import _check_adapter_boundary
 
 __all__ = [
     "_fusion_adapter_contract_checks",
@@ -20,50 +23,18 @@ def _fusion_adapter_contract_checks(root: Path) -> list[ValidationCheck]:
         upstream = upstreams[key]
         adapter_path = upstream["config"]
         if not upstream["enabled"]:
-            checks.append(
-                _check(
-                    f"fusion.adapter_config:{key}",
-                    "skip",
-                    f"{upstream['display_name']} is disabled; adapter config is not required.",
-                )
-            )
-            checks.append(
-                _check(
-                    f"fusion.adapter_boundary:{key}",
-                    "skip",
-                    f"{upstream['display_name']} is disabled; adapter boundary docs are not required.",
-                )
-            )
+            checks.extend(_handle_disabled_upstream(key, upstream))
             continue
 
-        target = root / adapter_path
-        if target.exists():
-            checks.append(
-                _check(
-                    f"fusion.adapter_config:{key}",
-                    "pass",
-                    f"{upstream['display_name']} adapter config exists: {adapter_path}",
-                )
-            )
-        else:
-            checks.append(
-                _check(
-                    f"fusion.adapter_config:{key}",
-                    "fail",
-                    f"{upstream['display_name']} adapter config is missing: {adapter_path}",
-                )
-            )
-            checks.append(
-                _check(
-                    f"fusion.adapter_boundary:{key}",
-                    "skip",
-                    f"{upstream['display_name']} adapter config is missing, so boundary docs cannot be checked.",
-                )
-            )
+        config_result = _check_adapter_config_exists(key, upstream, root)
+        checks.append(config_result.check)
+
+        if not config_result.passed:
+            checks.extend(_handle_missing_config(key, upstream))
             continue
 
         try:
-            content = target.read_text(encoding="utf-8").lower()
+            content = config_result.target.read_text(encoding="utf-8").lower()
         except OSError:
             checks.append(
                 _check(
@@ -74,15 +45,7 @@ def _fusion_adapter_contract_checks(root: Path) -> list[ValidationCheck]:
             )
             continue
 
-        has_boundary = "no vendored source code" in content or "no vendored" in content
-        checks.append(
-            _check(
-                f"fusion.adapter_boundary:{key}",
-                "pass" if has_boundary else "fail",
-                f"{upstream['display_name']} adapter docs state the no-vendored-code boundary."
-                if has_boundary
-                else f"{upstream['display_name']} adapter docs must state a no-vendored-code boundary.",
-            )
-        )
+        boundary_result = _check_adapter_boundary(key, upstream, content)
+        checks.append(boundary_result)
 
     return checks
