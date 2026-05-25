@@ -16,6 +16,8 @@ from .feature_bundle import (
     validate_feature_slug,
 )
 from .feature_handoff import build_feature_handoff_report
+from ._test_report_commands import _recommended_test_packet_commands
+from ._test_case_builder import _acceptance_test_cases
 
 __all__ = [
     "FeatureTestsReport",
@@ -23,48 +25,6 @@ __all__ = [
     "_acceptance_test_cases",
     "build_feature_tests_report",
 ]
-
-
-def _recommended_test_packet_commands(slug: str) -> tuple[str, ...]:
-    return (
-        f"specspine feature tests {slug} . --json",
-        f"specspine feature trace {slug} . --json",
-        f"specspine feature ready {slug} . --json",
-        f"specspine feature handoff {slug} . --json",
-        "specspine validate . --fusion --features",
-    )
-
-
-def _acceptance_test_cases(
-    acceptance_criteria: tuple[FeatureTraceChecklistItem, ...],
-    test_coverage: tuple[FeatureTestCoverageLink, ...],
-) -> tuple[FeatureAcceptanceTestCase, ...]:
-    test_cases: list[FeatureAcceptanceTestCase] = []
-    for index, criterion in enumerate(acceptance_criteria, start=1):
-        coverage = tuple(
-            link
-            for link in test_coverage
-            if link.acceptance_criterion_id == criterion.id
-        )
-        if any(link.done for link in coverage):
-            status = "covered"
-        elif coverage:
-            status = "planned"
-        else:
-            status = "pending"
-        test_cases.append(
-            FeatureAcceptanceTestCase(
-                id=f"TC{index:03d}",
-                acceptance_criterion_id=criterion.id,
-                acceptance_criterion_text=criterion.text,
-                source_file=criterion.source_file,
-                line=criterion.line,
-                behavior=f"Pending behavior to test: {criterion.text}",
-                coverage=coverage,
-                status=status,
-            )
-        )
-    return tuple(test_cases)
 
 
 def build_feature_tests_report(root: Path, slug: str) -> FeatureTestsReport:
