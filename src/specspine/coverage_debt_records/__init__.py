@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from .coverage_debt_records import (
+from ._debt_records_build import (
     _build_feature_coverage_debt_record,
+)
+from ._debt_records_invalid import (
     _invalid_coverage_debt_record,
 )
 
