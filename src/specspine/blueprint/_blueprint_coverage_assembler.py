@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ._blueprint_func_module_mapping import map_functions_to_modules
+from ._blueprint_module_enrichment import enrich_modules
 from .blueprint_entities import _derive_error_paths, _identify_data_entities
 from .blueprint_models import (
     BlueprintFunction,
@@ -31,29 +33,9 @@ def assemble_blueprint_report(
 
     error_paths = _derive_error_paths(ac_list, slug)
 
-    module_functions: dict[str, list] = {}
-    for func in functions:
-        target_word = func.name.split("_", 1)[-1] if "_" in func.name else func.name
-        for module in modules:
-            module_target = module.module_path.rsplit("/", 1)[-1].replace(".py", "")
-            if target_word in module_target or module_target in target_word:
-                module_functions.setdefault(module.module_path, []).append(func)
-                break
+    module_functions = map_functions_to_modules(modules, functions)
 
-    enriched_modules = []
-    for module in modules:
-        mod_funcs = tuple(module_functions.get(module.module_path, []))
-        all_ac = set(module.ac_ids)
-        for f in mod_funcs:
-            all_ac.update(f.ac_ids)
-        enriched_modules.append(
-            BlueprintModule(
-                module_path=module.module_path,
-                responsibility=module.responsibility,
-                functions=mod_funcs,
-                ac_ids=tuple(sorted(all_ac)),
-            )
-        )
+    enriched_modules = enrich_modules(modules, module_functions)
 
     coverage_summary = _compute_coverage_summary(
         enriched_modules, functions, entities, error_paths,
