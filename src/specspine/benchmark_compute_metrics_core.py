@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from .benchmark_models import FeatureMetrics
-from .consistency import (
-    build_consistency_report,
-)
-from .coverage import build_coverage_debt_report
 from .features import (
     FEATURE_FILE_PATHS,
     InvalidFeatureSlug,
@@ -15,13 +10,13 @@ from .features import (
     read_feature_metadata,
     validate_feature_slug,
 )
-from .validation import build_validation_report
 from .benchmark_compute_metrics_patterns import (
     AC_ID_RE,
     TASK_ID_RE,
     COV_LINK_DONE_RE,
     COV_LINK_TOTAL_RE,
 )
+from .benchmark_metrics_utils import _read_text, _count_pattern
 
 __all__ = [
     "AC_ID_RE",
@@ -32,17 +27,6 @@ __all__ = [
     "_count_pattern",
     "_compute_feature_metrics",
 ]
-
-
-def _read_text(path: Path) -> str:
-    try:
-        return path.read_text(encoding="utf-8")
-    except OSError:
-        return ""
-
-
-def _count_pattern(content: str, pattern: re.Pattern[str]) -> int:
-    return len(pattern.findall(content))
 
 
 def _compute_feature_metrics(slug: str, root: Path) -> FeatureMetrics:
@@ -84,6 +68,7 @@ def _compute_feature_metrics(slug: str, root: Path) -> FeatureMetrics:
     validation_pass = 0
     validation_fail = 0
     try:
+        from .validation import build_validation_report
         val_report = build_validation_report(
             resolved_root,
             include_fusion=True,
@@ -99,6 +84,7 @@ def _compute_feature_metrics(slug: str, root: Path) -> FeatureMetrics:
     consistency_fail = 0
     drift_events = 0
     try:
+        from .consistency import build_consistency_report
         cons_report = build_consistency_report(
             resolved_root,
             feature_filter=slug,
@@ -113,6 +99,7 @@ def _compute_feature_metrics(slug: str, root: Path) -> FeatureMetrics:
         pass
 
     try:
+        from .coverage import build_coverage_debt_report
         debt_report = build_coverage_debt_report(resolved_root)
         for feat in debt_report.get("features", []):
             if feat.get("feature_id") == slug:
