@@ -1,17 +1,10 @@
 from __future__ import annotations
 
-import json
-
-from .models import QualityGateReport
+from ..models import QualityGateReport
 
 __all__ = [
-    "render_quality_gate_json",
     "render_quality_gate_text",
 ]
-
-
-def render_quality_gate_json(report: QualityGateReport) -> str:
-    return json.dumps(report.as_dict(), indent=2, sort_keys=True) + "\n"
 
 
 def render_quality_gate_text(report: QualityGateReport) -> str:
