@@ -3,9 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-
-def _relative_paths(paths: list[Path], root: Path) -> list[str]:
-    return sorted(str(path.relative_to(root)) for path in paths)
+__all__ = [
+    "_clean_scalar",
+    "_parse_two_level_yaml_section",
+    "_read_yaml_section",
+]
 
 
 def _clean_scalar(value: str) -> Any:
@@ -63,11 +65,3 @@ def _read_yaml_section(path: Path, section: str) -> dict[str, dict[str, Any]]:
         return {}
 
     return _parse_two_level_yaml_section(content, section)
-
-
-__all__ = [
-    "_clean_scalar",
-    "_parse_two_level_yaml_section",
-    "_read_yaml_section",
-    "_relative_paths",
-]
