@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from .workspace import normalize_template
-from .proposer_build_sections import _generate_why, _generate_test_plan
+from ..workspace import normalize_template
+from ..proposer_build_sections import _generate_why, _generate_test_plan
+from ._quality_builders_checks import _build_quality_check_lines, _build_test_coverage_lines
 
 __all__ = [
     "build_quality_content",
@@ -18,13 +19,8 @@ def build_quality_content(
 ) -> str:
     why_text = _generate_why(parsed, intent)
 
-    quality_check_lines = "\n".join(
-        f"- [ ] QC{i+1:03d}: {check}" for i, check in enumerate(quality_checks)
-    )
-    test_coverage_lines = "\n".join(
-        f"- [ ] {c['id']} -> tests/test_{resolved_slug.replace('-', '_')}.py"
-        for c in criteria
-    )
+    quality_check_lines = _build_quality_check_lines(quality_checks)
+    test_coverage_lines = _build_test_coverage_lines(resolved_slug, criteria)
     test_plan_lines = _generate_test_plan(parsed, criteria)
 
     return normalize_template(f"""
