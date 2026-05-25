@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass
 from pathlib import Path
 
 from .evolution_git import DiffResult, _build_versioned_content
@@ -9,9 +7,19 @@ from .features import (
     FEATURE_FILE_PATHS,
     validate_feature_slug,
 )
-
-AC_ID_RE = re.compile(r"(AC\d{3})")
-TASK_ID_RE = re.compile(r"(T\d{3})")
+from .evolution_classification_models import (
+    AC_ID_RE,
+    TASK_ID_RE,
+    ClassifiedChange,
+    ClassificationResult,
+)
+from .evolution_classification_helpers import (
+    _extract_ac_ids,
+    _extract_task_ids,
+    _find_line_number,
+    _parse_section_ids,
+    _extract_metadata,
+)
 
 __all__ = [
     "AC_ID_RE",
@@ -20,89 +28,6 @@ __all__ = [
     "ClassificationResult",
     "classify_changes",
 ]
-
-
-@dataclass(frozen=True)
-class ClassifiedChange:
-    change_id: str
-    change_type: str
-    category: str
-    file: str
-    line: int
-    before: str | None
-    after: str | None
-
-    def as_dict(self) -> dict[str, object]:
-        result: dict[str, object] = {
-            "category": self.category,
-            "change_id": self.change_id,
-            "change_type": self.change_type,
-            "file": self.file,
-            "line": self.line,
-        }
-        if self.before is not None:
-            result["before"] = self.before
-        if self.after is not None:
-            result["after"] = self.after
-        return result
-
-
-@dataclass(frozen=True)
-class ClassificationResult:
-    slug: str
-    changes: list[ClassifiedChange]
-
-    @property
-    def summary(self) -> dict[str, int]:
-        counts: dict[str, int] = {}
-        for change in self.changes:
-            key = f"{change.category}_{change.change_type}"
-            counts[key] = counts.get(key, 0) + 1
-        return counts
-
-    def as_dict(self) -> dict[str, object]:
-        return {
-            "changes": [c.as_dict() for c in self.changes],
-            "slug": self.slug,
-            "summary": self.summary,
-        }
-
-
-def _extract_ac_ids(text: str) -> list[str]:
-    return AC_ID_RE.findall(text)
-
-
-def _extract_task_ids(text: str) -> list[str]:
-    return TASK_ID_RE.findall(text)
-
-
-def _find_line_number(content: str, search_text: str) -> int:
-    lines = content.splitlines()
-    for i, line in enumerate(lines, 1):
-        if search_text.strip() in line:
-            return i
-    return 0
-
-
-def _parse_section_ids(content: str, pattern: re.Pattern) -> list[tuple[str, int]]:
-    results: list[tuple[str, int]] = []
-    for i, line in enumerate(content.splitlines(), 1):
-        for match in pattern.finditer(line):
-            results.append((match.group(1), i))
-    return results
-
-
-def _extract_metadata(content: str) -> dict[str, str]:
-    metadata: dict[str, str] = {}
-    keys = {"Priority", "Owner", "Milestone", "Target Release", "Project", "Effort", "Status"}
-    for line in content.splitlines():
-        stripped = line.strip()
-        if ":" in stripped and not stripped.startswith("#"):
-            key, _, value = stripped.partition(":")
-            key = key.strip()
-            if key in keys:
-                metadata[key] = value.strip()
-    return metadata
 
 
 def classify_changes(

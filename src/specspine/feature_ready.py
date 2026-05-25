@@ -8,9 +8,8 @@ from .feature_bundle import (
     FeatureBundleNotFoundError,
     FeatureReadyCheck,
     FeatureReadyReport,
-    FeatureTask,
-    FeatureTestCoverageLink,
     FeatureTraceChecklistItem,
+    FeatureTestCoverageLink,
     FeatureTraceTestPlanItem,
     _relative_feature_paths,
     _trace_gap,
@@ -21,6 +20,8 @@ from .feature_bundle import (
     validate_feature_slug,
 )
 from .feature_trace import build_feature_trace_report
+from .feature_ready_checks import _ready_check, _checklist_ready_message
+from .feature_ready_coverage import _coverage_ready_message
 
 __all__ = [
     "FeatureReadyCheck",
@@ -29,58 +30,6 @@ __all__ = [
     "render_feature_ready_json",
     "render_feature_ready_text",
 ]
-
-
-def _ready_check(check_id: str, passed: bool, message: str) -> FeatureReadyCheck:
-    return FeatureReadyCheck(
-        id=check_id,
-        status="pass" if passed else "fail",
-        message=message,
-    )
-
-
-def _checklist_ready_message(
-    *,
-    label: str,
-    items: tuple[FeatureTraceChecklistItem, ...] | tuple[FeatureTask, ...],
-) -> tuple[bool, str]:
-    total = len(items)
-    done = sum(1 for item in items if item.done)
-    open_count = total - done
-    if total == 0:
-        return False, f"No {label} checklist items found."
-    if open_count:
-        return False, f"{label.title()} incomplete: {open_count} open of {total}."
-    return True, f"{label.title()} complete: {done} of {total} done."
-
-
-def _coverage_ready_message(
-    acceptance_criteria: tuple[FeatureTraceChecklistItem, ...],
-    test_coverage: tuple[FeatureTestCoverageLink, ...],
-) -> tuple[bool, str]:
-    missing_ids = []
-    for criterion in acceptance_criteria:
-        has_completed_local_link = any(
-            link.acceptance_criterion_id == criterion.id
-            and link.done
-            and link.target_exists
-            for link in test_coverage
-        )
-        if not has_completed_local_link:
-            missing_ids.append(criterion.id)
-
-    if missing_ids:
-        return (
-            False,
-            "Missing completed local test coverage for acceptance criteria: "
-            + ", ".join(missing_ids)
-            + ".",
-        )
-
-    return (
-        True,
-        "Completed local test coverage links exist for all acceptance criteria.",
-    )
 
 
 def build_feature_ready_report(

@@ -4,12 +4,25 @@ from pathlib import Path
 
 from .hygiene_models import (
     CONTENT_SCAN_EXCLUDED_PATHS,
-    GENERATED_FILE_NAMES,
-    GENERATED_FILE_SUFFIXES,
     GENERATED_DIRECTORY_NAMES,
     VCS_DIRECTORY_NAMES,
     HygieneFinding,
     _ScanState,
+)
+from .hygiene_scanner_utils import (
+    _relative_path,
+    _display_directory,
+    _normalise_changed_file,
+    _dedupe,
+    _generated_file_source,
+    _read_text,
+    _add_finding,
+)
+from .hygiene_scanner_blocked import (
+    _join,
+    _blocked_lower_name,
+    _blocked_path_remnants,
+    _blocked_content_patterns,
 )
 
 __all__ = [
@@ -28,123 +41,6 @@ __all__ = [
     "_scan_file",
     "_scan_directory",
 ]
-
-
-def _join(*parts: str) -> str:
-    return "".join(parts)
-
-
-def _blocked_lower_name() -> str:
-    return _join("m", "cp")
-
-
-def _blocked_path_remnants() -> tuple[str, ...]:
-    lower_name = _blocked_lower_name()
-    source_prefix = "src/specspine/"
-    test_prefix = "tests/test_"
-    return (
-        source_prefix + _join("github", "_api") + ".py",
-        source_prefix + _join("github", "_auth") + ".py",
-        source_prefix + lower_name + ".py",
-        source_prefix + "sync.py",
-        source_prefix + "guard.py",
-        test_prefix + "sync.py",
-        test_prefix + "guard.py",
-        test_prefix + lower_name + ".py",
-    )
-
-
-def _blocked_content_patterns() -> tuple[str, ...]:
-    lower_name = _blocked_lower_name()
-    return (
-        lower_name,
-        lower_name.upper(),
-        lower_name + "-server",
-        _join("github", "-remote-", "sync"),
-        _join("github", "_api"),
-        _join("github", "_auth"),
-        _join("SPECSPINE_", "GITHUB", "_", "TOKEN"),
-        _join("token", "-stdin"),
-        _join("--", "github", "-token"),
-        _join("sync", "_feature_to_", "github"),
-        _join("FeatureStatus", "SyncError"),
-        _join("g", "hp_"),
-    )
-
-
-def _relative_path(root: Path, path: Path) -> str:
-    try:
-        return path.relative_to(root).as_posix()
-    except ValueError:
-        return path.as_posix()
-
-
-def _display_directory(path: str) -> str:
-    return path if path.endswith("/") else path + "/"
-
-
-def _normalise_changed_file(root: Path, value: str) -> str:
-    candidate = Path(value)
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    return _relative_path(root, candidate.resolve())
-
-
-def _dedupe(values: list[str] | tuple[str, ...]) -> tuple[str, ...]:
-    seen: set[str] = set()
-    deduped: list[str] = []
-    for value in values:
-        if value in seen:
-            continue
-        deduped.append(value)
-        seen.add(value)
-    return tuple(deduped)
-
-
-def _generated_file_source(path: Path) -> str | None:
-    if path.name in GENERATED_FILE_NAMES:
-        return path.name
-    for suffix in GENERATED_FILE_SUFFIXES:
-        if path.name.endswith(suffix):
-            return "*" + suffix
-    return None
-
-
-def _read_text(path: Path) -> tuple[str | None, str | None]:
-    try:
-        raw = path.read_bytes()
-    except OSError as error:
-        return None, "read_error:" + error.__class__.__name__
-    if b"\0" in raw:
-        return None, "binary"
-    try:
-        return raw.decode("utf-8"), None
-    except UnicodeDecodeError:
-        return None, "decode_error"
-
-
-def _add_finding(
-    findings: list[HygieneFinding],
-    *,
-    finding_id: str,
-    severity: str,
-    category: str,
-    path: str,
-    message: str,
-    source: str,
-    line: int | None = None,
-) -> None:
-    findings.append(
-        HygieneFinding(
-            id=finding_id,
-            severity=severity,
-            category=category,
-            path=path,
-            line=line,
-            message=message,
-            source=source,
-        )
-    )
 
 
 def _scan_text_file(
