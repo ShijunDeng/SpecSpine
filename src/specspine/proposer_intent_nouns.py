@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+from .proposer_ui_nouns import TARGET_NOUNS_UI
+from .proposer_backend_nouns import TARGET_NOUNS_BACKEND
+from .proposer_infra_nouns import TARGET_NOUNS_INFRA
+
 __all__ = [
     "TARGET_NOUNS",
+    "TARGET_NOUNS_UI",
+    "TARGET_NOUNS_BACKEND",
+    "TARGET_NOUNS_INFRA",
 ]
 
 TARGET_NOUNS = (
