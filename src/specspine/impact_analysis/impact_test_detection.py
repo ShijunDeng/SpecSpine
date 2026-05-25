@@ -1,31 +1,18 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
-from ..features import (
-    FEATURE_FILE_PATHS,
-)
-
-from .impact_helpers import (
-    _extract_acceptance_criteria,
-    _find_referenced_acs,
-    _find_slug_symbols,
-    _module_name,
-    _read_text,
-    _relative_path,
-)
-from .impact_models import (
-    IMPACT_TYPE_TEST,
-    SEVERITY_LOW,
-    SEVERITY_MEDIUM,
-    ImpactItem,
-    TEST_GLOBS,
-)
+from .impact_test_detection_slug_scan import _scan_tests_by_slug
+from .impact_test_detection_ac_scan import _scan_tests_by_ac
+from .impact_test_detection_quality_scan import _scan_tests_by_quality
+from .impact_models import ImpactItem
 
 __all__ = [
     "_find_affected_tests",
+    "_scan_tests_by_slug",
+    "_scan_tests_by_ac",
+    "_scan_tests_by_quality",
 ]
 
 
@@ -38,74 +25,8 @@ def _find_affected_tests(
     affected: list[ImpactItem] = []
     seen: set[str] = set()
 
-    for pattern in TEST_GLOBS:
-        for test_file in sorted(resolved_root.glob(pattern)):
-            if not test_file.is_file():
-                continue
-            content = _read_text(test_file)
-            rel_path = _relative_path(resolved_root, test_file)
-
-            if slug in content:
-                test_id = test_file.stem
-                if test_id not in seen:
-                    seen.add(test_id)
-                    acs = _find_referenced_acs(content, slug, resolved_root)
-                    affected.append(
-                        ImpactItem(
-                            type=IMPACT_TYPE_TEST,
-                            id=test_id,
-                            path=rel_path,
-                            severity=SEVERITY_MEDIUM,
-                            reason=f"Test file references feature '{slug}'",
-                            affected_acs=acs,
-                        )
-                    )
-
-    spec_path = resolved_root / FEATURE_FILE_PATHS["spec"].format(slug=slug)
-    if spec_path.exists():
-        spec_content = _read_text(spec_path)
-        acs = _extract_acceptance_criteria(spec_content)
-        for ac_id, ac_text in acs:
-            if ac_text:
-                for pattern in TEST_GLOBS:
-                    for test_file in sorted(resolved_root.glob(pattern)):
-                        if not test_file.is_file():
-                            continue
-                        content = _read_text(test_file)
-                        rel_path = _relative_path(resolved_root, test_file)
-                        test_id = test_file.stem
-                        if ac_text[:30] in content or (ac_id and ac_id in content):
-                            if test_id not in seen:
-                                seen.add(test_id)
-                                affected.append(
-                                    ImpactItem(
-                                        type=IMPACT_TYPE_TEST,
-                                        id=test_id,
-                                        path=rel_path,
-                                        severity=SEVERITY_MEDIUM,
-                                        reason=f"Test covers acceptance criterion of feature '{slug}'",
-                                        affected_acs=(ac_id,) if ac_id else (),
-                                    )
-                                )
-
-    quality_path = resolved_root / FEATURE_FILE_PATHS["quality"].format(slug=slug)
-    if quality_path.exists():
-        quality_content = _read_text(quality_path)
-        for match in re.finditer(r"(tests/[\w./_-]+\.py)", quality_content):
-            test_path = match.group(1)
-            test_file = resolved_root / test_path
-            if test_file.exists():
-                test_id = test_file.stem
-                if test_id not in seen:
-                    seen.add(test_id)
-                    affected.append(
-                        ImpactItem(
-                            type=IMPACT_TYPE_TEST,
-                            id=test_id,
-                            path=test_path,
-                            severity=SEVERITY_LOW,
-                            reason=f"Quality file references test '{test_path}'",
-                        )
-                    )
+    _scan_tests_by_slug(slug, resolved_root, affected, seen)
+    _scan_tests_by_ac(slug, resolved_root, affected, seen)
+    _scan_tests_by_quality(slug, resolved_root, affected, seen)
 
     return affected
