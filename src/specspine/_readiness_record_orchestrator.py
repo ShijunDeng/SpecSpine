@@ -2,23 +2,26 @@ from __future__ import annotations
 
 from typing import Any
 
-from .features import (
-    InvalidFeatureSlug,
-    build_feature_ready_report,
-    read_feature_metadata,
-)
 from .policy import WorkspacePolicy
-from .status_readiness_helpers import _invalid_readiness_record
 
 from ._readiness_record_builder import build_readiness_record_from_context
 from ._readiness_record_context import (
     ReadinessRecordContext,
     build_readiness_context,
 )
+from ._readiness_record_orchestrator_policy import _resolve_policy_coverage
+from ._readiness_record_orchestrator_report import (
+    _build_report_or_invalid,
+    _read_metadata_or_invalid,
+)
 
 __all__ = [
     "_build_readiness_record",
 ]
+
+
+def _is_error_record(result: Any) -> bool:
+    return isinstance(result, dict) and "reason" in result
 
 
 def _build_readiness_record(
@@ -31,44 +34,34 @@ def _build_readiness_record(
 ) -> dict[str, Any] | None:
     slug = str(feature["slug"])
     status = str(feature.get("status") or "unknown")
-    policy_coverage_required = False
-    try:
-        metadata = read_feature_metadata(resolved_root, slug)
-    except InvalidFeatureSlug as error:
-        return _invalid_readiness_record(
-            feature,
-            reason=str(error),
-            require_coverage=require_coverage,
-            use_policy=use_policy,
-            policy=policy,
-        )
 
-    if policy is not None:
-        policy_coverage_required = policy.require_coverage.requires_coverage(
-            feature_id=slug,
-            metadata=metadata,
-            status=status,
-        )
+    metadata_or_error = _read_metadata_or_invalid(
+        feature,
+        resolved_root,
+        require_coverage=require_coverage,
+        use_policy=use_policy,
+        policy=policy,
+    )
+    if _is_error_record(metadata_or_error):
+        return metadata_or_error
+    metadata = metadata_or_error
+
+    policy_coverage_required = _resolve_policy_coverage(feature, metadata, status, policy)
     coverage_required = require_coverage or policy_coverage_required
 
-    try:
-        report = build_feature_ready_report(
-            resolved_root,
-            slug,
-            require_coverage=coverage_required,
-            policy_applied=use_policy,
-            coverage_required_by_policy=policy_coverage_required,
-            policy_source=str(policy.source_file) if policy is not None else None,
-        )
-    except InvalidFeatureSlug as error:
-        return _invalid_readiness_record(
-            feature,
-            reason=str(error),
-            require_coverage=coverage_required,
-            use_policy=use_policy,
-            policy_coverage_required=policy_coverage_required,
-            policy=policy,
-        )
+    report_or_error = _build_report_or_invalid(
+        feature,
+        resolved_root,
+        slug,
+        status,
+        coverage_required=coverage_required,
+        use_policy=use_policy,
+        policy_coverage_required=policy_coverage_required,
+        policy=policy,
+    )
+    if _is_error_record(report_or_error):
+        return report_or_error
+    report = report_or_error
 
     ctx = ReadinessRecordContext(
         slug=slug,

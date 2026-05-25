@@ -2,83 +2,32 @@ from __future__ import annotations
 
 from typing import Any
 
+from ._text_header import render_header_and_summary
+from ._text_features import render_core_features
+from ._text_sections import (
+    render_context_commands,
+    render_lifecycle_steps,
+    render_subagents,
+    render_validation_commands,
+    render_safety_notes,
+    render_upstreams,
+    render_recommended_commands,
+)
+
 __all__ = [
     "render_loop_packet_text",
 ]
 
 
 def render_loop_packet_text(packet: dict[str, Any]) -> str:
-    lines = [
-        "# SpecSpine Agent Loop Packet",
-        "",
-        f"Root: {packet['root']}",
-        f"Deadline: {packet['deadline'] or 'none'}",
-        "",
-        "## Summary",
-    ]
-    summary = packet["summary"]
-    for key in (
-        "features_total",
-        "features_ready",
-        "features_not_ready",
-        "tasks_open_total",
-        "gaps_total",
-        "blocking_checks_total",
-        "enabled_upstreams",
-    ):
-        lines.append(f"- {key}: {summary[key]}")
-
-    lines.extend(["", "## Core Features"])
-    core_features = packet["core_features"]
-    if core_features:
-        for feature in core_features:
-            lines.append(
-                "- "
-                f"{feature['slug']} "
-                f"status={feature['status']} "
-                f"ready={'yes' if feature['ready'] else 'no'} "
-                f"tasks_open={feature['tasks_summary'].get('open', 0)} "
-                f"gaps={feature['gaps']} "
-                f"blocking={feature['blocking_checks']}"
-            )
-    else:
-        lines.append("- none")
-
-    lines.extend(["", "## Context Commands"])
-    for command in packet["context_commands"]:
-        lines.append(f"- {command['id']}: `{command['command']}`")
-
-    lines.extend(["", "## Lifecycle Steps"])
-    for step in packet["lifecycle_steps"]:
-        lines.append(f"- {step['status']}")
-        for command in step["commands"]:
-            lines.append(f"  - `{command['command']}`")
-
-    lines.extend(["", "## Subagents"])
-    for subagent in packet["subagents"]:
-        lines.append(f"- {subagent['id']}: {subagent['focus']}")
-
-    lines.extend(["", "## Validation Commands"])
-    for command in packet["validation_commands"]:
-        lines.append(f"- {command['id']}: `{command['command']}`")
-
-    lines.extend(["", "## Safety Notes"])
-    for note in packet["safety_notes"]:
-        lines.append(f"- {note}")
-
-    lines.extend(["", "## Upstreams"])
-    upstreams = packet["upstreams"]
-    if upstreams:
-        for key in sorted(upstreams):
-            upstream = upstreams[key]
-            enabled = "enabled" if upstream.get("enabled") else "disabled"
-            config = upstream.get("config", "")
-            lines.append(f"- {key}: {enabled}, config={config}")
-    else:
-        lines.append("- none")
-
-    lines.extend(["", "## Recommended Commands"])
-    for command in packet["recommended_commands"]:
-        lines.append(f"- `{command}`")
-
+    lines: list[str] = []
+    lines.extend(render_header_and_summary(packet))
+    lines.extend(render_core_features(packet))
+    lines.extend(render_context_commands(packet))
+    lines.extend(render_lifecycle_steps(packet))
+    lines.extend(render_subagents(packet))
+    lines.extend(render_validation_commands(packet))
+    lines.extend(render_safety_notes(packet))
+    lines.extend(render_upstreams(packet))
+    lines.extend(render_recommended_commands(packet))
     return "\n".join(lines) + "\n"
