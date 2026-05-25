@@ -3,16 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..coverage_debt_records import (
-    _build_feature_coverage_debt_record,
-    _invalid_coverage_debt_record,
-)
+from ..policy import WorkspacePolicy
 from ..features import (
     InvalidFeatureSlug,
     FeatureBundleNotFoundError,
-    read_feature_metadata,
 )
-from ..policy import WorkspacePolicy
+from ._policy_evaluator import _evaluate_policy_coverage
+from ._record_builder import _build_single_feature_record
 
 __all__ = [
     "_build_all_feature_records",
@@ -30,18 +27,13 @@ def _build_all_feature_records(
     for feature in features:
         slug = str(feature["slug"])
         status = str(feature.get("status") or "unknown")
-        policy_coverage_required = False
+        policy_coverage_required = _evaluate_policy_coverage(
+            resolved_root, slug, status, policy
+        )
+        coverage_required = True if not use_policy else policy_coverage_required
         try:
-            if policy is not None:
-                metadata = read_feature_metadata(resolved_root, slug)
-                policy_coverage_required = policy.require_coverage.requires_coverage(
-                    feature_id=slug,
-                    metadata=metadata,
-                    status=status,
-                )
-            coverage_required = True if not use_policy else policy_coverage_required
             records.append(
-                _build_feature_coverage_debt_record(
+                _build_single_feature_record(
                     resolved_root,
                     feature,
                     coverage_required=coverage_required,
@@ -50,18 +42,8 @@ def _build_all_feature_records(
                     policy=policy,
                 )
             )
-        except InvalidFeatureSlug as error:
-            records.append(
-                _invalid_coverage_debt_record(
-                    feature,
-                    coverage_required=not use_policy,
-                    policy_coverage_required=False,
-                    use_policy=use_policy,
-                    policy=policy,
-                    reason=str(error),
-                )
-            )
-        except FeatureBundleNotFoundError as error:
+        except (InvalidFeatureSlug, FeatureBundleNotFoundError) as error:
+            from ..coverage_debt_records import _invalid_coverage_debt_record
             records.append(
                 _invalid_coverage_debt_record(
                     feature,

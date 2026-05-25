@@ -4,16 +4,19 @@ from .feature_bundle import (
     FeatureReadyCheck,
     FeatureTask,
 )
+from ._action_utils import _append_unique
+from ._action_builder import (
+    _collect_missing_file_actions,
+    _collect_gap_actions,
+    _collect_task_actions,
+    _collect_blocking_actions,
+    _collect_ready_actions,
+)
 
 __all__ = [
     "_append_unique",
     "_handoff_next_actions",
 ]
-
-
-def _append_unique(items: list[str], item: str) -> None:
-    if item not in items:
-        items.append(item)
 
 
 def _handoff_next_actions(
@@ -38,39 +41,10 @@ def _handoff_next_actions(
         )
         return tuple(actions)
 
-    if missing_files:
-        _append_unique(
-            actions,
-            "Add missing peer file(s): " + ", ".join(missing_files),
-        )
-
-    section_gap_ids = tuple(
-        gap["id"] for gap in gaps if gap["id"] != "missing_file"
-    )
-    if section_gap_ids:
-        _append_unique(
-            actions,
-            "Fill missing trace section(s): " + ", ".join(section_gap_ids),
-        )
-
-    open_task_ids = tuple(task.id for task in tasks if not task.done)
-    if open_task_ids:
-        _append_unique(
-            actions,
-            "Complete open task(s): " + ", ".join(open_task_ids),
-        )
-
-    blocking_ids = tuple(check.id for check in blocking_checks)
-    if blocking_ids:
-        _append_unique(
-            actions,
-            "Resolve blocking readiness check(s): " + ", ".join(blocking_ids),
-        )
-
-    if ready:
-        _append_unique(
-            actions,
-            "Review, merge, or archive the ready feature bundle.",
-        )
+    _collect_missing_file_actions(actions, missing_files)
+    _collect_gap_actions(actions, gaps)
+    _collect_task_actions(actions, tasks)
+    _collect_blocking_actions(actions, blocking_checks)
+    _collect_ready_actions(actions, ready)
 
     return tuple(actions)
