@@ -2,20 +2,19 @@ from __future__ import annotations
 
 from typing import Any
 
-from .status_workspace import (
+from ..status_workspace import (
     _FEATURE_SUMMARY_DEFAULT_VALUES,
     _FEATURE_SUMMARY_EFFORT_ORDER,
     _FEATURE_SUMMARY_PRIORITY_ORDER,
     _FEATURE_SUMMARY_STATUS_ORDER,
 )
-from .status_features_filters_matching import (
+from ..status_features_filters_matching import (
     _feature_summary_status_bucket,
     _feature_summary_tasks_open,
 )
 
 __all__ = [
     "_feature_summary_sort_value",
-    "_feature_summary_sort_metadata_desc",
 ]
 
 
@@ -58,29 +57,3 @@ def _feature_summary_sort_value(summary: dict[str, Any], sort_key: str) -> tuple
         default_bucket = 1 if effort_key == "unknown" else 0
         return (default_bucket, order, effort_key, slug)
     return (slug,)
-
-
-def _feature_summary_sort_metadata_desc(
-    summaries: list[dict[str, Any]],
-    sort_key: str,
-) -> list[dict[str, Any]]:
-    assigned: list[dict[str, Any]] = []
-    defaults: list[dict[str, Any]] = []
-    for summary in summaries:
-        if _feature_summary_sort_value(summary, sort_key)[0] == 0:
-            assigned.append(summary)
-        else:
-            defaults.append(summary)
-
-    def slug_key(summary: dict[str, Any]) -> str:
-        return str(summary.get("slug") or summary.get("feature_id") or "")
-
-    assigned_by_slug = sorted(assigned, key=slug_key)
-    return [
-        *sorted(
-            assigned_by_slug,
-            key=lambda summary: _feature_summary_sort_value(summary, sort_key)[1:3],
-            reverse=True,
-        ),
-        *sorted(defaults, key=slug_key),
-    ]

@@ -1,7 +1,16 @@
 from __future__ import annotations
 
 from ..feature_bundle import FeatureTestsReport
-from ..feature_trace import _render_trace_checklist_item
+from ._section_gaps_commands import (
+    render_blocking_checks_lines,
+    render_gaps_lines,
+    render_key_commands_lines,
+)
+from ._section_plan_quality import (
+    render_quality_checks_lines,
+    render_test_plan_lines,
+)
+from ._section_tests import render_test_cases_lines, render_test_coverage_lines
 
 __all__ = [
     "render_section_lines",
@@ -10,77 +19,11 @@ __all__ = [
 
 def render_section_lines(report: FeatureTestsReport) -> list[str]:
     lines: list[str] = []
-
-    lines.extend(["", "Test Cases:"])
-    if report.test_cases:
-        for test_case in report.test_cases:
-            linked_targets = (
-                ", ".join(link.target for link in test_case.coverage if link.target)
-                or "None linked"
-            )
-            lines.append(
-                f"- [ ] {test_case.id} -> "
-                f"{test_case.acceptance_criterion_id} "
-                f"[{test_case.status}; links={linked_targets}] "
-                f"{test_case.source_file}:{test_case.line} "
-                f"{test_case.behavior}"
-            )
-    else:
-        lines.append(
-            "- [ ] Add acceptance criteria checklist items before testing behavior."
-        )
-
-    lines.extend(["", "Test Coverage:"])
-    if report.test_coverage:
-        for link in report.test_coverage:
-            marker = "x" if link.done else " "
-            exists = "exists" if link.target_exists else "missing"
-            target = link.target or "None linked"
-            lines.append(
-                f"- [{marker}] {link.id} -> "
-                f"{link.acceptance_criterion_id} {target} "
-                f"({exists}) {link.source_file}:{link.line}"
-            )
-    else:
-        lines.append("- None linked.")
-
-    lines.extend(["", "Existing Test Plan:"])
-    if report.test_plan:
-        lines.extend(
-            f"- {item.id} {item.source_file}:{item.line} {item.text}"
-            for item in report.test_plan
-        )
-    else:
-        lines.append("- None found.")
-
-    lines.extend(["", "Quality Checks:"])
-    if report.quality_checks:
-        lines.extend(
-            _render_trace_checklist_item(item)
-            for item in report.quality_checks
-        )
-    else:
-        lines.append("- None found.")
-
-    lines.extend(["", "Gaps:"])
-    if report.gaps:
-        lines.extend(
-            f"- {gap['id']}: {gap['source_file']} - {gap['message']}"
-            for gap in report.gaps
-        )
-    else:
-        lines.append("- None.")
-
-    lines.extend(["", "Blocking Checks:"])
-    if report.blocking_checks:
-        lines.extend(
-            f"- {check.id}: {check.message}"
-            for check in report.blocking_checks
-        )
-    else:
-        lines.append("- None.")
-
-    lines.extend(["", "Key Commands:"])
-    lines.extend(f"- {command}" for command in report.recommended_commands)
-
+    lines.extend(render_test_cases_lines(report))
+    lines.extend(render_test_coverage_lines(report))
+    lines.extend(render_test_plan_lines(report))
+    lines.extend(render_quality_checks_lines(report))
+    lines.extend(render_gaps_lines(report))
+    lines.extend(render_blocking_checks_lines(report))
+    lines.extend(render_key_commands_lines(report))
     return lines
