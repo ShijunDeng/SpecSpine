@@ -7,6 +7,7 @@ from .models import ReviewPacket
 from .helpers import _dedupe_commands
 from .feature_evidence import _feature_payload
 from .review_checks import _build_review_checks, _build_feature_commands
+from ._packet_summary import _build_summary, _build_safety_notes
 
 __all__ = [
     "assemble_review_packet",
@@ -41,21 +42,15 @@ def assemble_review_packet(
         ),
         feature_commands,
     )
-    summary = {
-        "changed_files": len(impact.changed_files),
-        "failed_review_checks": len(failed_checks),
-        "feature_included": feature_slug is not None,
-        "passed_review_checks": len(review_checks) - len(failed_checks),
-        "recommended_commands": len(recommended_commands),
-        "review_checks": len(review_checks),
-        "test_impact_recommendations": len(impact.recommendations),
-        "validation_ok": bool(validation["ok"]),
-    }
-    safety_notes = (
-        "This command composes local SpecSpine reports only.",
-        "Recommended commands are advisory and are not executed.",
-        "SpecSpine did not run tests, invoke subprocesses, call network services, call GitHub APIs, invoke upstream CLIs, or read tokens.",
+    summary = _build_summary(
+        impact=impact,
+        failed_checks=failed_checks,
+        feature_slug=feature_slug,
+        review_checks=review_checks,
+        recommended_commands=recommended_commands,
+        validation=validation,
     )
+    safety_notes = _build_safety_notes()
     return ReviewPacket(
         root=resolved_root,
         feature_id=feature_slug,
