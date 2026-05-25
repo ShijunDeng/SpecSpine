@@ -1,77 +1,28 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
 from .adapter_handoff_render import (
-    _adapter_handoff_blocking_checks,
-    adapter_feature_handoff_focused_payload,
     render_adapter_feature_handoff_adapter_json,
     render_adapter_feature_handoff_adapter_text,
     render_adapter_feature_handoff_json,
     render_adapter_feature_handoff_text,
 )
 from .adapter_models import (
-    ADAPTER_HANDOFF_SAFETY_FLAGS,
-    ADAPTER_SPECS,
-    AdapterFeatureHandoffReport,
     AdapterHandoffArtifactExistsError,
     AdapterHandoffArtifacts,
+    AdapterFeatureHandoffReport,
+    ADAPTER_SPECS,
 )
+from .adapter_handoff_checksums import _sha256_hex
+from .adapter_handoff_manifests import _adapter_handoff_artifact_manifest
 
 __all__ = [
     "_adapter_handoff_artifact_manifest",
     "_sha256_hex",
     "write_adapter_feature_handoff_artifacts",
 ]
-
-
-def _adapter_handoff_artifact_manifest(
-    report: AdapterFeatureHandoffReport,
-    artifact_checksums: dict[str, str],
-) -> dict[str, object]:
-    adapter_artifacts = {
-        key: f"adapters/{key}.md"
-        for key in ADAPTER_SPECS
-    }
-    adapter_json_artifacts = {
-        key: f"adapters/{key}.json"
-        for key in ADAPTER_SPECS
-    }
-    return {
-        "artifact_version": 1,
-        "artifact_root": ".",
-        "artifact_checksums": artifact_checksums,
-        "artifacts": {
-            "manifest": "manifest.json",
-            "combined": "combined.md",
-            "combined_json": "combined.json",
-            "adapters": adapter_artifacts,
-            "adapter_json": adapter_json_artifacts,
-        },
-        "blocking_checks": _adapter_handoff_blocking_checks(report),
-        "checksum_algorithm": "sha256",
-        "feature_id": report.feature_id,
-        "gaps": [dict(gap) for gap in report.gaps],
-        "missing_files": list(report.missing_files),
-        "ready": report.ready,
-        "safety_flags": dict(ADAPTER_HANDOFF_SAFETY_FLAGS),
-        "safety_notes": [
-            (
-                "Artifact export does not execute upstream tools, subprocesses, "
-                "network calls, GitHub operations, or token reads."
-            ),
-            "Recommended upstream steps are review data only.",
-        ],
-        "source_files": list(report.source_files),
-        "status": report.status,
-        "summary": report.summary,
-    }
-
-
-def _sha256_hex(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
 
 
 def write_adapter_feature_handoff_artifacts(

@@ -2,19 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from .text_markers import _complete_marker, _marker
+
 __all__ = [
     "_complete_marker",
     "_marker",
     "render_status_text",
 ]
-
-
-def _marker(value: bool) -> str:
-    return "ok" if value else "missing"
-
-
-def _complete_marker(value: bool) -> str:
-    return "complete" if value else "incomplete"
 
 
 def render_status_text(status: dict[str, Any]) -> str:
