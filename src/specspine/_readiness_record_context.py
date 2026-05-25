@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from .features import (
@@ -8,43 +9,41 @@ from .features import (
     read_feature_metadata,
 )
 from .policy import WorkspacePolicy
-from .status_readiness_helpers import _invalid_readiness_record
-
-from ._readiness_record_builder import build_readiness_record_from_context
-from ._readiness_record_context import (
-    ReadinessRecordContext,
-    build_readiness_context,
-)
 
 __all__ = [
     "ReadinessRecordContext",
-    "_build_readiness_record",
     "build_readiness_context",
-    "build_readiness_record_from_context",
 ]
 
 
-def _build_readiness_record(
+@dataclass
+class ReadinessRecordContext:
+    slug: str
+    status: str
+    metadata: Any
+    coverage_required: bool
+    policy_coverage_required: bool
+    report: Any
+    require_coverage: bool
+    use_policy: bool
+    policy: WorkspacePolicy | None
+
+
+def build_readiness_context(
     feature: dict[str, object],
     resolved_root,
     *,
     require_coverage: bool,
     use_policy: bool,
     policy: WorkspacePolicy | None,
-) -> dict[str, Any] | None:
+) -> ReadinessRecordContext | None:
     slug = str(feature["slug"])
     status = str(feature.get("status") or "unknown")
     policy_coverage_required = False
     try:
         metadata = read_feature_metadata(resolved_root, slug)
-    except InvalidFeatureSlug as error:
-        return _invalid_readiness_record(
-            feature,
-            reason=str(error),
-            require_coverage=require_coverage,
-            use_policy=use_policy,
-            policy=policy,
-        )
+    except InvalidFeatureSlug:
+        return None
 
     if policy is not None:
         policy_coverage_required = policy.require_coverage.requires_coverage(
@@ -63,17 +62,10 @@ def _build_readiness_record(
             coverage_required_by_policy=policy_coverage_required,
             policy_source=str(policy.source_file) if policy is not None else None,
         )
-    except InvalidFeatureSlug as error:
-        return _invalid_readiness_record(
-            feature,
-            reason=str(error),
-            require_coverage=coverage_required,
-            use_policy=use_policy,
-            policy_coverage_required=policy_coverage_required,
-            policy=policy,
-        )
+    except InvalidFeatureSlug:
+        return None
 
-    ctx = ReadinessRecordContext(
+    return ReadinessRecordContext(
         slug=slug,
         status=status,
         metadata=metadata,
@@ -84,4 +76,3 @@ def _build_readiness_record(
         use_policy=use_policy,
         policy=policy,
     )
-    return build_readiness_record_from_context(ctx)
