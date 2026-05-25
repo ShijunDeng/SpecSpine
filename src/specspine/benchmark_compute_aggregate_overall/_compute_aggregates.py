@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from .benchmark_models import FeatureMetrics
-from .benchmark_compute_stats import _median, _percentile
+from ..benchmark_models import FeatureMetrics
+from ..benchmark_compute_stats import _median, _percentile
+from ._aggregate_defaults import _empty_overall_defaults
 
 __all__ = [
     "_compute_overall_metrics",
@@ -12,30 +13,7 @@ __all__ = [
 
 def _compute_overall_metrics(metrics: list[FeatureMetrics]) -> dict[str, Any]:
     if not metrics:
-        return {
-            "avg_ac_count": 0.0,
-            "avg_consistency_fail": 0.0,
-            "avg_coverage": 0.0,
-            "avg_drift_events": 0.0,
-            "avg_lifecycle_duration_days": 0.0,
-            "avg_task_count": 0.0,
-            "avg_test_count": 0.0,
-            "avg_validation_fail": 0.0,
-            "avg_validation_pass": 0.0,
-            "median_ac_count": 0.0,
-            "median_consistency_fail": 0.0,
-            "median_coverage": 0.0,
-            "median_drift_events": 0.0,
-            "median_lifecycle_duration_days": 0.0,
-            "median_task_count": 0.0,
-            "median_test_count": 0.0,
-            "median_validation_fail": 0.0,
-            "median_validation_pass": 0.0,
-            "p95_coverage": 0.0,
-            "p95_lifecycle_duration_days": 0.0,
-            "p95_test_count": 0.0,
-            "total_features": 0,
-        }
+        return _empty_overall_defaults()
 
     ac_counts = [m.ac_count for m in metrics]
     task_counts = [m.task_count for m in metrics]
