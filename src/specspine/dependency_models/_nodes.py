@@ -1,32 +1,11 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 
 __all__ = [
-    "EFFORT_VALUES",
-    "DEFAULT_EFFORT",
-    "EXPLICIT_DEP_PATTERNS",
-    "_resolve_effort",
     "DependencyEdge",
     "DependencyNode",
     "DependencyGraphResult",
-]
-
-EFFORT_VALUES = {"S": 1, "M": 2, "L": 4, "XL": 8}
-DEFAULT_EFFORT = 3
-
-
-def _resolve_effort(effort: str) -> int:
-    return EFFORT_VALUES.get(effort, DEFAULT_EFFORT)
-
-EXPLICIT_DEP_PATTERNS = [
-    re.compile(r"Feature\s+ID:\s*([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)", re.IGNORECASE),
-    re.compile(r"depends\s+on\s+([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)", re.IGNORECASE),
-    re.compile(r"after\s+([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)", re.IGNORECASE),
-    re.compile(r"blocked\s+by\s+([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)", re.IGNORECASE),
-    re.compile(r"requires\s+([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)", re.IGNORECASE),
-    re.compile(r"prerequisite:\s*([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)", re.IGNORECASE),
 ]
 
 
