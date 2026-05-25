@@ -14,13 +14,8 @@ from .feature_bundle import (
     validate_feature_slug,
     validate_feature_status,
 )
-from .feature_status_helpers import (
-    _allowed_transitions,
-    _replace_or_insert_status_line,
-)
-from .feature_status_transition import (
-    _validate_enforced_feature_transition,
-)
+from ._status_setter_transition import _build_transition
+from ._status_setter_file_writer import _write_status_to_files
 
 __all__ = [
     "FeatureStatusTransitionError",
@@ -70,30 +65,11 @@ def set_feature_status(
             missing_paths=tuple(paths.values()),
         )
 
-    if enforce_transition:
-        transition = _validate_enforced_feature_transition(
-            resolved_root,
-            slug,
-            status,
-            before,
-        )
-    else:
-        transition = _transition_payload(
-            from_status=before.status,
-            to_status=status,
-            enforced=False,
-            allowed=True,
-        )
+    transition = _build_transition(
+        resolved_root, slug, status, before, enforce_transition,
+    )
 
-    updated_files: list[str] = []
-    for kind in FEATURE_FILE_PATHS:
-        path = paths[kind]
-        if not path.exists():
-            continue
-
-        content = path.read_text(encoding="utf-8")
-        path.write_text(_replace_or_insert_status_line(content, status), encoding="utf-8")
-        updated_files.append(relative_paths[kind])
+    updated_files = _write_status_to_files(paths, slug, status)
 
     report = get_feature_status(resolved_root, slug)
     return FeatureStatusReport(
@@ -105,3 +81,13 @@ def set_feature_status(
         updated_files=tuple(updated_files),
         transition=transition,
     )
+
+
+def _validate_enforced_feature_transition(*args, **kwargs):
+    from .feature_status_transition import _validate_enforced_feature_transition
+    return _validate_enforced_feature_transition(*args, **kwargs)
+
+
+def _allowed_transitions(*args, **kwargs):
+    from .feature_status_helpers import _allowed_transitions
+    return _allowed_transitions(*args, **kwargs)
