@@ -3,11 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .helpers import _is_within_root, _relative_path, _resolve_path, _hash_file, _normalize_lexical_path
+from ..helpers import _is_within_root, _relative_path, _resolve_path, _hash_file
 
 __all__ = [
     "_artifact_record",
-    "_include_artifact",
 ]
 
 
@@ -58,21 +57,3 @@ def _artifact_record(
         artifact["error"] = error.__class__.__name__
 
     return artifact
-
-
-def _include_artifact(root: Path, include: str | Path) -> dict[str, Any]:
-    include_value = str(include)
-    include_path = Path(include)
-    if include_path.is_absolute():
-        candidate = include_path
-    else:
-        candidate = root / include_path
-
-    display_candidate = _normalize_lexical_path(candidate)
-    return _artifact_record(
-        root,
-        candidate,
-        kind="include",
-        display_path=_relative_path(root, display_candidate),
-        requested_path=include_value,
-    )

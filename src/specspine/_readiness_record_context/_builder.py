@@ -1,32 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
-from .features import (
+from ._model import ReadinessRecordContext
+from ..features import (
     InvalidFeatureSlug,
     build_feature_ready_report,
     read_feature_metadata,
 )
-from .policy import WorkspacePolicy
+from ..policy import WorkspacePolicy
 
 __all__ = [
-    "ReadinessRecordContext",
     "build_readiness_context",
 ]
-
-
-@dataclass
-class ReadinessRecordContext:
-    slug: str
-    status: str
-    metadata: Any
-    coverage_required: bool
-    policy_coverage_required: bool
-    report: Any
-    require_coverage: bool
-    use_policy: bool
-    policy: WorkspacePolicy | None
 
 
 def build_readiness_context(
