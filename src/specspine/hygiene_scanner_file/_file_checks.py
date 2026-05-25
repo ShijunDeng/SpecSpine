@@ -2,33 +2,23 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .hygiene_models import (
-    CONTENT_SCAN_EXCLUDED_PATHS,
-    HygieneFinding,
-    _ScanState,
-)
-from .hygiene_scanner_utils import (
-    _relative_path,
-    _generated_file_source,
-    _read_text,
-    _add_finding,
-)
-from .hygiene_scanner_text import _scan_text_file
+from ..hygiene_models import HygieneFinding
+from ..hygiene_scanner_utils import _relative_path, _generated_file_source, _add_finding
 
 __all__ = [
-    "_scan_file",
+    "_check_blocked_path",
+    "_check_generated_artifact",
 ]
 
 
-def _scan_file(
+def _check_blocked_path(
     root: Path,
     path: Path,
-    state: _ScanState,
     findings: list[HygieneFinding],
     *,
     blocked_paths: set[str],
-    blocked_patterns: tuple[str, ...],
-) -> None:
+) -> bool:
+    """Check if path is a forbidden path remnant. Returns True if blocked."""
     relative_path = _relative_path(root, path)
     if relative_path in blocked_paths:
         _add_finding(
@@ -40,7 +30,18 @@ def _scan_file(
             message="Forbidden path remnant exists.",
             source="forbidden-path",
         )
+        return True
+    return False
 
+
+def _check_generated_artifact(
+    root: Path,
+    path: Path,
+    state,
+    findings: list[HygieneFinding],
+) -> bool:
+    """Check if path is a generated/cache artifact. Returns True if generated."""
+    relative_path = _relative_path(root, path)
     generated_source = _generated_file_source(path)
     if generated_source is not None:
         _add_finding(
@@ -53,24 +54,5 @@ def _scan_file(
             source=generated_source,
         )
         state.skip_file("generated_artifact")
-        return
-
-    if relative_path in CONTENT_SCAN_EXCLUDED_PATHS:
-        state.skip_file("content_scan_excluded")
-        return
-
-    text, skipped_reason = _read_text(path)
-    if skipped_reason is not None:
-        state.skip_file(skipped_reason)
-        return
-    if text is None:
-        state.skip_file("read_skipped")
-        return
-
-    state.files_scanned += 1
-    _scan_text_file(
-        findings,
-        relative_path=relative_path,
-        text=text,
-        patterns=blocked_patterns,
-    )
+        return True
+    return False
