@@ -3,6 +3,8 @@ from __future__ import annotations
 from .impact_helpers import *
 from .impact_features import *
 from .impact_tests_code import *
+from .impact_test_detection import *
+from .impact_code_detection import *
 
 __all__ = [
     "_extract_acceptance_criteria",

@@ -4,39 +4,19 @@ from pathlib import Path
 from typing import Any
 
 from ..features import (
-    build_feature_handoff_report,
-    build_feature_ready_report,
-    build_feature_tests_report,
-    build_feature_trace_report,
     validate_feature_slug,
 )
 from ..gates import build_quality_gate_report
 from ..impact import build_test_impact_report
 from ..validation import build_validation_report, build_validation_summary
 from .models import ReviewPacket
-from .helpers import _dedupe_commands, _review_check
+from .helpers import _dedupe_commands
+from .feature_evidence import _feature_payload
+from .review_checks import _build_review_checks, _build_feature_commands
 
 __all__ = [
     "build_review_packet",
 ]
-
-
-def _feature_payload(root: Path, slug: str) -> dict[str, Any]:
-    handoff = build_feature_handoff_report(root, slug, require_coverage=True)
-    ready = build_feature_ready_report(root, slug, require_coverage=True)
-    tests = build_feature_tests_report(root, slug)
-    trace = build_feature_trace_report(root, slug) if handoff.has_native_files else None
-    return {
-        "blocking_checks": [check.as_dict() for check in ready.blocking_checks],
-        "gaps": list(trace.gaps if trace is not None else handoff.gaps),
-        "handoff": handoff.as_dict(),
-        "has_native_files": handoff.has_native_files,
-        "ready": ready.as_dict(),
-        "source_files": list(tests.source_files),
-        "status": handoff.status,
-        "tests": tests.as_dict(),
-        "trace": trace.as_dict() if trace is not None else None,
-    }
 
 
 def build_review_packet(
@@ -70,62 +50,16 @@ def build_review_packet(
     )
 
     feature_payload = _feature_payload(resolved_root, feature_slug) if feature_slug else None
-    checks = [
-        _review_check(
-            "review.validation",
-            bool(validation["ok"]),
-            "Workspace validation passes.",
-        ),
-        _review_check(
-            "review.quality_gates_source",
-            not gates.source_missing,
-            "Quality gate source file exists.",
-        ),
-        _review_check(
-            "review.test_impact",
-            bool(impact.recommendations),
-            "Test impact recommendations are available.",
-        ),
-    ]
-    if feature_payload is not None:
-        checks.extend(
-            [
-                _review_check(
-                    "review.feature_exists",
-                    bool(feature_payload["has_native_files"]),
-                    "Native feature evidence exists.",
-                ),
-                _review_check(
-                    "review.feature_ready",
-                    bool(feature_payload["ready"]["ready"]),
-                    "Feature readiness passes with coverage required.",
-                ),
-                _review_check(
-                    "review.trace_gaps",
-                    not bool(feature_payload["gaps"]),
-                    "Feature trace has no gaps.",
-                ),
-                _review_check(
-                    "review.blocking_checks",
-                    not bool(feature_payload["blocking_checks"]),
-                    "Feature has no blocking readiness checks.",
-                ),
-            ]
-        )
-
-    review_checks = tuple(checks)
+    review_checks = _build_review_checks(
+        validation_ok=validation["ok"],
+        gates_source_missing=gates.source_missing,
+        has_impact_recommendations=bool(impact.recommendations),
+        feature_payload=feature_payload,
+    )
     failed_checks = tuple(
         check["id"] for check in review_checks if check["status"] != "pass"
     )
-    feature_commands: tuple[str, ...] = ()
-    if feature_slug is not None:
-        feature_commands = (
-            f"specspine review packet . --feature {feature_slug} --json",
-            f"specspine feature handoff {feature_slug} . --json",
-            f"specspine feature ready {feature_slug} . --json --require-coverage",
-            f"specspine feature trace {feature_slug} . --json",
-            f"specspine feature tests {feature_slug} . --json",
-        )
+    feature_commands = _build_feature_commands(feature_slug)
 
     recommended_commands = _dedupe_commands(
         impact.recommended_commands,

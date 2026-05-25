@@ -3,18 +3,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .coverage_debt_records import (
+from ..coverage_debt_records import (
     _build_feature_coverage_debt_record,
     _invalid_coverage_debt_record,
 )
-from .coverage_utils import _coverage_detail_command
-from .features import (
+from ..features import (
     InvalidFeatureSlug,
     FeatureBundleNotFoundError,
     list_feature_bundles,
     read_feature_metadata,
 )
-from .policy import WorkspacePolicy, load_workspace_policy
+from ..policy import WorkspacePolicy, load_workspace_policy
+from .summary import _build_summary, _build_recommended_commands
 
 __all__ = [
     "build_coverage_debt_report",
@@ -83,27 +83,9 @@ def build_coverage_debt_report(
         for record in required_records
         if int(record["missing_acceptance_criteria"]) > 0
     ]
-    recommended_commands = [
-        _coverage_detail_command(str(record["feature_id"]), use_policy=use_policy)
-        for record in debt_records
-    ]
-    if not recommended_commands:
-        recommended_commands.append("specspine coverage debt . --json")
+    recommended_commands = _build_recommended_commands(debt_records, use_policy)
 
-    summary: dict[str, Any] = {
-        "features_skipped": len(records) - len(required_records),
-        "missing_target_links": sum(
-            len(record["missing_target_link_ids"]) for record in records
-        ),
-        "open_coverage_links": sum(
-            len(record["open_coverage_link_ids"]) for record in records
-        ),
-        "unknown_acceptance_criterion_links": sum(
-            len(record["unknown_acceptance_criterion_link_ids"]) for record in records
-        ),
-    }
-    if use_policy and policy is not None:
-        summary["policy_warnings"] = len(policy.require_coverage.warnings)
+    summary = _build_summary(records, required_records, use_policy, policy)
 
     report: dict[str, Any] = {
         "acceptance_criteria_total": sum(

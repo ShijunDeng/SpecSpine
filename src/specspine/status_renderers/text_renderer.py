@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 __all__ = [
     "_complete_marker",
     "_marker",
-    "render_status_json",
     "render_status_text",
 ]
 
@@ -17,10 +15,6 @@ def _marker(value: bool) -> str:
 
 def _complete_marker(value: bool) -> str:
     return "complete" if value else "incomplete"
-
-
-def render_status_json(status: dict[str, Any]) -> str:
-    return json.dumps(status, indent=2, sort_keys=True) + "\n"
 
 
 def render_status_text(status: dict[str, Any]) -> str:
