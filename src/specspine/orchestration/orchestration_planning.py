@@ -3,9 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..dependency import (
-    _extract_slugs_from_text,
     _list_feature_slugs,
-    _read_all_feature_content,
     _topological_sort,
 )
 
@@ -19,113 +17,19 @@ from .orchestration_detection import (
 from .orchestration_models import (
     OrchestrationPlan,
     OrchestrationReport,
-    ParallelGroup,
 )
+from .orchestration_planning_graph import (
+    _build_dependency_graph,
+    _compute_parallel_groups,
+)
+from .orchestration_planning_recs import _generate_integration_recommendations
 
-
-def _build_dependency_graph(root: Path, slugs: list[str]) -> dict[str, set[str]]:
-    adj: dict[str, set[str]] = {s: set() for s in slugs}
-    for slug in slugs:
-        content = _read_all_feature_content(root, slug)
-        referenced = _extract_slugs_from_text(content, slug, set(slugs))
-        for ref in referenced:
-            if ref in adj:
-                adj[slug].add(ref)
-    return adj
-
-
-def _compute_parallel_groups(
-    execution_order: list[str],
-    adj: dict[str, set[str]],
-) -> list[ParallelGroup]:
-    if not execution_order:
-        return []
-
-    order_set = set(execution_order)
-    dep_in_degree: dict[str, int] = {s: 0 for s in execution_order}
-    for slug in execution_order:
-        for dep in adj.get(slug, set()):
-            if dep in order_set and dep in dep_in_degree:
-                dep_in_degree[slug] = dep_in_degree.get(slug, 0) + 1
-
-    groups: list[ParallelGroup] = []
-    remaining = set(execution_order)
-    group_id = 1
-
-    while remaining:
-        ready = sorted([s for s in remaining if dep_in_degree.get(s, 0) == 0])
-        if not ready:
-            remaining_sorted = sorted(remaining)
-            groups.append(
-                ParallelGroup(group_id=group_id, features=tuple(remaining_sorted))
-            )
-            break
-        groups.append(
-            ParallelGroup(group_id=group_id, features=tuple(ready))
-        )
-        for slug in ready:
-            remaining.discard(slug)
-            for other in remaining:
-                if slug in adj.get(other, set()):
-                    dep_in_degree[other] -= 1
-        group_id += 1
-
-    return groups
-
-
-def _generate_integration_recommendations(
-    conflicts: list,
-    execution_order: list[str],
-    adj: dict[str, set[str]],
-) -> list[str]:
-    recommendations: list[str] = []
-    if not conflicts and not execution_order:
-        recommendations.append("No integration steps required; no features or conflicts detected.")
-        return recommendations
-
-    file_conflicts = [c for c in conflicts if c.conflict_type == "file"]
-    contract_conflicts = [c for c in conflicts if c.conflict_type == "contract"]
-
-    if file_conflicts:
-        affected_features: set[str] = set()
-        for c in file_conflicts:
-            affected_features.update(c.features_involved)
-        features_str = ", ".join(sorted(affected_features))
-        recommendations.append(
-            f"File overlap detected for features: {features_str}. "
-            "Coordinate implementation order and run consistency scan after each feature."
-        )
-
-    if contract_conflicts:
-        affected_features: set[str] = set()
-        for c in contract_conflicts:
-            affected_features.update(c.features_involved)
-        features_str = ", ".join(sorted(affected_features))
-        recommendations.append(
-            f"Contract overlap detected for features: {features_str}. "
-            "Define shared API contracts or data schemas before implementation."
-        )
-
-    if len(execution_order) > 1:
-        recommendations.append(
-            f"Run integration tests after each group in execution order: {' -> '.join(execution_order)}."
-        )
-
-    deps_with_multiple = [
-        slug for slug in execution_order
-        if len(adj.get(slug, set())) > 1
-    ]
-    if deps_with_multiple:
-        features_str = ", ".join(deps_with_multiple)
-        recommendations.append(
-            f"Features with multiple dependencies ({features_str}) need integration validation "
-            "after all dependencies are implemented."
-        )
-
-    if not recommendations:
-        recommendations.append("No cross-feature integration steps detected.")
-
-    return recommendations
+__all__ = [
+    "_build_dependency_graph",
+    "_compute_parallel_groups",
+    "_generate_integration_recommendations",
+    "build_orchestration_plan",
+]
 
 
 def build_orchestration_plan(
@@ -211,11 +115,3 @@ def build_orchestration_plan(
         blocking_items=tuple(blocking_items),
         safety_notes=safety_notes,
     )
-
-
-__all__ = [
-    "_build_dependency_graph",
-    "_compute_parallel_groups",
-    "_generate_integration_recommendations",
-    "build_orchestration_plan",
-]

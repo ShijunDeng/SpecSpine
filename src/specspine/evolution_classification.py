@@ -14,11 +14,14 @@ from .evolution_classification_models import (
     ClassificationResult,
 )
 from .evolution_classification_helpers import (
-    _extract_ac_ids,
-    _extract_task_ids,
-    _find_line_number,
-    _parse_section_ids,
     _extract_metadata,
+)
+from .evolution_classification_file_changes import (
+    _classify_added_file,
+    _classify_removed_file,
+)
+from .evolution_classification_modified import (
+    _classify_modified_file,
 )
 
 __all__ = [
@@ -60,148 +63,23 @@ def classify_changes(
             continue
 
         if before is None and after is not None:
-            ac_ids = _parse_section_ids(after, AC_ID_RE)
-            for ac_id, line in ac_ids:
-                change_counter += 1
-                changes.append(
-                    ClassifiedChange(
-                        change_id=f"CHG{change_counter:03d}",
-                        change_type="added",
-                        category="ac",
-                        file=rel_path,
-                        line=line,
-                        before=None,
-                        after=ac_id,
-                    )
-                )
-            task_ids = _parse_section_ids(after, TASK_ID_RE)
-            for task_id, line in task_ids:
-                change_counter += 1
-                changes.append(
-                    ClassifiedChange(
-                        change_id=f"CHG{change_counter:03d}",
-                        change_type="added",
-                        category="task",
-                        file=rel_path,
-                        line=line,
-                        before=None,
-                        after=task_id,
-                    )
-                )
+            added_changes, change_counter = _classify_added_file(
+                after, rel_path, change_counter
+            )
+            changes.extend(added_changes)
             continue
 
         if before is not None and after is None:
-            ac_ids = _parse_section_ids(before, AC_ID_RE)
-            for ac_id, line in ac_ids:
-                change_counter += 1
-                changes.append(
-                    ClassifiedChange(
-                        change_id=f"CHG{change_counter:03d}",
-                        change_type="removed",
-                        category="ac",
-                        file=rel_path,
-                        line=line,
-                        before=ac_id,
-                        after=None,
-                    )
-                )
-            task_ids = _parse_section_ids(before, TASK_ID_RE)
-            for task_id, line in task_ids:
-                change_counter += 1
-                changes.append(
-                    ClassifiedChange(
-                        change_id=f"CHG{change_counter:03d}",
-                        change_type="removed",
-                        category="task",
-                        file=rel_path,
-                        line=line,
-                        before=task_id,
-                        after=None,
-                    )
-                )
+            removed_changes, change_counter = _classify_removed_file(
+                before, rel_path, change_counter
+            )
+            changes.extend(removed_changes)
             continue
 
-        before_ac = set(_extract_ac_ids(before or ""))
-        after_ac = set(_extract_ac_ids(after or ""))
-        before_tasks = set(_extract_task_ids(before or ""))
-        after_tasks = set(_extract_task_ids(after or ""))
-
-        for ac_id in sorted(after_ac - before_ac):
-            change_counter += 1
-            line = _find_line_number(after or "", ac_id)
-            changes.append(
-                ClassifiedChange(
-                    change_id=f"CHG{change_counter:03d}",
-                    change_type="added",
-                    category="ac",
-                    file=rel_path,
-                    line=line,
-                    before=None,
-                    after=ac_id,
-                )
-            )
-
-        for ac_id in sorted(before_ac - after_ac):
-            change_counter += 1
-            line = _find_line_number(before or "", ac_id)
-            changes.append(
-                ClassifiedChange(
-                    change_id=f"CHG{change_counter:03d}",
-                    change_type="removed",
-                    category="ac",
-                    file=rel_path,
-                    line=line,
-                    before=ac_id,
-                    after=None,
-                )
-            )
-
-        for task_id in sorted(after_tasks - before_tasks):
-            change_counter += 1
-            line = _find_line_number(after or "", task_id)
-            changes.append(
-                ClassifiedChange(
-                    change_id=f"CHG{change_counter:03d}",
-                    change_type="added",
-                    category="task",
-                    file=rel_path,
-                    line=line,
-                    before=None,
-                    after=task_id,
-                )
-            )
-
-        for task_id in sorted(before_tasks - after_tasks):
-            change_counter += 1
-            line = _find_line_number(before or "", task_id)
-            changes.append(
-                ClassifiedChange(
-                    change_id=f"CHG{change_counter:03d}",
-                    change_type="removed",
-                    category="task",
-                    file=rel_path,
-                    line=line,
-                    before=task_id,
-                    after=None,
-                )
-            )
-
-        if before != after:
-            for file_hunk in diff_result.files:
-                if file_hunk.path == rel_path and file_hunk.diff_hunks:
-                    change_counter += 1
-                    changes.append(
-                        ClassifiedChange(
-                            change_id=f"CHG{change_counter:03d}",
-                            change_type="modified",
-                            category=kind,
-                            file=rel_path,
-                            line=0,
-                            before=f"{len((before or '').splitlines())} lines",
-                            after=f"{len((after or '').splitlines())} lines",
-                        )
-                    )
-                    break
+        modified_changes, change_counter = _classify_modified_file(
+            before or "", after or "", rel_path, change_counter, diff_result, kind
+        )
+        changes.extend(modified_changes)
 
     if base_contents.get("spec") != current_contents.get("spec"):
         before_meta = _extract_metadata(base_contents.get("spec") or "")
