@@ -1,5 +1,16 @@
 from __future__ import annotations
 
+from ._text_modules import _render_modules_section
+from ._text_sections import (
+    _render_entities_section,
+    _render_error_paths_section,
+    _render_safety_notes_section,
+)
+
+__all__ = [
+    "render_blueprint_text",
+]
+
 
 def render_blueprint_text(report) -> str:
     lines = [
@@ -11,60 +22,11 @@ def render_blueprint_text(report) -> str:
         f"{report.coverage_summary['error_paths_total']} error paths, "
         f"{report.coverage_summary['unique_ac_covered']} ACs covered",
         "",
-        "Modules:",
     ]
 
-    if report.modules:
-        for module in report.modules:
-            lines.append(f"  {module.module_path}")
-            lines.append(f"    Responsibility: {module.responsibility}")
-            if module.functions:
-                lines.append("    Functions:")
-                for func in module.functions:
-                    params = ", ".join(func.parameters)
-                    lines.append(
-                        f"      {func.name}({params}) -> {func.return_type}"
-                    )
-            ac_str = ", ".join(module.ac_ids) if module.ac_ids else "none"
-            lines.append(f"    AC: {ac_str}")
-            lines.append("")
-    else:
-        lines.append("  No modules derived from acceptance criteria.")
-
-    lines.append("Data Entities:")
-    if report.data_entities:
-        for entity in report.data_entities:
-            attrs = ", ".join(entity.attributes) if entity.attributes else "none"
-            ac_str = ", ".join(entity.ac_ids) if entity.ac_ids else "none"
-            lines.append(f"  {entity.name}")
-            lines.append(f"    Attributes: {attrs}")
-            lines.append(f"    AC: {ac_str}")
-            lines.append("")
-    else:
-        lines.append("  No data entities identified.")
-
-    lines.append("Error Paths:")
-    if report.error_paths:
-        for ep in report.error_paths:
-            ac_str = ", ".join(ep.ac_ids) if ep.ac_ids else "none"
-            lines.append(f"  Condition: {ep.condition}")
-            lines.append(f"    Exception: {ep.exception_type}")
-            lines.append(f"    Handling: {ep.handling}")
-            lines.append(f"    AC: {ac_str}")
-            lines.append("")
-    else:
-        lines.append("  No error paths detected.")
-
-    lines.append("Safety Notes:")
-    if report.safety_notes:
-        for note in report.safety_notes:
-            lines.append(f"  - {note}")
-    else:
-        lines.append("  None.")
+    lines.extend(_render_modules_section(report.modules))
+    lines.extend(_render_entities_section(report.data_entities))
+    lines.extend(_render_error_paths_section(report.error_paths))
+    lines.extend(_render_safety_notes_section(report.safety_notes))
 
     return "\n".join(lines) + "\n"
-
-
-__all__ = [
-    "render_blueprint_text",
-]
