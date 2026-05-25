@@ -1,44 +1,12 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from pathlib import Path
 
-from ..features import FEATURE_FILE_PATHS
-from ..dependency import _read_all_feature_content
-from .orchestration_models import (
-    CONTRACT_PATTERN,
-    API_ENDPOINT_PATTERNS,
-    CONFIG_PATTERNS,
-    SCHEMA_PATTERNS,
-    OrchestrationConflict,
-)
-from .orchestration_extraction import _extract_ac_ids
-
-__all__ = [
-    "_extract_contracts",
-    "_detect_contract_conflicts",
-]
-
-
-def _extract_contracts(content: str) -> dict[str, list[str]]:
-    contracts: dict[str, list[str]] = defaultdict(list)
-    for match in CONTRACT_PATTERN.finditer(content):
-        contract_type = match.group("type").lower()
-        name = match.group("name")
-        contracts[contract_type].append(name)
-    for pattern in API_ENDPOINT_PATTERNS:
-        for match in pattern.finditer(content):
-            endpoint = match.group(1)
-            contracts["endpoint"].append(endpoint)
-    for pattern in SCHEMA_PATTERNS:
-        for match in pattern.finditer(content):
-            schema = match.group(1)
-            contracts["schema"].append(schema)
-    for pattern in CONFIG_PATTERNS:
-        for match in pattern.finditer(content):
-            config = match.group(1)
-            contracts["config"].append(config)
-    return {k: sorted(set(v)) for k, v in contracts.items()}
+from ...features import FEATURE_FILE_PATHS
+from ...dependency import _read_all_feature_content
+from ..orchestration_models import OrchestrationConflict
+from ..orchestration_extraction import _extract_ac_ids
+from ._contract_extraction import _extract_contracts
 
 
 def _detect_contract_conflicts(root: Path, features: list[str]) -> list[OrchestrationConflict]:
@@ -93,3 +61,8 @@ def _detect_contract_conflicts(root: Path, features: list[str]) -> list[Orchestr
                     )
                 )
     return conflicts
+
+
+__all__ = [
+    "_detect_contract_conflicts",
+]

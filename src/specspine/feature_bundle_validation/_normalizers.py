@@ -1,42 +1,6 @@
 from __future__ import annotations
 
-from .feature_bundle_models import (
-    FEATURE_PRIORITIES,
-    FEATURE_SLUG_RE,
-    FEATURE_STATUSES,
-    InvalidFeatureSlug,
-    InvalidFeatureStatus,
-)
-
-__all__ = [
-    "validate_feature_slug",
-    "validate_feature_status",
-    "normalize_feature_priority",
-    "normalize_feature_owner",
-    "normalize_feature_assignment",
-    "normalize_feature_effort",
-    "feature_title",
-]
-
-
-def validate_feature_slug(slug: str) -> str:
-    if FEATURE_SLUG_RE.fullmatch(slug):
-        return slug
-
-    raise InvalidFeatureSlug(
-        f"Invalid feature slug '{slug}'. Use lowercase letters, numbers, and "
-        "hyphens only; start and end with a letter or number."
-    )
-
-
-def validate_feature_status(status: str) -> str:
-    if status in FEATURE_STATUSES:
-        return status
-
-    allowed = ", ".join(FEATURE_STATUSES)
-    raise InvalidFeatureStatus(
-        f"Invalid feature status '{status}'. Use one of: {allowed}."
-    )
+from ..feature_bundle_models import FEATURE_PRIORITIES
 
 
 def normalize_feature_priority(priority: str | None) -> str:
@@ -89,7 +53,9 @@ def normalize_feature_effort(effort: str | None) -> str:
     return normalized
 
 
-def feature_title(slug: str, title: str | None = None) -> str:
-    if title and title.strip():
-        return title.strip()
-    return slug.replace("-", " ").title()
+__all__ = [
+    "normalize_feature_priority",
+    "normalize_feature_owner",
+    "normalize_feature_assignment",
+    "normalize_feature_effort",
+]

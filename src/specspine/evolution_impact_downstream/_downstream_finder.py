@@ -1,37 +1,16 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
-from .evolution_impact_models import DEPENDENCY_PATTERNS, FEATURE_ID_RE
-from .features import (
+from ..evolution_impact_models import DEPENDENCY_PATTERNS, FEATURE_ID_RE
+from ..features import (
     FEATURE_FILE_PATHS,
     InvalidFeatureSlug,
     build_feature_tests_report,
     build_feature_trace_report,
     list_feature_bundles,
 )
-
-
-def _extract_feature_refs(text: str) -> list[str]:
-    refs: list[str] = []
-    for pattern in DEPENDENCY_PATTERNS:
-        refs.extend(pattern.findall(text))
-    refs.extend(FEATURE_ID_RE.findall(text))
-    return sorted(set(refs))
-
-
-def _extract_metadata(content: str) -> dict[str, str]:
-    metadata: dict[str, str] = {}
-    keys = {"Priority", "Owner", "Milestone", "Target Release", "Project", "Effort", "Status"}
-    for line in content.splitlines():
-        stripped = line.strip()
-        if ":" in stripped and not stripped.startswith("#"):
-            key, _, value = stripped.partition(":")
-            key = key.strip()
-            if key in keys:
-                metadata[key] = value.strip()
-    return metadata
+from ._extractors import _extract_feature_refs
 
 
 def _find_downstream_references(
@@ -89,7 +68,5 @@ def _find_downstream_references(
 
 
 __all__ = [
-    "_extract_feature_refs",
-    "_extract_metadata",
     "_find_downstream_references",
 ]
