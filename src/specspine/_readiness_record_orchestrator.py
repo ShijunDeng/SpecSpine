@@ -14,14 +14,11 @@ from ._readiness_record_orchestrator_report import (
     _build_report_or_invalid,
     _read_metadata_or_invalid,
 )
+from ._readiness_record_orchestrator_errors import _is_error_record
 
 __all__ = [
     "_build_readiness_record",
 ]
-
-
-def _is_error_record(result: Any) -> bool:
-    return isinstance(result, dict) and "reason" in result
 
 
 def _build_readiness_record(
