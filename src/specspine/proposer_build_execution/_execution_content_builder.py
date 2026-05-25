@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from .workspace import normalize_template
-from .proposer_build_sections import (
+from ..workspace import normalize_template
+from ..proposer_build_sections import (
     _generate_why,
     _generate_dependencies,
     _generate_open_questions,
 )
+from ._execution_task_formatting import _format_task_lines
 
 __all__ = [
     "build_execution_content",
@@ -20,11 +21,7 @@ def build_execution_content(
     intent: str,
 ) -> str:
     why_text = _generate_why(parsed, intent)
-
-    task_lines = "\n".join(
-        f"- [ ] {t['id']}: {t['text']}\n  _Boundary: {t['boundary']}\n  _Depends: {t['depends']}"
-        for t in tasks
-    )
+    task_lines = _format_task_lines(tasks)
     dependency_lines = _generate_dependencies(parsed)
     open_questions_line = _generate_open_questions(parsed)
 
