@@ -1,55 +1,17 @@
 from __future__ import annotations
 
-from .feature_bundle import FeatureTestsReport
-from .feature_trace import _render_trace_checklist_item
+from ..feature_bundle import FeatureTestsReport
+from ..feature_trace import _render_trace_checklist_item
 
 __all__ = [
-    "render_feature_tests_text",
+    "render_section_lines",
 ]
 
 
-def render_feature_tests_text(report: FeatureTestsReport) -> str:
-    summary = report.summary
-    lines = [
-        f"Feature test packet: {report.feature_id}",
-        f"Feature: {report.feature_id}",
-        f"Status: {report.status}",
-        f"Ready: {'yes' if report.ready else 'no'}",
-        (
-            "Metadata: "
-            f"priority={report.metadata.priority} "
-            f"owner={report.metadata.owner} "
-            f"milestone={report.metadata.milestone} "
-            f"target_release={report.metadata.target_release}"
-        ),
-        "Sources:",
-    ]
-    if report.source_files:
-        lines.extend(f"- [ok] {relative_path}" for relative_path in report.source_files)
-    if report.missing_files:
-        lines.extend(
-            f"- [missing] {relative_path}"
-            for relative_path in report.missing_files
-        )
-    if not report.source_files and not report.missing_files:
-        lines.append("- None.")
+def render_section_lines(report: FeatureTestsReport) -> list[str]:
+    lines: list[str] = []
 
-    lines.extend(
-        [
-            (
-                "Summary: "
-                f"acceptance_criteria={summary['acceptance_criteria']['total']} "
-                f"test_cases={summary['test_cases']['total']} "
-                f"test_coverage={summary['test_coverage']['total']} "
-                f"test_plan={summary['test_plan']['total']} "
-                f"quality_checks={summary['quality_checks']['total']} "
-                f"gaps={summary['gaps']['total']} "
-                f"blocking={summary['blocking_checks']['total']}"
-            ),
-            "",
-            "Test Cases:",
-        ]
-    )
+    lines.extend(["", "Test Cases:"])
     if report.test_cases:
         for test_case in report.test_cases:
             linked_targets = (
@@ -121,4 +83,4 @@ def render_feature_tests_text(report: FeatureTestsReport) -> str:
     lines.extend(["", "Key Commands:"])
     lines.extend(f"- {command}" for command in report.recommended_commands)
 
-    return "\n".join(lines) + "\n"
+    return lines
