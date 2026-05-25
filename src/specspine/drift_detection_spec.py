@@ -3,69 +3,23 @@ from __future__ import annotations
 from pathlib import Path
 
 from .drift_models import DriftEvent
-from .drift_detection_extractors import (
-    _now_iso,
-    _feature_peer_content,
-    _extract_acs_from_spec,
-    _baseline_peer_content,
-)
-
-
-def _detect_spec_drift(slug: str, root: Path, baseline: str | None) -> list[DriftEvent]:
-    events: list[DriftEvent] = []
-    current = _feature_peer_content(root, slug, "spec")
-    if current is None:
-        return events
-
-    current_acs = _extract_acs_from_spec(current)
-
-    if baseline is not None:
-        before = _baseline_peer_content(root, slug, "spec", baseline)
-        if before is None:
-            if current_acs:
-                events.append(
-                    DriftEvent(
-                        event_type="spec",
-                        severity="high",
-                        timestamp=_now_iso(),
-                        description=f"Spec file exists but missing at baseline '{baseline}'; all ACs are new",
-                        affected_acs=tuple(sorted(set(current_acs))),
-                    )
-                )
-            return events
-
-        before_acs = _extract_acs_from_spec(before)
-        before_set = set(before_acs)
-        current_set = set(current_acs)
-
-        removed = sorted(before_set - current_set)
-        added = sorted(current_set - before_set)
-
-        if removed:
-            events.append(
-                DriftEvent(
-                    event_type="spec",
-                    severity="critical",
-                    timestamp=_now_iso(),
-                    description=f"ACs removed from spec compared to baseline '{baseline}'",
-                    affected_acs=tuple(removed),
-                )
-            )
-
-        if added:
-            events.append(
-                DriftEvent(
-                    event_type="spec",
-                    severity="medium",
-                    timestamp=_now_iso(),
-                    description=f"ACs added to spec compared to baseline '{baseline}'",
-                    affected_acs=tuple(added),
-                )
-            )
-
-    return events
-
+from ._drift_spec_extract import _extract_current_spec_acs
+from ._drift_spec_compare import _compare_spec_against_baseline
 
 __all__ = [
     "_detect_spec_drift",
 ]
+
+
+def _detect_spec_drift(slug: str, root: Path, baseline: str | None) -> list[DriftEvent]:
+    events: list[DriftEvent] = []
+    current_acs = _extract_current_spec_acs(root, slug)
+    if current_acs is None:
+        return events
+
+    if baseline is not None:
+        events.extend(
+            _compare_spec_against_baseline(slug, root, baseline, current_acs)
+        )
+
+    return events

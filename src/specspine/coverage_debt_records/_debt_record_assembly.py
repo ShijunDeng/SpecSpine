@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..coverage_utils import _coverage_detail_command, _feature_tests_command, _source_files
-from ..features import FEATURE_FILE_PATHS, feature_bundle_paths
-from ..policy import WorkspacePolicy
+from ._debt_record_paths import _resolve_feature_paths
+from ._debt_record_commands import _build_recommended_commands
 from ._debt_coverage_analysis import _analyze_feature_coverage_gaps
+from ..coverage_utils import _source_files
+from ..policy import WorkspacePolicy
 
 __all__ = [
     "_build_feature_coverage_debt_record",
@@ -22,11 +23,7 @@ def _build_feature_coverage_debt_record(
     policy: WorkspacePolicy | None,
 ) -> dict[str, Any]:
     slug = str(feature["slug"])
-    paths = feature_bundle_paths(root, slug)
-    relative_paths = {
-        kind: relative_path.format(slug=slug)
-        for kind, relative_path in FEATURE_FILE_PATHS.items()
-    }
+    paths, relative_paths = _resolve_feature_paths(slug, root)
 
     analysis = _analyze_feature_coverage_gaps(
         root,
@@ -42,12 +39,12 @@ def _build_feature_coverage_debt_record(
     missing_target_link_ids = analysis["missing_target_link_ids"]
     unknown_link_ids = analysis["unknown_link_ids"]
 
-    recommended_commands: list[str] = []
-    if coverage_required and missing_ids:
-        recommended_commands = [
-            _coverage_detail_command(slug, use_policy=use_policy),
-            _feature_tests_command(slug),
-        ]
+    recommended_commands = _build_recommended_commands(
+        slug,
+        coverage_required=coverage_required,
+        missing_ids=missing_ids,
+        use_policy=use_policy,
+    )
 
     record: dict[str, Any] = {
         "acceptance_criteria_total": len(trace_report.acceptance_criteria),
