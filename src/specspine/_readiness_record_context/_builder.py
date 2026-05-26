@@ -3,10 +3,15 @@ from __future__ import annotations
 from typing import Any
 
 from ._model import ReadinessRecordContext
+from ._metadata import (
+    extract_slug,
+    extract_status,
+    fetch_feature_metadata,
+)
+from ._coverage import resolve_coverage_required
 from ..features import (
     InvalidFeatureSlug,
     build_feature_ready_report,
-    read_feature_metadata,
 )
 from ..policy import WorkspacePolicy
 
@@ -23,21 +28,21 @@ def build_readiness_context(
     use_policy: bool,
     policy: WorkspacePolicy | None,
 ) -> ReadinessRecordContext | None:
-    slug = str(feature["slug"])
-    status = str(feature.get("status") or "unknown")
-    policy_coverage_required = False
-    try:
-        metadata = read_feature_metadata(resolved_root, slug)
-    except InvalidFeatureSlug:
+    slug = extract_slug(feature)
+    status = extract_status(feature)
+
+    metadata = fetch_feature_metadata(resolved_root, slug)
+    if metadata is None:
         return None
 
-    if policy is not None:
-        policy_coverage_required = policy.require_coverage.requires_coverage(
-            feature_id=slug,
-            metadata=metadata,
-            status=status,
-        )
-    coverage_required = require_coverage or policy_coverage_required
+    coverage_required, policy_coverage_required = resolve_coverage_required(
+        require_coverage=require_coverage,
+        use_policy=use_policy,
+        policy=policy,
+        feature_id=slug,
+        metadata=metadata,
+        status=status,
+    )
 
     try:
         report = build_feature_ready_report(
