@@ -2,39 +2,25 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .adapter_handoff_steps import (
+from specspine.adapter_handoff_entries import _build_adapter_entries
+from specspine.adapter_handoff_steps import (
     _adapter_handoff_recommended_commands,
 )
-from .adapter_lifecycle import build_adapter_lifecycle_report
-from .adapter_models import (
+from specspine.adapter_lifecycle import build_adapter_lifecycle_report
+from specspine.adapter_models import (
     AdapterFeatureHandoffReport,
 )
-from .features import (
-    FeatureBundleNotFoundError,
-    build_feature_handoff_report,
-    feature_bundle_paths,
-)
-from .adapter_handoff_entries import _build_adapter_entries
 
 __all__ = [
-    "build_adapter_feature_handoff_report",
+    "assemble_adapter_feature_handoff_report",
 ]
 
 
-def build_adapter_feature_handoff_report(
-    root: Path,
+def assemble_adapter_feature_handoff_report(
+    feature_report,
+    resolved_root: Path,
     slug: str,
 ) -> AdapterFeatureHandoffReport:
-    feature_report = build_feature_handoff_report(root, slug)
-    resolved_root = root.expanduser().resolve()
-    if not feature_report.has_native_files:
-        missing_paths = tuple(feature_bundle_paths(resolved_root, slug).values())
-        raise FeatureBundleNotFoundError(
-            slug=slug,
-            root=resolved_root,
-            missing_paths=missing_paths,
-        )
-
     lifecycle_report = build_adapter_lifecycle_report(resolved_root)
     source_files = tuple(
         str(source["path"])
