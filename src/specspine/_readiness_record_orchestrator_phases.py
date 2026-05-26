@@ -3,17 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 from .policy import WorkspacePolicy
-
 from ._readiness_record_orchestrator_errors import _is_error_record
-from ._readiness_record_orchestrator_policy import _resolve_policy_coverage
-from ._readiness_record_orchestrator_report import (
-    _build_report_or_invalid,
-    _read_metadata_or_invalid,
-)
-
-__all__ = [
-    "_resolve_orchestration_phases",
-]
+from ._phase_metadata_reader import _resolve_phase_metadata
+from ._phase_report_builder import _resolve_phase_report, _resolve_policy_coverage
 
 
 def _resolve_orchestration_phases(
@@ -27,7 +19,7 @@ def _resolve_orchestration_phases(
     slug = str(feature["slug"])
     status = str(feature.get("status") or "unknown")
 
-    metadata_or_error = _read_metadata_or_invalid(
+    metadata_or_error = _resolve_phase_metadata(
         feature,
         resolved_root,
         require_coverage=require_coverage,
@@ -41,7 +33,7 @@ def _resolve_orchestration_phases(
     policy_coverage_required = _resolve_policy_coverage(feature, metadata, status, policy)
     coverage_required = require_coverage or policy_coverage_required
 
-    report_or_error = _build_report_or_invalid(
+    report_or_error = _resolve_phase_report(
         feature,
         resolved_root,
         slug,
@@ -66,3 +58,8 @@ def _resolve_orchestration_phases(
         "use_policy": use_policy,
         "policy": policy,
     }
+
+
+__all__ = [
+    "_resolve_orchestration_phases",
+]
