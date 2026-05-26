@@ -4,8 +4,9 @@ from .feature_bundle import (
     FeatureTraceChecklistItem,
     FeatureTask,
     FeatureTraceTestPlanItem,
-    _trace_gap,
 )
+from ._file_gap_detection import _detect_file_gaps
+from ._checklist_gap_detection import _detect_checklist_gaps
 
 __all__ = [
     "_detect_trace_gaps",
@@ -23,45 +24,16 @@ def _detect_trace_gaps(
     test_plan: tuple[FeatureTraceTestPlanItem, ...],
 ) -> list[dict[str, str]]:
     gaps: list[dict[str, str]] = []
-    for relative_path in missing_files:
-        gaps.append(
-            _trace_gap(
-                "missing_file",
-                relative_path,
-                f"Missing native feature file: {relative_path}",
-            )
+    gaps.extend(_detect_file_gaps(missing_files))
+    gaps.extend(
+        _detect_checklist_gaps(
+            spec_file,
+            execution_file,
+            quality_file,
+            acceptance_criteria,
+            tasks,
+            quality_checks,
+            test_plan,
         )
-    if not acceptance_criteria:
-        gaps.append(
-            _trace_gap(
-                "missing_acceptance_criteria",
-                spec_file,
-                "No acceptance criteria checklist items found.",
-            )
-        )
-    if not tasks:
-        gaps.append(
-            _trace_gap(
-                "missing_tasks",
-                execution_file,
-                "No task checklist items found.",
-            )
-        )
-    if not quality_checks:
-        gaps.append(
-            _trace_gap(
-                "missing_required_checks",
-                quality_file,
-                "No required check checklist items found.",
-            )
-        )
-    if not test_plan:
-        gaps.append(
-            _trace_gap(
-                "missing_test_plan",
-                quality_file,
-                "No non-empty test plan content found.",
-            )
-        )
-
+    )
     return gaps
