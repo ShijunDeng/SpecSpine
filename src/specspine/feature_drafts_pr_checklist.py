@@ -6,10 +6,14 @@ from .feature_bundle import (
     FeatureTraceChecklistItem,
     FeatureTraceTestPlanItem,
 )
-from .feature_drafts_pr_renderers import (
-    _render_pr_checklist_items,
-    _render_pr_test_plan_items,
-    _render_pr_ready_checks,
+from ._pr_checklist_acceptance_tasks import (
+    _render_pr_acceptance_criteria_section,
+    _render_pr_tasks_section,
+)
+from ._pr_checklist_test_plan import _render_pr_test_plan_section
+from ._pr_checklist_readiness import (
+    _render_pr_readiness_checks_section,
+    _render_pr_release_readiness_section,
 )
 
 __all__ = [
@@ -27,39 +31,10 @@ def _render_pr_checklist_sections(
 ) -> list[str]:
     lines: list[str] = []
 
-    lines.extend(["## Acceptance Criteria", ""])
-    lines.extend(
-        _render_pr_checklist_items(
-            acceptance_criteria,
-            empty_text="Add acceptance criteria checklist items before review.",
-        )
-    )
-
-    lines.extend(["", "## Tasks", ""])
-    lines.extend(
-        _render_pr_checklist_items(
-            tasks,
-            empty_text="Add execution task checklist items before review.",
-        )
-    )
-
-    lines.extend(["", "## Test Plan", ""])
-    lines.extend(
-        _render_pr_test_plan_items(
-            test_plan,
-            empty_text="Add a concrete test plan before review.",
-        )
-    )
-
-    lines.extend(["", "## Release Readiness", ""])
-    lines.extend(
-        _render_pr_checklist_items(
-            release_readiness,
-            empty_text="Add release readiness checklist items before review.",
-        )
-    )
-
-    lines.extend(["", "## Readiness / Blocking Checks", ""])
-    lines.extend(_render_pr_ready_checks(readiness_checks))
+    lines.extend(_render_pr_acceptance_criteria_section(acceptance_criteria))
+    lines.extend(_render_pr_tasks_section(tasks))
+    lines.extend(_render_pr_test_plan_section(test_plan))
+    lines.extend(_render_pr_release_readiness_section(release_readiness))
+    lines.extend(_render_pr_readiness_checks_section(readiness_checks))
 
     return lines
