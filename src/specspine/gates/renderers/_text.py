@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 from ..models import QualityGateReport
+from ._text_checks import (
+    render_commands_lines,
+    render_definition_lines,
+    render_required_checks_lines,
+)
+from ._text_summary import render_text_header_lines
 
 __all__ = [
     "render_quality_gate_text",
@@ -8,59 +14,8 @@ __all__ = [
 
 
 def render_quality_gate_text(report: QualityGateReport) -> str:
-    summary = report.summary
-    lines = [
-        f"Quality gates: {report.root}",
-        f"Source: {report.source_file}",
-    ]
-    if report.source_missing:
-        lines.append("Source missing: yes")
-    else:
-        lines.append("Source missing: no")
-
-    lines.extend(
-        [
-            (
-                "Summary: "
-                f"required={summary['required_total']} "
-                f"done={summary['required_done']} "
-                f"open={summary['required_open']} "
-                f"definition={summary['definition_total']}"
-            ),
-            "",
-            "Required Checks:",
-        ]
-    )
-
-    if report.required_checks:
-        for gate in report.required_checks:
-            marker = "x" if gate.done else " "
-            metadata = f"severity={gate.severity} owner={gate.owner}"
-            if gate.ci_check is not None:
-                metadata = f"{metadata} ci={gate.ci_check}"
-            if gate.metadata_warnings:
-                metadata = f"{metadata} warnings={len(gate.metadata_warnings)}"
-            lines.append(
-                f"- [{marker}] {gate.id} {gate.source_file}:{gate.line} "
-                f"{gate.text} ({metadata})"
-            )
-    elif report.source_missing:
-        lines.append("- None found because quality/checklist.md is missing.")
-    else:
-        lines.append("- None found under ## Required Checks.")
-
-    lines.extend(["", "Definition Of Done:"])
-    if report.definition_of_done:
-        lines.extend(
-            f"- {item.id} {item.source_file}:{item.line} {item.text}"
-            for item in report.definition_of_done
-        )
-    elif report.source_missing:
-        lines.append("- None found because quality/checklist.md is missing.")
-    else:
-        lines.append("- None found under ## Definition Of Done.")
-
-    lines.extend(["", "Recommended commands:"])
-    lines.extend(f"- {command}" for command in report.recommended_commands)
-
+    lines = render_text_header_lines(report)
+    lines.extend(render_required_checks_lines(report))
+    lines.extend(render_definition_lines(report))
+    lines.extend(render_commands_lines(report))
     return "\n".join(lines) + "\n"
