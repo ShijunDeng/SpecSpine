@@ -4,9 +4,8 @@ from pathlib import Path
 from typing import Any
 
 from .models import ReviewPacket
-from .helpers import _dedupe_commands
-from .feature_evidence import _feature_payload
-from .review_checks import _build_review_checks, _build_feature_commands
+from ._packet_checks import _build_packet_review_checks
+from ._packet_commands import _build_packet_commands
 from ._packet_summary import _build_summary, _build_safety_notes
 
 __all__ = [
@@ -22,25 +21,16 @@ def assemble_review_packet(
     impact: Any,
     feature_payload: dict[str, Any] | None,
 ) -> ReviewPacket:
-    review_checks = _build_review_checks(
+    review_checks, failed_checks = _build_packet_review_checks(
         validation_ok=validation["ok"],
         gates_source_missing=gates.source_missing,
         has_impact_recommendations=bool(impact.recommendations),
         feature_payload=feature_payload,
     )
-    failed_checks = tuple(
-        check["id"] for check in review_checks if check["status"] != "pass"
-    )
-    feature_commands = _build_feature_commands(feature_slug)
-
-    recommended_commands = _dedupe_commands(
-        impact.recommended_commands,
-        gates.recommended_commands,
-        (
-            "specspine review packet . --json",
-            "specspine validate . --fusion --features",
-        ),
-        feature_commands,
+    recommended_commands = _build_packet_commands(
+        feature_slug=feature_slug,
+        impact_recommendations=impact.recommended_commands,
+        gates_recommended_commands=gates.recommended_commands,
     )
     summary = _build_summary(
         impact=impact,
