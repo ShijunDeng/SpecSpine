@@ -1,68 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
-
-from .features import (
-    InvalidFeatureSlug,
-    build_feature_ready_report,
-    read_feature_metadata,
-)
-from .policy import WorkspacePolicy
-from .status_readiness_helpers import _invalid_readiness_record
+from ._readiness_report_metadata import _read_metadata_or_invalid  # noqa: F401
+from ._readiness_report_builder import _build_report_or_invalid  # noqa: F401
 
 __all__ = [
     "_read_metadata_or_invalid",
     "_build_report_or_invalid",
 ]
-
-
-def _read_metadata_or_invalid(
-    feature: dict[str, object],
-    resolved_root,
-    *,
-    require_coverage: bool,
-    use_policy: bool,
-    policy: WorkspacePolicy | None,
-) -> dict[str, Any] | None:
-    slug = str(feature["slug"])
-    try:
-        return read_feature_metadata(resolved_root, slug)
-    except InvalidFeatureSlug as error:
-        return _invalid_readiness_record(
-            feature,
-            reason=str(error),
-            require_coverage=require_coverage,
-            use_policy=use_policy,
-            policy=policy,
-        )
-
-
-def _build_report_or_invalid(
-    feature: dict[str, object],
-    resolved_root,
-    slug: str,
-    status: str,
-    *,
-    coverage_required: bool,
-    use_policy: bool,
-    policy_coverage_required: bool,
-    policy: WorkspacePolicy | None,
-) -> dict[str, Any] | None:
-    try:
-        return build_feature_ready_report(
-            resolved_root,
-            slug,
-            require_coverage=coverage_required,
-            policy_applied=use_policy,
-            coverage_required_by_policy=policy_coverage_required,
-            policy_source=str(policy.source_file) if policy is not None else None,
-        )
-    except InvalidFeatureSlug as error:
-        return _invalid_readiness_record(
-            feature,
-            reason=str(error),
-            require_coverage=coverage_required,
-            use_policy=use_policy,
-            policy_coverage_required=policy_coverage_required,
-            policy=policy,
-        )

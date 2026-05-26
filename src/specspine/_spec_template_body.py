@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-from .proposer_build_sections import _generate_scope
-from ._spec_section_content import (
-    _generate_ac_lines,
-    _generate_why_text,
-    _generate_edge_case_lines,
-    _generate_constraint_lines,
-    _generate_traceability_lines,
-)
+from ._spec_body_header_sections import _render_header_sections
+from ._spec_body_criteria_sections import _render_criteria_sections
+from ._spec_body_footer_sections import _render_footer_sections
 
 __all__ = [
     "build_body_sections",
@@ -20,49 +15,7 @@ def build_body_sections(
     intent: str,
     resolved_slug: str,
 ) -> str:
-    ac_lines = _generate_ac_lines(criteria)
-    edge_case_lines = _generate_edge_case_lines(parsed)
-    constraint_lines = _generate_constraint_lines(parsed)
-    traceability_lines = _generate_traceability_lines(resolved_slug, criteria)
-    why_text = _generate_why_text(parsed, intent)
-
-    return f"""
-
-## Why
-
-{why_text}
-
-## Users
-
-- End users who need to {parsed['action']} the {parsed['target']}
-- Developers maintaining the {parsed['target']} functionality
-- Operators configuring the {parsed['target']} in production
-
-## Scope
-
-- {_generate_scope(parsed)}
-- Support for {parsed['action']}ing the {parsed['target']} in all relevant contexts
-- Integration with existing system components
-
-## Non-Goals
-
-- This feature will not modify unrelated system behavior
-- Migration of existing data is out of scope unless explicitly required
-- Third-party integrations beyond core functionality
-
-## Acceptance Criteria
-
-{ac_lines}
-
-## Edge Cases
-
-{edge_case_lines}
-
-## Constraints
-
-{constraint_lines}
-
-## Traceability Notes
-
-{traceability_lines}
-"""
+    header = _render_header_sections(parsed, intent)
+    criteria_sections = _render_criteria_sections(parsed, criteria)
+    footer = _render_footer_sections(resolved_slug, criteria, parsed)
+    return f"\n{header}\n{criteria_sections}\n{footer}"
